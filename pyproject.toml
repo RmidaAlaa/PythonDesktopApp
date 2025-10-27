@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awg-kumulus-device-manager"
+version = "1.0.0"
+description = "Cross-platform device manager for embedded boards"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "AWG", email = "contact@awg.com"}
+]
+keywords = ["embedded", "microcontroller", "firmware", "device-manager"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries",
+]
+
+dependencies = [
+    "PySide6>=6.5.0",
+    "pyserial>=3.5",
+    "pyusb>=1.2.1",
+    "openpyxl>=3.1.2",
+    "requests>=2.31.0",
+    "keyring>=24.2.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-mock>=3.11.0",
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+awg-kumulus = "main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+

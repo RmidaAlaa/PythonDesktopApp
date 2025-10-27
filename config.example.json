@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "tls": true,
+    "username": "your.email@gmail.com",
+    "password": ""
+  },
+  "recipients": [
+    "recipient1@example.com",
+    "recipient2@example.com"
+  ],
+  "machine_type": "Amphore",
+  "operator": {
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  },
+  "auto_refresh": true,
+  "refresh_interval": 5000,
+  "log_level": "INFO"
+}
+

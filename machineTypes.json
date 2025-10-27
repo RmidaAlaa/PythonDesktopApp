@@ -1,0 +1,15 @@
+{
+  "Amphore": {
+    "prefix": "AMP-",
+    "length": 12
+  },
+  "BOKs": {
+    "prefix": "BOK-",
+    "length": 10
+  },
+  "WaterDispenser": {
+    "prefix": "WD-",
+    "length": 14
+  }
+}
+
