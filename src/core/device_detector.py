@@ -435,19 +435,49 @@ class DeviceDetector:
         """Load device history from file."""
         try:
             if self.device_history_file.exists():
-                with open(self.device_history_file, 'r') as f:
-                    data = json.load(f)
+                with open(self.device_history_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if not content:
+                        logger.info("Device history file is empty")
+                        return
+                    
+                    data = json.loads(content)
                     for device_id, device_data in data.items():
-                        # Convert board_type string back to BoardType enum
-                        if 'board_type' in device_data and isinstance(device_data['board_type'], str):
-                            device_data['board_type'] = BoardType(device_data['board_type'])
-                        
-                        # Convert dict back to Device object
-                        device = Device(**device_data)
-                        self.device_history[device_id] = device
-                logger.info(f"Loaded {len(self.device_history)} devices from history")
+                        try:
+                            # Convert board_type string back to BoardType enum
+                            if 'board_type' in device_data and isinstance(device_data['board_type'], str):
+                                device_data['board_type'] = BoardType(device_data['board_type'])
+                            
+                            # Convert dict back to Device object
+                            device = Device(**device_data)
+                            self.device_history[device_id] = device
+                        except Exception as e:
+                            logger.warning(f"Failed to load device {device_id}: {e}")
+                            continue
+                    
+                    logger.info(f"Loaded {len(self.device_history)} devices from history")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in device history file: {e}")
+            # Try to backup and recreate the file
+            self._backup_and_recreate_history_file()
         except Exception as e:
             logger.warning(f"Failed to load device history: {e}")
+    
+    def _backup_and_recreate_history_file(self):
+        """Backup corrupted history file and create a new one."""
+        try:
+            backup_file = self.device_history_file.with_suffix('.json.backup')
+            if self.device_history_file.exists():
+                self.device_history_file.rename(backup_file)
+                logger.info(f"Backed up corrupted history file to {backup_file}")
+            
+            # Create empty history file
+            self.device_history_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.device_history_file, 'w', encoding='utf-8') as f:
+                json.dump({}, f, indent=2)
+            logger.info("Created new empty device history file")
+        except Exception as e:
+            logger.error(f"Failed to backup and recreate history file: {e}")
     
     def _save_device_history(self):
         """Save device history to file."""
@@ -457,8 +487,8 @@ class DeviceDetector:
             for device_id, device in self.device_history.items():
                 data[device_id] = device.to_dict()
             
-            with open(self.device_history_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            with open(self.device_history_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
             logger.debug("Device history saved")
         except Exception as e:
             logger.error(f"Failed to save device history: {e}")
@@ -467,18 +497,22 @@ class DeviceDetector:
         """Load device templates from file."""
         try:
             if self.templates_file.exists():
-                with open(self.templates_file, 'r') as f:
+                with open(self.templates_file, 'r', encoding='utf-8') as f:
                     self.device_templates = json.load(f)
                 logger.info(f"Loaded {len(self.device_templates)} device templates")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in device templates file: {e}")
+            self.device_templates = {}
         except Exception as e:
             logger.warning(f"Failed to load device templates: {e}")
+            self.device_templates = {}
     
     def _save_device_templates(self):
         """Save device templates to file."""
         try:
             self.templates_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.templates_file, 'w') as f:
-                json.dump(self.device_templates, f, indent=2)
+            with open(self.templates_file, 'w', encoding='utf-8') as f:
+                json.dump(self.device_templates, f, indent=2, ensure_ascii=False)
             logger.debug("Device templates saved")
         except Exception as e:
             logger.error(f"Failed to save device templates: {e}")

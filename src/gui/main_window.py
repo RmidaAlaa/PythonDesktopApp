@@ -2218,10 +2218,10 @@ Please find the attached Excel report with complete device information including
     def on_device_change(self, event_type: str, device: Device):
         """Handle device connection/disconnection events."""
         if event_type == "device_connected":
-            self.log(f"🔌 Device connected: {device.get_display_name()}")
+            self.log(f"[CONNECTED] Device connected: {device.get_display_name()}")
             self.refresh_devices()  # Refresh the device table
         elif event_type == "device_disconnected":
-            self.log(f"🔌 Device disconnected: {device.get_display_name()}")
+            self.log(f"[DISCONNECTED] Device disconnected: {device.get_display_name()}")
             self.refresh_devices()  # Refresh the device table
     
     def show_device_history_dialog(self):
