@@ -87,8 +87,9 @@ class ReportGenerator:
         
         headers = [
             "Machine Type", "Machine ID", "Board Type", "Port", 
-            "VID", "PID", "UID", "Manufacturer", "Serial Number", 
-            "Firmware Version", "Timestamp"
+            "VID", "PID", "UID", "Chip ID", "MAC Address", "Manufacturer", 
+            "Serial Number", "Firmware Version", "Hardware Version", 
+            "Flash Size", "CPU Frequency", "Timestamp"
         ]
         
         # Write headers
@@ -111,9 +112,14 @@ class ReportGenerator:
                 f"0x{device.vid:04X}" if device.vid else "N/A",
                 f"0x{device.pid:04X}" if device.pid else "N/A",
                 device.uid or "N/A",
+                device.chip_id or "N/A",
+                device.mac_address or "N/A",
                 device.manufacturer or "N/A",
                 device.serial_number or "N/A",
                 device.firmware_version or "N/A",
+                device.hardware_version or "N/A",
+                device.flash_size or "N/A",
+                device.cpu_frequency or "N/A",
                 timestamp
             ]
             
@@ -124,7 +130,7 @@ class ReportGenerator:
         sheet.freeze_panes = 'A2'
         
         # Adjust column widths
-        column_widths = [15, 15, 12, 10, 10, 10, 20, 20, 20, 15, 20]
+        column_widths = [15, 15, 12, 10, 10, 10, 20, 15, 18, 20, 20, 15, 15, 12, 12, 20]
         for i, width in enumerate(column_widths, 1):
             sheet.column_dimensions[get_column_letter(i)].width = width
 
