@@ -438,6 +438,10 @@ class DeviceDetector:
                 with open(self.device_history_file, 'r') as f:
                     data = json.load(f)
                     for device_id, device_data in data.items():
+                        # Convert board_type string back to BoardType enum
+                        if 'board_type' in device_data and isinstance(device_data['board_type'], str):
+                            device_data['board_type'] = BoardType(device_data['board_type'])
+                        
                         # Convert dict back to Device object
                         device = Device(**device_data)
                         self.device_history[device_id] = device
@@ -451,7 +455,7 @@ class DeviceDetector:
             self.device_history_file.parent.mkdir(parents=True, exist_ok=True)
             data = {}
             for device_id, device in self.device_history.items():
-                data[device_id] = asdict(device)
+                data[device_id] = device.to_dict()
             
             with open(self.device_history_file, 'w') as f:
                 json.dump(data, f, indent=2)
@@ -516,7 +520,7 @@ class DeviceDetector:
             "manufacturer": device.manufacturer,
             "description": device.description,
             "created_at": datetime.now().isoformat(),
-            "device_data": asdict(device)
+            "device_data": device.to_dict()
         }
         self.device_templates[name] = template
         self._save_device_templates()
@@ -533,6 +537,10 @@ class DeviceDetector:
         device_data["first_detected"] = datetime.now().isoformat()
         device_data["last_seen"] = datetime.now().isoformat()
         device_data["connection_count"] = 0
+        
+        # Convert board_type string back to BoardType enum if needed
+        if 'board_type' in device_data and isinstance(device_data['board_type'], str):
+            device_data['board_type'] = BoardType(device_data['board_type'])
         
         device = Device(**device_data)
         return device
