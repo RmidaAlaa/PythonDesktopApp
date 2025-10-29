@@ -3,7 +3,7 @@
 import sys
 from typing import Dict
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QTableWidget, QTableWidgetItem, QPushButton, QLabel,
     QLineEdit, QComboBox, QTextEdit, QProgressBar, QMessageBox,
     QGroupBox, QSplitter, QApplication, QHeaderView, QDialog,
