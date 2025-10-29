@@ -20,6 +20,7 @@ from ..core.email_sender import EmailSender
 from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
+from ..core.theme_manager import ThemeManager, ThemeType
 from ..core.language_manager import LanguageManager, LanguageType
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
