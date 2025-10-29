@@ -124,7 +124,7 @@ class DeviceDetector:
         self.monitoring_active = False
         self.monitoring_thread: Optional[threading.Thread] = None
         self.monitoring_callback: Optional[Callable] = None
-        self.monitoring_interval = 2.0  # seconds
+        self.monitoring_interval = 5.0  # seconds - increased from 2.0 to reduce frequency
         self.device_history_file = Path(Config.get_app_data_dir()) / "device_history.json"
         self.templates_file = Path(Config.get_app_data_dir()) / "device_templates.json"
         
@@ -151,6 +151,30 @@ class DeviceDetector:
         (0x2341, 0x0010): BoardType.ARDUINO,  # Arduino Mega
         (0x2A03, 0x0043): BoardType.ARDUINO,  # Arduino Uno (clone)
     }
+    
+    def _get_devices_silent(self) -> List[Device]:
+        """Detect devices without logging (for monitoring loop)."""
+        devices = []
+        
+        try:
+            # Get all serial ports
+            ports = serial.tools.list_ports.comports()
+            
+            for port in ports:
+                try:
+                    device = self._identify_device(port)
+                    if device:
+                        devices.append(device)
+                except Exception as e:
+                    # Only log warnings for actual errors, not normal port scanning
+                    if "Permission denied" not in str(e) and "Access denied" not in str(e):
+                        logger.debug(f"Error identifying device on {port.device}: {e}")
+            
+            return devices
+            
+        except Exception as e:
+            logger.error(f"Error detecting devices: {e}")
+            return []
     
     def detect_devices(self) -> List[Device]:
         """Detect all connected devices."""
@@ -605,36 +629,43 @@ class DeviceDetector:
         logger.info("Stopped real-time device monitoring")
     
     def _monitoring_loop(self):
-        """Main monitoring loop."""
+        """Main monitoring loop - only detects changes, not continuous scanning."""
         previous_devices = set()
         
         while self.monitoring_active:
             try:
-                current_devices = self.detect_devices()
+                # Get current device list without logging
+                current_devices = self._get_devices_silent()
                 current_device_ids = {device.get_unique_id() for device in current_devices}
                 
-                # Check for new devices
-                new_devices = current_device_ids - previous_devices
-                for device_id in new_devices:
-                    device = next(d for d in current_devices if d.get_unique_id() == device_id)
-                    self.update_device_in_history(device)
-                    if self.monitoring_callback:
-                        self.monitoring_callback("device_connected", device)
-                
-                # Check for disconnected devices
-                disconnected_devices = previous_devices - current_device_ids
-                for device_id in disconnected_devices:
-                    if device_id in self.device_history:
-                        device = self.device_history[device_id]
-                        device.status = "Disconnected"
-                        if self.monitoring_callback:
-                            self.monitoring_callback("device_disconnected", device)
-                
-                # Update existing devices
-                for device in current_devices:
-                    self.update_device_in_history(device)
-                
-                previous_devices = current_device_ids
+                # Only process if there are actual changes
+                if current_device_ids != previous_devices:
+                    # Check for new devices
+                    new_devices = current_device_ids - previous_devices
+                    if new_devices:
+                        logger.info(f"New device(s) detected: {len(new_devices)}")
+                        for device_id in new_devices:
+                            device = next(d for d in current_devices if d.get_unique_id() == device_id)
+                            self.update_device_in_history(device)
+                            if self.monitoring_callback:
+                                self.monitoring_callback("device_connected", device)
+                    
+                    # Check for disconnected devices
+                    disconnected_devices = previous_devices - current_device_ids
+                    if disconnected_devices:
+                        logger.info(f"Device(s) disconnected: {len(disconnected_devices)}")
+                        for device_id in disconnected_devices:
+                            if device_id in self.device_history:
+                                device = self.device_history[device_id]
+                                device.status = "Disconnected"
+                                if self.monitoring_callback:
+                                    self.monitoring_callback("device_disconnected", device)
+                    
+                    # Update existing devices only if there were changes
+                    for device in current_devices:
+                        self.update_device_in_history(device)
+                    
+                    previous_devices = current_device_ids
                 
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")

@@ -28,6 +28,8 @@ class WorkerThread(QThread):
     """Worker thread for background operations."""
     finished = Signal()
     error = Signal(str)
+    device_connected = Signal(object)  # Device object
+    device_disconnected = Signal(object)  # Device object
     
     def __init__(self, task, *args, **kwargs):
         super().__init__()
@@ -64,8 +66,8 @@ class MainWindow(QMainWindow):
         # Auto-detect devices on startup
         QTimer.singleShot(500, self.refresh_devices)
         
-        # Start real-time monitoring
-        self.device_detector.start_real_time_monitoring(self.on_device_change)
+        # Start real-time monitoring with Qt signal handling
+        self.device_detector.start_real_time_monitoring(self._device_change_callback)
         
         # Check for first run
         if Config.is_first_run():
@@ -2215,14 +2217,24 @@ Please find the attached Excel report with complete device information including
             QMessageBox.information(self, "First Run Setup",
                                   f"Setup completed with warnings:\n{msg}")
     
-    def on_device_change(self, event_type: str, device: Device):
-        """Handle device connection/disconnection events."""
+    def _device_change_callback(self, event_type: str, device: Device):
+        """Handle device changes from background thread using Qt signals."""
         if event_type == "device_connected":
-            self.log(f"[CONNECTED] Device connected: {device.get_display_name()}")
-            self.refresh_devices()  # Refresh the device table
+            # Use QTimer to safely update GUI from main thread
+            QTimer.singleShot(0, lambda: self._handle_device_connected(device))
         elif event_type == "device_disconnected":
-            self.log(f"[DISCONNECTED] Device disconnected: {device.get_display_name()}")
-            self.refresh_devices()  # Refresh the device table
+            # Use QTimer to safely update GUI from main thread
+            QTimer.singleShot(0, lambda: self._handle_device_disconnected(device))
+    
+    def _handle_device_connected(self, device: Device):
+        """Handle device connection in main thread."""
+        self.log(f"[CONNECTED] Device connected: {device.get_display_name()}")
+        self.refresh_devices()  # Refresh the device table
+    
+    def _handle_device_disconnected(self, device: Device):
+        """Handle device disconnection in main thread."""
+        self.log(f"[DISCONNECTED] Device disconnected: {device.get_display_name()}")
+        self.refresh_devices()  # Refresh the device table
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
