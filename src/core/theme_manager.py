@@ -146,37 +146,37 @@ class ThemeManager(QObject):
     
     def _apply_light_theme(self, palette: QPalette):
         """Apply light theme colors."""
-        # Base colors
-        palette.setColor(QPalette.Window, QColor(255, 255, 255))
-        palette.setColor(QPalette.WindowText, QColor(0, 0, 0))
-        palette.setColor(QPalette.Base, QColor(255, 255, 255))
-        palette.setColor(QPalette.AlternateBase, QColor(240, 240, 240))
-        palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 220))
-        palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))
-        palette.setColor(QPalette.Text, QColor(0, 0, 0))
-        palette.setColor(QPalette.Button, QColor(240, 240, 240))
-        palette.setColor(QPalette.ButtonText, QColor(0, 0, 0))
-        palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+        # Base colors - Clean and modern light theme
+        palette.setColor(QPalette.Window, QColor(248, 249, 250))  # Very light gray
+        palette.setColor(QPalette.WindowText, QColor(33, 37, 41))  # Dark gray text
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))  # Pure white
+        palette.setColor(QPalette.AlternateBase, QColor(240, 242, 245))  # Light gray
+        palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 220))  # Light yellow
+        palette.setColor(QPalette.ToolTipText, QColor(33, 37, 41))  # Dark text
+        palette.setColor(QPalette.Text, QColor(33, 37, 41))  # Dark text
+        palette.setColor(QPalette.Button, QColor(233, 236, 239))  # Light button
+        palette.setColor(QPalette.ButtonText, QColor(33, 37, 41))  # Dark button text
+        palette.setColor(QPalette.BrightText, QColor(220, 53, 69))  # Red for errors
+        palette.setColor(QPalette.Link, QColor(0, 123, 255))  # Blue links
+        palette.setColor(QPalette.Highlight, QColor(0, 123, 255))  # Blue highlight
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))  # White on highlight
     
     def _apply_dark_theme(self, palette: QPalette):
         """Apply dark theme colors."""
-        # Base colors
-        palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
-        palette.setColor(QPalette.Base, QColor(25, 25, 25))
-        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        palette.setColor(QPalette.ToolTipBase, QColor(0, 0, 0))
-        palette.setColor(QPalette.ToolTipText, QColor(255, 255, 255))
-        palette.setColor(QPalette.Text, QColor(255, 255, 255))
-        palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
-        palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+        # Base colors - Modern dark theme
+        palette.setColor(QPalette.Window, QColor(33, 37, 41))  # Dark gray background
+        palette.setColor(QPalette.WindowText, QColor(248, 249, 250))  # Light text
+        palette.setColor(QPalette.Base, QColor(52, 58, 64))  # Darker base
+        palette.setColor(QPalette.AlternateBase, QColor(73, 80, 87))  # Medium dark
+        palette.setColor(QPalette.ToolTipBase, QColor(52, 58, 64))  # Dark tooltip
+        palette.setColor(QPalette.ToolTipText, QColor(248, 249, 250))  # Light tooltip text
+        palette.setColor(QPalette.Text, QColor(248, 249, 250))  # Light text
+        palette.setColor(QPalette.Button, QColor(73, 80, 87))  # Dark button
+        palette.setColor(QPalette.ButtonText, QColor(248, 249, 250))  # Light button text
+        palette.setColor(QPalette.BrightText, QColor(255, 107, 107))  # Light red for errors
+        palette.setColor(QPalette.Link, QColor(64, 224, 255))  # Light blue links
+        palette.setColor(QPalette.Highlight, QColor(64, 224, 255))  # Light blue highlight
+        palette.setColor(QPalette.HighlightedText, QColor(33, 37, 41))  # Dark text on highlight
     
     def _apply_custom_theme(self, palette: QPalette, theme_data: Dict[str, Any]):
         """Apply custom theme colors."""
@@ -222,59 +222,230 @@ class ThemeManager(QObject):
         """Get additional stylesheet for theme."""
         if theme_type == ThemeType.DARK:
             return """
+            /* Dark Theme Stylesheet */
+            QMainWindow {
+                background-color: #212529;
+                color: #f8f9fa;
+            }
             QTabWidget::pane {
-                border: 1px solid #555555;
-                background-color: #353535;
+                border: 1px solid #495057;
+                background-color: #343a40;
+                border-radius: 4px;
             }
             QTabBar::tab {
-                background-color: #555555;
-                color: #FFFFFF;
+                background-color: #495057;
+                color: #f8f9fa;
                 padding: 8px 16px;
                 margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
             }
             QTabBar::tab:selected {
-                background-color: #2A82DA;
+                background-color: #40e0ff;
+                color: #212529;
+                font-weight: bold;
+            }
+            QTabBar::tab:hover {
+                background-color: #6c757d;
             }
             QGroupBox {
                 font-weight: bold;
-                border: 2px solid #555555;
-                border-radius: 5px;
+                border: 2px solid #495057;
+                border-radius: 6px;
                 margin-top: 1ex;
                 padding-top: 10px;
+                background-color: #343a40;
+                color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
+                color: #40e0ff;
+            }
+            QPushButton {
+                background-color: #495057;
+                color: #f8f9fa;
+                border: 1px solid #6c757d;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #6c757d;
+                border-color: #40e0ff;
+            }
+            QPushButton:pressed {
+                background-color: #343a40;
+            }
+            QTableWidget {
+                background-color: #343a40;
+                alternate-background-color: #495057;
+                color: #f8f9fa;
+                border: 1px solid #495057;
+                border-radius: 4px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #495057;
+            }
+            QTableWidget::item:selected {
+                background-color: #40e0ff;
+                color: #212529;
+            }
+            QHeaderView::section {
+                background-color: #495057;
+                color: #f8f9fa;
+                padding: 8px;
+                border: 1px solid #6c757d;
+                font-weight: bold;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                background-color: #343a40;
+                color: #f8f9fa;
+                border: 1px solid #495057;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+                border-color: #40e0ff;
+            }
+            QProgressBar {
+                border: 1px solid #495057;
+                border-radius: 4px;
+                background-color: #343a40;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #40e0ff;
+                border-radius: 3px;
+            }
+            QScrollBar:vertical {
+                background-color: #343a40;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #495057;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #6c757d;
             }
             """
         elif theme_type == ThemeType.LIGHT:
             return """
+            /* Light Theme Stylesheet */
+            QMainWindow {
+                background-color: #f8f9fa;
+                color: #212529;
+            }
             QTabWidget::pane {
-                border: 1px solid #CCCCCC;
-                background-color: #FFFFFF;
+                border: 1px solid #dee2e6;
+                background-color: #ffffff;
+                border-radius: 4px;
             }
             QTabBar::tab {
-                background-color: #F0F0F0;
-                color: #000000;
+                background-color: #e9ecef;
+                color: #212529;
                 padding: 8px 16px;
                 margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
             }
             QTabBar::tab:selected {
-                background-color: #2A82DA;
-                color: #FFFFFF;
+                background-color: #007bff;
+                color: #ffffff;
+                font-weight: bold;
+            }
+            QTabBar::tab:hover {
+                background-color: #f8f9fa;
             }
             QGroupBox {
                 font-weight: bold;
-                border: 2px solid #CCCCCC;
-                border-radius: 5px;
+                border: 2px solid #dee2e6;
+                border-radius: 6px;
                 margin-top: 1ex;
                 padding-top: 10px;
+                background-color: #ffffff;
+                color: #212529;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
+                color: #007bff;
+            }
+            QPushButton {
+                background-color: #e9ecef;
+                color: #212529;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #f8f9fa;
+                border-color: #007bff;
+            }
+            QPushButton:pressed {
+                background-color: #dee2e6;
+            }
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f8f9fa;
+                color: #212529;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #dee2e6;
+            }
+            QTableWidget::item:selected {
+                background-color: #007bff;
+                color: #ffffff;
+            }
+            QHeaderView::section {
+                background-color: #e9ecef;
+                color: #212529;
+                padding: 8px;
+                border: 1px solid #ced4da;
+                font-weight: bold;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                background-color: #ffffff;
+                color: #212529;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+                border-color: #007bff;
+            }
+            QProgressBar {
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background-color: #ffffff;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #007bff;
+                border-radius: 3px;
+            }
+            QScrollBar:vertical {
+                background-color: #ffffff;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #e9ecef;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #ced4da;
             }
             """
         else:
