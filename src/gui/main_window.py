@@ -122,22 +122,22 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.device_table)
         
         # Refresh button
-        refresh_btn = QPushButton("🔄 Refresh Devices")
+        refresh_btn = QPushButton("[REFRESH] Refresh Devices")
         refresh_btn.clicked.connect(self.refresh_devices)
         layout.addWidget(refresh_btn)
         
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton("📚 Device History")
+        history_btn = QPushButton("[HISTORY] Device History")
         history_btn.clicked.connect(self.show_device_history_dialog)
         device_mgmt_layout.addWidget(history_btn)
         
-        templates_btn = QPushButton("📋 Templates")
+        templates_btn = QPushButton("[TEMPLATES] Templates")
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         device_mgmt_layout.addWidget(templates_btn)
         
-        search_btn = QPushButton("🔍 Search")
+        search_btn = QPushButton("[SEARCH] Search")
         search_btn.clicked.connect(self.show_device_search_dialog)
         device_mgmt_layout.addWidget(search_btn)
         
@@ -192,15 +192,15 @@ class MainWindow(QMainWindow):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        export_btn = QPushButton("📊 Generate Excel Report")
+        export_btn = QPushButton("[REPORT] Generate Excel Report")
         export_btn.clicked.connect(self.generate_report)
         button_layout.addWidget(export_btn)
         
-        email_btn = QPushButton("📧 Send Email")
+        email_btn = QPushButton("[EMAIL] Send Email")
         email_btn.clicked.connect(self.send_email)
         button_layout.addWidget(email_btn)
         
-        flash_btn = QPushButton("⚡ Flash Firmware")
+        flash_btn = QPushButton("[FLASH] Flash Firmware")
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         button_layout.addWidget(flash_btn)
         
@@ -209,15 +209,15 @@ class MainWindow(QMainWindow):
         # Settings buttons
         settings_layout = QHBoxLayout()
         
-        email_settings_btn = QPushButton("⚙️ Configure Email")
+        email_settings_btn = QPushButton("[CONFIG] Configure Email")
         email_settings_btn.clicked.connect(self.configure_email_dialog)
         settings_layout.addWidget(email_settings_btn)
         
-        machine_settings_btn = QPushButton("🔧 Machine Types")
+        machine_settings_btn = QPushButton("[MACHINE] Machine Types")
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
         settings_layout.addWidget(machine_settings_btn)
         
-        onedrive_settings_btn = QPushButton("☁️ OneDrive")
+        onedrive_settings_btn = QPushButton("[ONEDRIVE] OneDrive")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
         
@@ -361,9 +361,9 @@ class MainWindow(QMainWindow):
                     devices=self.devices
                 )
                 if success:
-                    self.log("✅ Data synced to OneDrive successfully")
+                    self.log("[SUCCESS] Data synced to OneDrive successfully")
                 else:
-                    self.log("⚠️ OneDrive sync failed - check logs")
+                    self.log("[WARNING] OneDrive sync failed - check logs")
             
             # Ask user to confirm data and send email
             reply = QMessageBox.question(
@@ -563,7 +563,7 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(smtp_user)
         
         # Auto-detect button
-        auto_detect_btn = QPushButton("🔍 Auto-detect Settings")
+        auto_detect_btn = QPushButton("[AUTO-DETECT] Auto-detect Settings")
         auto_detect_btn.setMaximumWidth(150)
         layout.addWidget(auto_detect_btn)
         
@@ -609,7 +609,7 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(recipients_text)
         
         # Dynamic Configuration Guide
-        guide_group = QGroupBox("📖 Email Configuration Guide")
+        guide_group = QGroupBox("[GUIDE] Email Configuration Guide")
         guide_layout = QVBoxLayout()
         
         # Dynamic guide label that changes based on provider selection
@@ -712,12 +712,12 @@ Please find the attached Excel report with complete device information including
             # Update guide based on provider
             if provider == 'Gmail':
                 guide_text = """
-                <b>📧 Gmail Configuration:</b><br>
+                <b>[EMAIL] Gmail Configuration:</b><br>
                 1. Enable 2-Step Verification: <a href="https://myaccount.google.com/security">https://myaccount.google.com/security</a><br>
                 2. Generate App Password: <a href="https://myaccount.google.com/apppasswords">https://myaccount.google.com/apppasswords</a><br>
                 3. Use App Password (16 characters) instead of your regular password<br>
                 <b>Settings:</b> smtp.gmail.com, Port 587, TLS enabled<br><br>
-                <b>🔧 Common Gmail Issues:</b><br>
+                <b>[COMMON] Common Gmail Issues:</b><br>
                 • <b>Error 535:</b> Wrong username/password - Use App Password<br>
                 • <b>Error 534:</b> App Password required - Enable 2FA first<br>
                 • <b>Still having issues?</b> <a href="https://support.google.com/mail/answer/7126229">Gmail Help</a>
@@ -726,12 +726,12 @@ Please find the attached Excel report with complete device information including
                 
             elif provider == 'Outlook/Hotmail':
                 guide_text = """
-                <b>📧 Outlook/Hotmail Configuration:</b><br>
+                <b>[EMAIL] Outlook/Hotmail Configuration:</b><br>
                 1. Enable 2-Step Verification: <a href="https://account.microsoft.com/security">https://account.microsoft.com/security</a><br>
                 2. Generate App Password: <a href="https://account.microsoft.com/security/app-passwords">https://account.microsoft.com/security/app-passwords</a><br>
                 3. Use App Password instead of your regular password<br>
                 <b>Settings:</b> smtp-mail.outlook.com, Port 587, TLS enabled<br><br>
-                <b>🔧 Common Outlook Issues:</b><br>
+                <b>[COMMON] Common Outlook Issues:</b><br>
                 • <b>Error 535:</b> Wrong username/password - Use App Password<br>
                 • <b>Error 534:</b> App Password required - Enable 2FA first<br>
                 • <b>Still having issues?</b> <a href="https://support.microsoft.com/en-us/office/pop-imap-and-smtp-settings-for-outlook-8361e398-8af4-4e97-b147-6c6c4ac95353">Outlook Help</a>
@@ -740,12 +740,12 @@ Please find the attached Excel report with complete device information including
                 
             elif provider == 'Office 365':
                 guide_text = """
-                <b>📧 Office 365 Configuration:</b><br>
+                <b>[EMAIL] Office 365 Configuration:</b><br>
                 1. Contact your IT administrator for SMTP settings<br>
                 2. May require App Password: <a href="https://account.microsoft.com/security/app-passwords">https://account.microsoft.com/security/app-passwords</a><br>
                 3. Some organizations disable SMTP authentication<br>
                 <b>Settings:</b> smtp.office365.com, Port 587, TLS enabled<br><br>
-                <b>🔧 Common Office 365 Issues:</b><br>
+                <b>[COMMON] Common Office 365 Issues:</b><br>
                 • <b>Error 535:</b> Wrong username/password - Use App Password<br>
                 • <b>Error 550:</b> Authentication failed - Check with IT admin<br>
                 • <b>Still having issues?</b> Contact your IT administrator
@@ -754,12 +754,12 @@ Please find the attached Excel report with complete device information including
                 
             elif provider == 'Custom':
                 guide_text = """
-                <b>📧 Custom Email Configuration:</b><br>
+                <b>[EMAIL] Custom Email Configuration:</b><br>
                 1. Contact your email provider for SMTP settings<br>
                 2. Common settings: smtp.yourdomain.com, Port 587 or 465<br>
                 3. Check if TLS/SSL is required<br>
                 4. Verify username and password requirements<br><br>
-                <b>🔧 Common Custom Issues:</b><br>
+                <b>[COMMON] Common Custom Issues:</b><br>
                 • <b>Error 535:</b> Wrong username/password - Check credentials<br>
                 • <b>Error 550:</b> Authentication failed - Check SMTP settings<br>
                 • <b>Connection timeout:</b> Check firewall/antivirus settings<br>
@@ -769,7 +769,7 @@ Please find the attached Excel report with complete device information including
                 
             else:
                 guide_text = """
-                <b>📧 Email Configuration:</b><br>
+                <b>[EMAIL] Email Configuration:</b><br>
                 Select an email provider from the dropdown above to see specific configuration instructions.<br><br>
                 <b>Supported Providers:</b><br>
                 • <b>Gmail:</b> Personal Google accounts<br>
@@ -862,18 +862,18 @@ Please find the attached Excel report with complete device information including
         file_path.setPlaceholderText("Select firmware file or enter URL...")
         file_layout.addWidget(file_path)
         
-        browse_btn = QPushButton("📁 Browse")
+        browse_btn = QPushButton("[BROWSE] Browse")
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(file_path))
         file_layout.addWidget(browse_btn)
         firmware_layout.addLayout(file_layout)
         
         # Firmware Configuration Guide
-        firmware_guide_group = QGroupBox("📖 Firmware Flashing Guide")
+        firmware_guide_group = QGroupBox("[GUIDE] Firmware Flashing Guide")
         firmware_guide_layout = QVBoxLayout()
         
         # Supported Formats Guide
         formats_guide = QLabel("""
-        <b>📁 Supported Firmware Formats:</b><br>
+        <b>[FORMATS] Supported Firmware Formats:</b><br>
         • <b>.bin files:</b> Binary firmware files (most common)<br>
         • <b>.elf files:</b> Executable and Linkable Format files<br>
         • <b>URL downloads:</b> Direct download from web URLs<br>
@@ -884,7 +884,7 @@ Please find the attached Excel report with complete device information including
         
         # Board-Specific Guide
         board_guide = QLabel("""
-        <b>🔌 Board-Specific Requirements:</b><br>
+        <b>[BOARD] Board-Specific Requirements:</b><br>
         • <b>ESP32/ESP8266:</b> Requires esptool, supports .bin files<br>
         • <b>STM32:</b> Requires STM32CubeProgrammer or OpenOCD<br>
         • <b>Arduino:</b> Uses avrdude for AVR-based boards<br>
@@ -895,7 +895,7 @@ Please find the attached Excel report with complete device information including
         
         # Troubleshooting Guide
         firmware_troubleshooting_guide = QLabel("""
-        <b>🔧 Firmware Flashing Troubleshooting:</b><br>
+        <b>[TROUBLESHOOTING] Firmware Flashing Troubleshooting:</b><br>
         • <b>Device not found:</b> Check USB connection and drivers<br>
         • <b>Permission denied:</b> Run as administrator (Windows) or use sudo (Linux)<br>
         • <b>Flash failed:</b> Put device in bootloader mode manually<br>
@@ -956,7 +956,7 @@ Please find the attached Excel report with complete device information including
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         flash_btn = buttons.button(QDialogButtonBox.Ok)
-        flash_btn.setText("⚡ Flash Firmware")
+        flash_btn.setText("[FLASH] Flash Firmware")
         flash_btn.clicked.connect(lambda: self._start_flashing(
             dialog, device_list.currentItem().data(Qt.UserRole),
             file_path.text(), erase_checkbox.isChecked(),
@@ -993,7 +993,7 @@ Please find the attached Excel report with complete device information including
         firmware_path.setPlaceholderText("Enter file path...")
         file_layout.addWidget(firmware_path)
         
-        browse_btn = QPushButton("📁 Browse")
+        browse_btn = QPushButton("[BROWSE] Browse")
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(firmware_path))
         file_layout.addWidget(browse_btn)
         local_layout.addLayout(file_layout)
@@ -1205,7 +1205,7 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("✅ Firmware flashed successfully!")
+                status_label.setText("[SUCCESS] Firmware flashed successfully!")
                 status_label.setStyleSheet("color: green;")
                 
                 # Save to OneDrive if enabled
@@ -1224,11 +1224,11 @@ Please find the attached Excel report with complete device information including
                         firmware_info
                     )
             else:
-                status_label.setText("❌ Firmware flashing failed!")
+                status_label.setText("[ERROR] Firmware flashing failed!")
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"❌ Error: {str(e)}")
+            status_label.setText(f"[ERROR] Error: {str(e)}")
             status_label.setStyleSheet("color: red;")
             logger.error(f"Local file flashing error: {e}")
     
@@ -1250,14 +1250,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("✅ GitHub firmware flashed successfully!")
+                status_label.setText("[SUCCESS] GitHub firmware flashed successfully!")
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("❌ GitHub firmware flashing failed!")
+                status_label.setText("[ERROR] GitHub firmware flashing failed!")
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"❌ Error: {str(e)}")
+            status_label.setText(f"[ERROR] Error: {str(e)}")
             status_label.setStyleSheet("color: red;")
             logger.error(f"GitHub flashing error: {e}")
     
@@ -1279,14 +1279,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("✅ GitLab firmware flashed successfully!")
+                status_label.setText("[SUCCESS] GitLab firmware flashed successfully!")
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("❌ GitLab firmware flashing failed!")
+                status_label.setText("[ERROR] GitLab firmware flashing failed!")
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"❌ Error: {str(e)}")
+            status_label.setText(f"[ERROR] Error: {str(e)}")
             status_label.setStyleSheet("color: red;")
             logger.error(f"GitLab flashing error: {e}")
     
@@ -1308,14 +1308,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("✅ URL firmware flashed successfully!")
+                status_label.setText("[SUCCESS] URL firmware flashed successfully!")
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("❌ URL firmware flashing failed!")
+                status_label.setText("[ERROR] URL firmware flashing failed!")
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"❌ Error: {str(e)}")
+            status_label.setText(f"[ERROR] Error: {str(e)}")
             status_label.setStyleSheet("color: red;")
             logger.error(f"URL flashing error: {e}")
     
@@ -1337,14 +1337,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("✅ Database firmware flashed successfully!")
+                status_label.setText("[SUCCESS] Database firmware flashed successfully!")
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("❌ Database firmware flashing failed!")
+                status_label.setText("[ERROR] Database firmware flashing failed!")
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"❌ Error: {str(e)}")
+            status_label.setText(f"[ERROR] Error: {str(e)}")
             status_label.setStyleSheet("color: red;")
             logger.error(f"Database flashing error: {e}")
     
@@ -1517,9 +1517,9 @@ Please find the attached Excel report with complete device information including
                     )
                     
                     if onedrive_success:
-                        progress_callback("✅ Firmware saved to OneDrive")
+                        progress_callback("[SUCCESS] Firmware saved to OneDrive")
                     else:
-                        progress_callback("⚠️ OneDrive firmware save failed")
+                        progress_callback("[WARNING] OneDrive firmware save failed")
             else:
                 raise Exception("Firmware flashing failed")
                 
@@ -1559,15 +1559,15 @@ Please find the attached Excel report with complete device information including
         # Machine type buttons
         machine_buttons_layout = QHBoxLayout()
         
-        add_btn = QPushButton("➕ Add New")
+        add_btn = QPushButton("[ADD] Add New")
         add_btn.clicked.connect(lambda: self.add_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(add_btn)
         
-        edit_btn = QPushButton("✏️ Edit")
+        edit_btn = QPushButton("[EDIT] Edit")
         edit_btn.clicked.connect(lambda: self.edit_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(edit_btn)
         
-        delete_btn = QPushButton("🗑️ Delete")
+        delete_btn = QPushButton("[DELETE] Delete")
         delete_btn.clicked.connect(lambda: self.delete_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(delete_btn)
         
@@ -1576,12 +1576,12 @@ Please find the attached Excel report with complete device information including
         machine_layout.addWidget(list_group)
         
         # Machine Types Configuration Guide
-        machine_guide_group = QGroupBox("📖 Machine Types Configuration Guide")
+        machine_guide_group = QGroupBox("[GUIDE] Machine Types Configuration Guide")
         machine_guide_layout = QVBoxLayout()
         
         # Basic Configuration Guide
         basic_config_guide = QLabel("""
-        <b>🔧 Machine Type Configuration:</b><br>
+        <b>[CONFIGURATION] Machine Type Configuration:</b><br>
         • <b>Name:</b> Display name for the machine type (e.g., "Amphore", "BOKs")<br>
         • <b>Prefix:</b> Required prefix for machine IDs (e.g., "AMP-", "BOK-")<br>
         • <b>Length:</b> Total length of machine ID including prefix<br><br>
@@ -1592,7 +1592,7 @@ Please find the attached Excel report with complete device information including
         
         # Best Practices Guide
         best_practices_guide = QLabel("""
-        <b>💡 Best Practices:</b><br>
+        <b>[TIPS] Best Practices:</b><br>
         • Use consistent naming conventions (e.g., all caps for prefixes)<br>
         • Keep prefixes short but meaningful (2-4 characters)<br>
         • Ensure total length accommodates your ID numbering system<br>
@@ -1604,7 +1604,7 @@ Please find the attached Excel report with complete device information including
         
         # Common Examples
         examples_guide = QLabel("""
-        <b>📋 Common Examples:</b><br>
+        <b>[EXAMPLES] Common Examples:</b><br>
         • <b>Water Dispenser:</b> Prefix="WD-", Length=14 → "WD-123456789012"<br>
         • <b>Amphore:</b> Prefix="AMP-", Length=12 → "AMP-123456789"<br>
         • <b>BOKs:</b> Prefix="BOK-", Length=10 → "BOK-1234567"<br>
@@ -1643,7 +1643,7 @@ Please find the attached Excel report with complete device information including
         test_id_layout.addWidget(self.test_machine_id)
         test_layout.addLayout(test_id_layout)
         
-        test_btn = QPushButton("🔍 Test Validation")
+        test_btn = QPushButton("[TEST] Test Validation")
         test_btn.clicked.connect(self.test_machine_id_validation)
         test_layout.addWidget(test_btn)
         
@@ -1890,10 +1890,10 @@ Please find the attached Excel report with complete device information including
         is_valid, message = Config.validate_machine_id(machine_id, machine_type_config)
         
         if is_valid:
-            self.validation_result.setText(f"✅ Valid: {message}")
+            self.validation_result.setText(f"[SUCCESS] Valid: {message}")
             self.validation_result.setStyleSheet("color: green; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
         else:
-            self.validation_result.setText(f"❌ Invalid: {message}")
+            self.validation_result.setText(f"[INVALID] Invalid: {message}")
             self.validation_result.setStyleSheet("color: red; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
     
     def configure_onedrive_dialog(self):
@@ -1935,7 +1935,7 @@ Please find the attached Excel report with complete device information including
         self.onedrive_folder_path.setPlaceholderText("e.g., C:\\Users\\Username\\OneDrive\\SharedFolder")
         folder_layout.addWidget(self.onedrive_folder_path)
         
-        browse_folder_btn = QPushButton("📁 Browse")
+        browse_folder_btn = QPushButton("[BROWSE] Browse")
         browse_folder_btn.clicked.connect(self._browse_onedrive_folder)
         folder_layout.addWidget(browse_folder_btn)
         path_layout.addLayout(folder_layout)
@@ -1969,7 +1969,7 @@ Please find the attached Excel report with complete device information including
         test_group = QGroupBox("Test Connection")
         test_layout = QVBoxLayout()
         
-        test_btn = QPushButton("🔍 Test OneDrive Connection")
+        test_btn = QPushButton("[TEST] Test OneDrive Connection")
         test_btn.clicked.connect(self.test_onedrive_connection)
         test_layout.addWidget(test_btn)
         
@@ -1981,12 +1981,12 @@ Please find the attached Excel report with complete device information including
         settings_layout.addWidget(test_group)
         
         # OneDrive Configuration Guide
-        onedrive_guide_group = QGroupBox("📖 OneDrive Configuration Guide")
+        onedrive_guide_group = QGroupBox("[GUIDE] OneDrive Configuration Guide")
         onedrive_guide_layout = QVBoxLayout()
         
         # OneDrive Setup Guide
         onedrive_setup_guide = QLabel("""
-        <b>☁️ OneDrive Setup:</b><br>
+        <b>[ONEDRIVE] OneDrive Setup:</b><br>
         1. Install OneDrive: <a href="https://www.microsoft.com/en-us/microsoft-365/onedrive/download">Download OneDrive</a><br>
         2. Sign in to your Microsoft account<br>
         3. Create a shared folder or use existing OneDrive folder<br>
@@ -1999,7 +1999,7 @@ Please find the attached Excel report with complete device information including
         
         # Alternative Cloud Services
         cloud_alternatives_guide = QLabel("""
-        <b>🌐 Alternative Cloud Services:</b><br>
+        <b>[ALTERNATIVES] Alternative Cloud Services:</b><br>
         • <b>Google Drive:</b> <a href="https://drive.google.com">drive.google.com</a> - Use Google Drive folder path<br>
         • <b>Dropbox:</b> <a href="https://www.dropbox.com">dropbox.com</a> - Use Dropbox folder path<br>
         • <b>iCloud:</b> <a href="https://www.icloud.com">icloud.com</a> - Use iCloud folder path<br>
@@ -2011,7 +2011,7 @@ Please find the attached Excel report with complete device information including
         
         # Troubleshooting
         onedrive_troubleshooting_guide = QLabel("""
-        <b>🔧 OneDrive Troubleshooting:</b><br>
+        <b>[TROUBLESHOOTING] OneDrive Troubleshooting:</b><br>
         • <b>Access Denied:</b> Check folder permissions and sharing settings<br>
         • <b>Path Not Found:</b> Verify the folder path exists and is accessible<br>
         • <b>Sync Issues:</b> Ensure OneDrive is running and synced<br>
@@ -2080,7 +2080,7 @@ Please find the attached Excel report with complete device information including
         self.populate_machine_history()
         history_list_layout.addWidget(self.machine_history_list)
         
-        refresh_history_btn = QPushButton("🔄 Refresh History")
+        refresh_history_btn = QPushButton("[REFRESH] Refresh History")
         refresh_history_btn.clicked.connect(self.populate_machine_history)
         history_list_layout.addWidget(refresh_history_btn)
         
@@ -2133,10 +2133,10 @@ Please find the attached Excel report with complete device information including
         success, message = temp_manager.test_connection()
         
         if success:
-            self.onedrive_test_result.setText(f"✅ {message}")
+            self.onedrive_test_result.setText(f"[SUCCESS] {message}")
             self.onedrive_test_result.setStyleSheet("color: green; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
         else:
-            self.onedrive_test_result.setText(f"❌ {message}")
+            self.onedrive_test_result.setText(f"[ERROR] {message}")
             self.onedrive_test_result.setStyleSheet("color: red; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
     
     def save_onedrive_settings(self, dialog):
@@ -2312,15 +2312,15 @@ Please find the attached Excel report with complete device information including
         # Template buttons
         template_buttons = QHBoxLayout()
         
-        create_btn = QPushButton("➕ Create from Current")
+        create_btn = QPushButton("[CREATE] Create from Current")
         create_btn.clicked.connect(lambda: self.create_template_from_current(dialog))
         template_buttons.addWidget(create_btn)
         
-        apply_btn = QPushButton("📋 Apply Template")
+        apply_btn = QPushButton("[APPLY] Apply Template")
         apply_btn.clicked.connect(lambda: self.apply_template(dialog, templates_list))
         template_buttons.addWidget(apply_btn)
         
-        delete_btn = QPushButton("🗑️ Delete")
+        delete_btn = QPushButton("[DELETE] Delete")
         delete_btn.clicked.connect(lambda: self.delete_template(dialog, templates_list))
         template_buttons.addWidget(delete_btn)
         
@@ -2349,7 +2349,7 @@ Please find the attached Excel report with complete device information including
         search_input.setPlaceholderText("Enter search query...")
         search_layout.addWidget(search_input)
         
-        search_btn = QPushButton("🔍 Search")
+        search_btn = QPushButton("[SEARCH] Search")
         search_layout.addWidget(search_btn)
         layout.addLayout(search_layout)
         
