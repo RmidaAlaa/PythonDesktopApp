@@ -41,7 +41,7 @@ def generate_translation_files():
         return False
     
     # Get project root directory
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent
     src_dir = project_root / "src"
     translations_dir = project_root / "translations"
     
@@ -73,14 +73,14 @@ def generate_translation_files():
             # Run pylupdate
             cmd = [
                 pylupdate_path,
-                "-ts", str(ts_file),
-                "-verbose"
+                "--ts", str(ts_file),
+                "--verbose"
             ] + python_files
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
-                print(f"✓ Successfully generated {ts_file}")
+                print(f"[OK] Successfully generated {ts_file}")
                 
                 # Check if file was created and has content
                 if ts_file.exists() and ts_file.stat().st_size > 100:
@@ -89,15 +89,15 @@ def generate_translation_files():
                     print(f"  Warning: File seems empty or very small")
                     
             else:
-                print(f"✗ Failed to generate {ts_file}")
+                print(f"[ERROR] Failed to generate {ts_file}")
                 print(f"Error: {result.stderr}")
                 success = False
                 
         except subprocess.TimeoutExpired:
-            print(f"✗ Timeout generating {ts_file}")
+            print(f"[ERROR] Timeout generating {ts_file}")
             success = False
         except Exception as e:
-            print(f"✗ Error generating {ts_file}: {e}")
+            print(f"[ERROR] Error generating {ts_file}: {e}")
             success = False
     
     return success
@@ -148,14 +148,14 @@ def compile_translations():
                                  capture_output=True, text=True, timeout=30)
             
             if result.returncode == 0 and qm_file.exists():
-                print(f"✓ Successfully compiled {qm_file}")
+                print(f"[OK] Successfully compiled {qm_file}")
             else:
-                print(f"✗ Failed to compile {ts_file}")
+                print(f"[ERROR] Failed to compile {ts_file}")
                 print(f"Error: {result.stderr}")
                 success = False
                 
         except Exception as e:
-            print(f"✗ Error compiling {ts_file}: {e}")
+            print(f"[ERROR] Error compiling {ts_file}: {e}")
             success = False
     
     return success
