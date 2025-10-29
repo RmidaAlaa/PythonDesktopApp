@@ -1,6 +1,7 @@
 """Main application window."""
 
 import sys
+from typing import Dict
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QTableWidget, QTableWidgetItem, QPushButton, QLabel,
@@ -19,6 +20,7 @@ from ..core.email_sender import EmailSender
 from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
+from ..core.theme_manager import ThemeManager, ThemeType
 from ..core.onedrive_manager import OneDriveManager
 
 logger = setup_logger("MainWindow")
@@ -55,6 +57,10 @@ class MainWindow(QMainWindow):
         self.device_history = []
         self.last_report_path = None  # Store last generated report path
         self.setup_ui()
+        
+        # Initialize theme manager
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         
         # Initialize components
         self.device_detector = DeviceDetector()
@@ -222,6 +228,10 @@ class MainWindow(QMainWindow):
         onedrive_settings_btn = QPushButton("[ONEDRIVE] OneDrive")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
+        
+        theme_settings_btn = QPushButton("[THEME] Theme Settings")
+        theme_settings_btn.clicked.connect(self.show_theme_settings_dialog)
+        settings_layout.addWidget(theme_settings_btn)
         
         layout.addLayout(settings_layout)
         
@@ -2235,6 +2245,154 @@ Please find the attached Excel report with complete device information including
         """Handle device disconnection in main thread."""
         self.log(f"[DISCONNECTED] Device disconnected: {device.get_display_name()}")
         self.refresh_devices()  # Refresh the device table
+    
+    def on_theme_changed(self, theme_name: str):
+        """Handle theme change."""
+        self.log(f"[THEME] Theme changed to: {theme_name}")
+        # Apply additional stylesheet if needed
+        app = QApplication.instance()
+        if app:
+            stylesheet = self.theme_manager.get_theme_stylesheet(ThemeType(theme_name.split('_')[0]))
+            app.setStyleSheet(stylesheet)
+    
+    def show_theme_settings_dialog(self):
+        """Show theme settings dialog."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Theme Settings")
+        dialog.setMinimumWidth(500)
+        dialog.setMinimumHeight(400)
+        
+        layout = QVBoxLayout()
+        
+        # Current theme info
+        current_theme = self.theme_manager.get_current_theme()
+        current_label = QLabel(f"Current Theme: {current_theme.title()}")
+        current_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(current_label)
+        
+        # Theme selection
+        theme_group = QGroupBox("Select Theme")
+        theme_layout = QVBoxLayout()
+        
+        # Available themes
+        themes = self.theme_manager.get_available_themes()
+        theme_combo = QComboBox()
+        for display_name, theme_value in themes.items():
+            theme_combo.addItem(display_name, theme_value)
+        
+        # Set current theme
+        for i in range(theme_combo.count()):
+            if theme_combo.itemData(i) == current_theme:
+                theme_combo.setCurrentIndex(i)
+                break
+        
+        theme_layout.addWidget(theme_combo)
+        
+        # Apply button
+        apply_btn = QPushButton("[APPLY] Apply Theme")
+        apply_btn.clicked.connect(lambda: self.apply_selected_theme(theme_combo, dialog))
+        theme_layout.addWidget(apply_btn)
+        
+        theme_group.setLayout(theme_layout)
+        layout.addWidget(theme_group)
+        
+        # Custom theme creation
+        custom_group = QGroupBox("Create Custom Theme")
+        custom_layout = QVBoxLayout()
+        
+        # Theme name input
+        name_layout = QHBoxLayout()
+        name_layout.addWidget(QLabel("Theme Name:"))
+        name_input = QLineEdit()
+        name_input.setPlaceholderText("Enter custom theme name...")
+        name_layout.addWidget(name_input)
+        custom_layout.addLayout(name_layout)
+        
+        # Color selection
+        colors_layout = QGridLayout()
+        colors_layout.addWidget(QLabel("Window Color:"), 0, 0)
+        window_color_btn = QPushButton("Choose Color")
+        window_color_btn.clicked.connect(lambda: self.choose_color(window_color_btn, "window"))
+        colors_layout.addWidget(window_color_btn, 0, 1)
+        
+        colors_layout.addWidget(QLabel("Text Color:"), 1, 0)
+        text_color_btn = QPushButton("Choose Color")
+        text_color_btn.clicked.connect(lambda: self.choose_color(text_color_btn, "text"))
+        colors_layout.addWidget(text_color_btn, 1, 1)
+        
+        colors_layout.addWidget(QLabel("Button Color:"), 2, 0)
+        button_color_btn = QPushButton("Choose Color")
+        button_color_btn.clicked.connect(lambda: self.choose_color(button_color_btn, "button"))
+        colors_layout.addWidget(button_color_btn, 2, 1)
+        
+        colors_layout.addWidget(QLabel("Highlight Color:"), 3, 0)
+        highlight_color_btn = QPushButton("Choose Color")
+        highlight_color_btn.clicked.connect(lambda: self.choose_color(highlight_color_btn, "highlight"))
+        colors_layout.addWidget(highlight_color_btn, 3, 1)
+        
+        custom_layout.addLayout(colors_layout)
+        
+        # Create custom theme button
+        create_btn = QPushButton("[CREATE] Create Custom Theme")
+        create_btn.clicked.connect(lambda: self.create_custom_theme(name_input, {
+            'window': window_color_btn.text(),
+            'text': text_color_btn.text(),
+            'button': button_color_btn.text(),
+            'highlight': highlight_color_btn.text()
+        }, dialog))
+        custom_layout.addWidget(create_btn)
+        
+        custom_group.setLayout(custom_layout)
+        layout.addWidget(custom_group)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        dialog.setLayout(layout)
+        dialog.exec()
+    
+    def apply_selected_theme(self, theme_combo: QComboBox, dialog: QDialog):
+        """Apply selected theme."""
+        theme_value = theme_combo.currentData()
+        if theme_value:
+            self.theme_manager.apply_theme_by_name(theme_value)
+            QMessageBox.information(dialog, "Theme Applied", f"Theme '{theme_combo.currentText()}' has been applied!")
+    
+    def choose_color(self, button: QPushButton, color_type: str):
+        """Choose color for custom theme."""
+        from PySide6.QtWidgets import QColorDialog
+        color = QColorDialog.getColor()
+        if color.isValid():
+            button.setText(color.name())
+            button.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+    
+    def create_custom_theme(self, name_input: QLineEdit, colors: Dict[str, str], dialog: QDialog):
+        """Create custom theme."""
+        name = name_input.text().strip()
+        if not name:
+            QMessageBox.warning(dialog, "Invalid Name", "Please enter a theme name.")
+            return
+        
+        # Convert button texts to color values
+        color_dict = {}
+        for key, value in colors.items():
+            if value.startswith('#'):
+                color_dict[key] = value
+            else:
+                # Default colors if not set
+                defaults = {
+                    'window': '#FFFFFF',
+                    'text': '#000000',
+                    'button': '#F0F0F0',
+                    'highlight': '#2A82DA'
+                }
+                color_dict[key] = defaults.get(key, '#FFFFFF')
+        
+        self.theme_manager.create_custom_theme(name, color_dict, f"Custom theme: {name}")
+        QMessageBox.information(dialog, "Theme Created", f"Custom theme '{name}' has been created!")
+        dialog.accept()
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
