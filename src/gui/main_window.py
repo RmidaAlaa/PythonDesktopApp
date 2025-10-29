@@ -75,6 +75,9 @@ class MainWindow(QMainWindow):
         self.firmware_flasher = FirmwareFlasher()
         self.onedrive_manager = OneDriveManager()
         
+        # Update UI text with current language
+        self.update_ui_text()
+        
         # Auto-detect devices on startup
         QTimer.singleShot(500, self.refresh_devices)
         
@@ -129,6 +132,7 @@ class MainWindow(QMainWindow):
         # Device table
         self.device_table = QTableWidget()
         self.device_table.setColumnCount(8)
+        # Use default headers initially, will be updated by language manager
         self.device_table.setHorizontalHeaderLabels([
             "Port", "Type", "VID:PID", "Status", "Health", "Name", "Last Seen", "Action"
         ])
@@ -139,6 +143,7 @@ class MainWindow(QMainWindow):
         refresh_btn = QPushButton("[REFRESH] Refresh Devices")
         refresh_btn.clicked.connect(self.refresh_devices)
         layout.addWidget(refresh_btn)
+        self.refresh_btn = refresh_btn  # Store as instance variable for translation
         
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
@@ -146,14 +151,17 @@ class MainWindow(QMainWindow):
         history_btn = QPushButton("[HISTORY] Device History")
         history_btn.clicked.connect(self.show_device_history_dialog)
         device_mgmt_layout.addWidget(history_btn)
+        self.history_btn = history_btn  # Store as instance variable for translation
         
         templates_btn = QPushButton("[TEMPLATES] Templates")
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         device_mgmt_layout.addWidget(templates_btn)
+        self.templates_btn = templates_btn  # Store as instance variable for translation
         
         search_btn = QPushButton("[SEARCH] Search")
         search_btn.clicked.connect(self.show_device_search_dialog)
         device_mgmt_layout.addWidget(search_btn)
+        self.search_btn = search_btn  # Store as instance variable for translation
         
         layout.addLayout(device_mgmt_layout)
         
@@ -209,14 +217,17 @@ class MainWindow(QMainWindow):
         export_btn = QPushButton("[REPORT] Generate Excel Report")
         export_btn.clicked.connect(self.generate_report)
         button_layout.addWidget(export_btn)
+        self.report_btn = export_btn  # Store as instance variable for translation
         
         email_btn = QPushButton("[EMAIL] Send Email")
         email_btn.clicked.connect(self.send_email)
         button_layout.addWidget(email_btn)
+        self.email_btn = email_btn  # Store as instance variable for translation
         
         flash_btn = QPushButton("[FLASH] Flash Firmware")
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         button_layout.addWidget(flash_btn)
+        self.flash_btn = flash_btn  # Store as instance variable for translation
         
         layout.addLayout(button_layout)
         
@@ -226,22 +237,22 @@ class MainWindow(QMainWindow):
         email_settings_btn = QPushButton("[CONFIG] Configure Email")
         email_settings_btn.clicked.connect(self.configure_email_dialog)
         settings_layout.addWidget(email_settings_btn)
+        self.email_settings_btn = email_settings_btn  # Store as instance variable for translation
         
         machine_settings_btn = QPushButton("[MACHINE] Machine Types")
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
         settings_layout.addWidget(machine_settings_btn)
+        self.machine_settings_btn = machine_settings_btn  # Store as instance variable for translation
         
         onedrive_settings_btn = QPushButton("[ONEDRIVE] OneDrive")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
-        
-        theme_settings_btn = QPushButton("[THEME] Theme Settings")
-        theme_settings_btn.clicked.connect(self.show_theme_settings_dialog)
-        settings_layout.addWidget(theme_settings_btn)
+        self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
         
         theme_lang_btn = QPushButton("[THEME & LANGUAGE] Visual Selection")
         theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
         settings_layout.addWidget(theme_lang_btn)
+        self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
         
         layout.addLayout(settings_layout)
         
@@ -2281,152 +2292,64 @@ Please find the attached Excel report with complete device information including
         # Update window title
         self.setWindowTitle(self.language_manager.get_text("app_title"))
         
-        # Update button texts
+        # Update main buttons
         if hasattr(self, 'refresh_btn'):
             self.refresh_btn.setText(f"[{self.language_manager.get_text('refresh')}] {self.language_manager.get_text('refresh_devices')}")
         
-        # Update other UI elements as needed
-        # This is a simplified version - in a full implementation,
-        # you would update all text elements throughout the UI
-    
-    def show_theme_settings_dialog(self):
-        """Show theme settings dialog."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Theme Settings")
-        dialog.setMinimumWidth(500)
-        dialog.setMinimumHeight(400)
+        if hasattr(self, 'history_btn'):
+            self.history_btn.setText(f"[{self.language_manager.get_text('device_history')}] {self.language_manager.get_text('device_history')}")
         
-        layout = QVBoxLayout()
+        if hasattr(self, 'templates_btn'):
+            self.templates_btn.setText(f"[{self.language_manager.get_text('device_templates')}] {self.language_manager.get_text('device_templates')}")
         
-        # Current theme info
-        current_theme = self.theme_manager.get_current_theme()
-        current_label = QLabel(f"Current Theme: {current_theme.title()}")
-        current_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(current_label)
+        if hasattr(self, 'search_btn'):
+            self.search_btn.setText(f"[{self.language_manager.get_text('search')}] {self.language_manager.get_text('search_devices')}")
         
-        # Theme selection
-        theme_group = QGroupBox("Select Theme")
-        theme_layout = QVBoxLayout()
+        if hasattr(self, 'flash_btn'):
+            self.flash_btn.setText(f"[{self.language_manager.get_text('flash_firmware')}] {self.language_manager.get_text('flash_firmware')}")
         
-        # Available themes
-        themes = self.theme_manager.get_available_themes()
-        theme_combo = QComboBox()
-        for display_name, theme_value in themes.items():
-            theme_combo.addItem(display_name, theme_value)
+        if hasattr(self, 'report_btn'):
+            self.report_btn.setText(f"[{self.language_manager.get_text('generate_report')}] {self.language_manager.get_text('generate_report')}")
         
-        # Set current theme
-        for i in range(theme_combo.count()):
-            if theme_combo.itemData(i) == current_theme:
-                theme_combo.setCurrentIndex(i)
-                break
+        if hasattr(self, 'email_btn'):
+            self.email_btn.setText(f"[{self.language_manager.get_text('send_email')}] {self.language_manager.get_text('send_email')}")
         
-        theme_layout.addWidget(theme_combo)
+        if hasattr(self, 'onedrive_btn'):
+            self.onedrive_btn.setText(f"[{self.language_manager.get_text('onedrive_sync')}] {self.language_manager.get_text('onedrive_sync')}")
         
-        # Apply button
-        apply_btn = QPushButton("[APPLY] Apply Theme")
-        apply_btn.clicked.connect(lambda: self.apply_selected_theme(theme_combo, dialog))
-        theme_layout.addWidget(apply_btn)
+        # Update settings buttons
+        if hasattr(self, 'email_settings_btn'):
+            self.email_settings_btn.setText(f"[{self.language_manager.get_text('email_settings')}] {self.language_manager.get_text('email_settings')}")
         
-        theme_group.setLayout(theme_layout)
-        layout.addWidget(theme_group)
+        if hasattr(self, 'machine_settings_btn'):
+            self.machine_settings_btn.setText(f"[{self.language_manager.get_text('machine_settings')}] {self.language_manager.get_text('machine_settings')}")
         
-        # Custom theme creation
-        custom_group = QGroupBox("Create Custom Theme")
-        custom_layout = QVBoxLayout()
+        if hasattr(self, 'onedrive_settings_btn'):
+            self.onedrive_settings_btn.setText(f"[{self.language_manager.get_text('onedrive_settings')}] {self.language_manager.get_text('onedrive_settings')}")
         
-        # Theme name input
-        name_layout = QHBoxLayout()
-        name_layout.addWidget(QLabel("Theme Name:"))
-        name_input = QLineEdit()
-        name_input.setPlaceholderText("Enter custom theme name...")
-        name_layout.addWidget(name_input)
-        custom_layout.addLayout(name_layout)
+        if hasattr(self, 'theme_lang_btn'):
+            self.theme_lang_btn.setText(f"[{self.language_manager.get_text('theme_settings')} & {self.language_manager.get_text('language_settings')}] Visual Selection")
         
-        # Color selection
-        colors_layout = QGridLayout()
-        colors_layout.addWidget(QLabel("Window Color:"), 0, 0)
-        window_color_btn = QPushButton("Choose Color")
-        window_color_btn.clicked.connect(lambda: self.choose_color(window_color_btn, "window"))
-        colors_layout.addWidget(window_color_btn, 0, 1)
+        # Update device table headers
+        if hasattr(self, 'device_table'):
+            headers = [
+                self.language_manager.get_text("port"),
+                self.language_manager.get_text("device_type"),
+                "VID:PID",  # Keep technical term
+                self.language_manager.get_text("status"),
+                self.language_manager.get_text("health_score"),
+                self.language_manager.get_text("device_name"),
+                self.language_manager.get_text("last_seen"),
+                "Action"  # Keep technical term
+            ]
+            self.device_table.setHorizontalHeaderLabels(headers)
         
-        colors_layout.addWidget(QLabel("Text Color:"), 1, 0)
-        text_color_btn = QPushButton("Choose Color")
-        text_color_btn.clicked.connect(lambda: self.choose_color(text_color_btn, "text"))
-        colors_layout.addWidget(text_color_btn, 1, 1)
+        # Update log area placeholder
+        if hasattr(self, 'log_area'):
+            self.log_area.setPlaceholderText(self.language_manager.get_text("loading"))
         
-        colors_layout.addWidget(QLabel("Button Color:"), 2, 0)
-        button_color_btn = QPushButton("Choose Color")
-        button_color_btn.clicked.connect(lambda: self.choose_color(button_color_btn, "button"))
-        colors_layout.addWidget(button_color_btn, 2, 1)
-        
-        colors_layout.addWidget(QLabel("Highlight Color:"), 3, 0)
-        highlight_color_btn = QPushButton("Choose Color")
-        highlight_color_btn.clicked.connect(lambda: self.choose_color(highlight_color_btn, "highlight"))
-        colors_layout.addWidget(highlight_color_btn, 3, 1)
-        
-        custom_layout.addLayout(colors_layout)
-        
-        # Create custom theme button
-        create_btn = QPushButton("[CREATE] Create Custom Theme")
-        create_btn.clicked.connect(lambda: self.create_custom_theme(name_input, {
-            'window': window_color_btn.text(),
-            'text': text_color_btn.text(),
-            'button': button_color_btn.text(),
-            'highlight': highlight_color_btn.text()
-        }, dialog))
-        custom_layout.addWidget(create_btn)
-        
-        custom_group.setLayout(custom_layout)
-        layout.addWidget(custom_group)
-        
-        # Buttons
-        buttons = QDialogButtonBox(QDialogButtonBox.Close)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
-        
-        dialog.setLayout(layout)
-        dialog.exec()
-    
-    def apply_selected_theme(self, theme_combo: QComboBox, dialog: QDialog):
-        """Apply selected theme."""
-        theme_value = theme_combo.currentData()
-        if theme_value:
-            self.theme_manager.apply_theme_by_name(theme_value)
-            QMessageBox.information(dialog, "Theme Applied", f"Theme '{theme_combo.currentText()}' has been applied!")
-    
-    def choose_color(self, button: QPushButton, color_type: str):
-        """Choose color for custom theme."""
-        from PySide6.QtWidgets import QColorDialog
-        color = QColorDialog.getColor()
-        if color.isValid():
-            button.setText(color.name())
-            button.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
-    
-    def create_custom_theme(self, name_input: QLineEdit, colors: Dict[str, str], dialog: QDialog):
-        """Create custom theme."""
-        name = name_input.text().strip()
-        if not name:
-            QMessageBox.warning(dialog, "Invalid Name", "Please enter a theme name.")
-            return
-        
-        # Convert button texts to color values
-        color_dict = {}
-        for key, value in colors.items():
-            if value.startswith('#'):
-                color_dict[key] = value
-            else:
-                # Default colors if not set
-                defaults = {
-                    'window': '#FFFFFF',
-                    'text': '#000000',
-                    'button': '#F0F0F0',
-                    'highlight': '#2A82DA'
-                }
-                color_dict[key] = defaults.get(key, '#FFFFFF')
-        
-        self.theme_manager.create_custom_theme(name, color_dict, f"Custom theme: {name}")
-        QMessageBox.information(dialog, "Theme Created", f"Custom theme '{name}' has been created!")
-        dialog.accept()
+        # Update status messages
+        self.log(f"[{self.language_manager.get_text('language_applied')}] {self.language_manager.get_text('language_applied')}")
     
     def show_theme_language_dialog(self):
         """Show visual theme and language selection dialog."""
