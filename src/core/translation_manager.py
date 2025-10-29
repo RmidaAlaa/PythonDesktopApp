@@ -98,6 +98,7 @@ def tr(context: str, text: str, disambiguation: str = None, n: int = -1) -> str:
     Returns:
         Translated text
     """
+    from PySide6.QtCore import QCoreApplication
     return QCoreApplication.translate(context, text, disambiguation, n)
 
 

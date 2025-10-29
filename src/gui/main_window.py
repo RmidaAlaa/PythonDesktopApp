@@ -10,8 +10,13 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
     QSpinBox, QTabWidget, QInputDialog
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QCoreApplication
 from PySide6.QtGui import QFont
+
+# Import tr directly from Qt for pylupdate compatibility
+def tr(context, text, disambiguation=None, n=-1):
+    """Translation function compatible with pylupdate."""
+    return QCoreApplication.translate(context, text, disambiguation, n)
 
 from ..core.config import Config
 from ..core.device_detector import DeviceDetector, Device
@@ -21,7 +26,7 @@ from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
 from ..core.theme_manager import ThemeManager, ThemeType
-from ..core.translation_manager import TranslationManager, tr, TrContext, TrStrings
+from ..core.translation_manager import TranslationManager
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 
@@ -89,7 +94,7 @@ class MainWindow(QMainWindow):
     
     def setup_ui(self):
         """Set up the user interface."""
-        self.setWindowTitle("AWG Kumulus Device Manager v1.0.0")
+        self.setWindowTitle(tr("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
         self.setMinimumSize(1200, 800)
         
         # Center window on screen
@@ -133,13 +138,20 @@ class MainWindow(QMainWindow):
         self.device_table.setColumnCount(8)
         # Use default headers initially, will be updated by language manager
         self.device_table.setHorizontalHeaderLabels([
-            "Port", "Type", "VID:PID", "Status", "Health", "Name", "Last Seen", "Action"
+            tr("MainWindow", "Port"), 
+            tr("MainWindow", "Type"), 
+            "VID:PID", 
+            tr("MainWindow", "Status"), 
+            tr("MainWindow", "Health"), 
+            tr("MainWindow", "Name"), 
+            tr("MainWindow", "Last Seen"), 
+            tr("MainWindow", "Action")
         ])
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.device_table)
         
         # Refresh button
-        refresh_btn = QPushButton("[REFRESH] Refresh Devices")
+        refresh_btn = QPushButton(f"[{tr('MainWindow', 'REFRESH')}] {tr('MainWindow', 'Refresh Devices')}")
         refresh_btn.clicked.connect(self.refresh_devices)
         layout.addWidget(refresh_btn)
         self.refresh_btn = refresh_btn  # Store as instance variable for translation
@@ -147,17 +159,17 @@ class MainWindow(QMainWindow):
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton("[HISTORY] Device History")
+        history_btn = QPushButton(f"[{tr('MainWindow', 'HISTORY')}] {tr('MainWindow', 'Device History')}")
         history_btn.clicked.connect(self.show_device_history_dialog)
         device_mgmt_layout.addWidget(history_btn)
         self.history_btn = history_btn  # Store as instance variable for translation
         
-        templates_btn = QPushButton("[TEMPLATES] Templates")
+        templates_btn = QPushButton(f"[{tr('MainWindow', 'TEMPLATES')}] {tr('MainWindow', 'Templates')}")
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         device_mgmt_layout.addWidget(templates_btn)
         self.templates_btn = templates_btn  # Store as instance variable for translation
         
-        search_btn = QPushButton("[SEARCH] Search")
+        search_btn = QPushButton(f"[{tr('MainWindow', 'SEARCH')}] {tr('MainWindow', 'Search')}")
         search_btn.clicked.connect(self.show_device_search_dialog)
         device_mgmt_layout.addWidget(search_btn)
         self.search_btn = search_btn  # Store as instance variable for translation
@@ -172,15 +184,15 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(panel)
         
         # Operator info group
-        op_group = QGroupBox("Operator Information")
+        op_group = QGroupBox(tr("MainWindow", "Operator Information"))
         op_layout = QVBoxLayout()
         
-        op_layout.addWidget(QLabel("Name:"))
+        op_layout.addWidget(QLabel(tr("MainWindow", "Name:")))
         self.operator_name = QLineEdit()
         self.operator_name.setText(self.config.get('operator', {}).get('name', ''))
         op_layout.addWidget(self.operator_name)
         
-        op_layout.addWidget(QLabel("Email:"))
+        op_layout.addWidget(QLabel(tr("MainWindow", "Email:")))
         self.operator_email = QLineEdit()
         self.operator_email.setText(self.config.get('operator', {}).get('email', ''))
         op_layout.addWidget(self.operator_email)
@@ -189,10 +201,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(op_group)
         
         # Machine info group
-        machine_group = QGroupBox("Machine Information")
+        machine_group = QGroupBox(tr("MainWindow", "Machine Information"))
         machine_layout = QVBoxLayout()
         
-        machine_layout.addWidget(QLabel("Machine Type:"))
+        machine_layout.addWidget(QLabel(tr("MainWindow", "Machine Type:")))
         self.machine_type = QComboBox()
         self.update_machine_type_combo()
         machine_type_idx = list(Config.get_machine_types(self.config).keys()).index(
@@ -202,9 +214,9 @@ class MainWindow(QMainWindow):
         self.machine_type.currentTextChanged.connect(self.on_machine_type_changed)
         machine_layout.addWidget(self.machine_type)
         
-        machine_layout.addWidget(QLabel("Machine ID:"))
+        machine_layout.addWidget(QLabel(tr("MainWindow", "Machine ID:")))
         self.machine_id = QLineEdit()
-        self.machine_id.setPlaceholderText("Enter machine ID")
+        self.machine_id.setPlaceholderText(tr("MainWindow", "Enter machine ID"))
         machine_layout.addWidget(self.machine_id)
         
         machine_group.setLayout(machine_layout)
@@ -213,22 +225,22 @@ class MainWindow(QMainWindow):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        export_btn = QPushButton("[REPORT] Generate Excel Report")
+        export_btn = QPushButton(f"[{tr('MainWindow', 'REPORT')}] {tr('MainWindow', 'Generate Excel Report')}")
         export_btn.clicked.connect(self.generate_report)
         button_layout.addWidget(export_btn)
         self.report_btn = export_btn  # Store as instance variable for translation
         
-        email_btn = QPushButton("[EMAIL] Send Email")
+        email_btn = QPushButton(f"[{tr('MainWindow', 'EMAIL')}] {tr('MainWindow', 'Send Email')}")
         email_btn.clicked.connect(self.send_email)
         button_layout.addWidget(email_btn)
         self.email_btn = email_btn  # Store as instance variable for translation
         
-        flash_btn = QPushButton("[FLASH] Flash Firmware")
+        flash_btn = QPushButton(f"[{tr('MainWindow', 'FLASH')}] {tr('MainWindow', 'Flash Firmware')}")
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         button_layout.addWidget(flash_btn)
         self.flash_btn = flash_btn  # Store as instance variable for translation
         
-        theme_lang_btn = QPushButton("🎨 Theme & Language")
+        theme_lang_btn = QPushButton(f"🎨 {tr('MainWindow', 'Theme & Language')}")
         theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
         theme_lang_btn.setStyleSheet("""
             QPushButton {
@@ -255,17 +267,17 @@ class MainWindow(QMainWindow):
         # Settings buttons
         settings_layout = QHBoxLayout()
         
-        email_settings_btn = QPushButton("[CONFIG] Configure Email")
+        email_settings_btn = QPushButton(f"[{tr('Settings', 'CONFIG')}] {tr('Settings', 'Configure Email')}")
         email_settings_btn.clicked.connect(self.configure_email_dialog)
         settings_layout.addWidget(email_settings_btn)
         self.email_settings_btn = email_settings_btn  # Store as instance variable for translation
         
-        machine_settings_btn = QPushButton("[MACHINE] Machine Types")
+        machine_settings_btn = QPushButton(f"[{tr('Settings', 'MACHINE')}] {tr('Settings', 'Machine Types')}")
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
         settings_layout.addWidget(machine_settings_btn)
         self.machine_settings_btn = machine_settings_btn  # Store as instance variable for translation
         
-        onedrive_settings_btn = QPushButton("[ONEDRIVE] OneDrive")
+        onedrive_settings_btn = QPushButton(f"[{tr('Settings', 'ONEDRIVE')}] {tr('Settings', 'OneDrive')}")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
@@ -278,7 +290,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar)
         
         # Log area
-        log_label = QLabel("Logs:")
+        log_label = QLabel(tr("MainWindow", "Logs:"))
         layout.addWidget(log_label)
         
         self.log_area = QTextEdit()
@@ -290,10 +302,10 @@ class MainWindow(QMainWindow):
     
     def refresh_devices(self):
         """Refresh the device list."""
-        self.statusBar().showMessage("Scanning for devices...")
+        self.statusBar().showMessage(tr("MainWindow", "Scanning for devices..."))
         self.devices = self.device_detector.detect_devices()
         self.update_device_table()
-        self.statusBar().showMessage(f"Found {len(self.devices)} device(s)")
+        self.statusBar().showMessage(tr("MainWindow", "Found {count} device(s)").format(count=len(self.devices)))
     
     def update_device_table(self):
         """Update the device table with current devices."""
@@ -2295,71 +2307,71 @@ Please find the attached Excel report with complete device information including
     def update_ui_text(self):
         """Update UI text with current language using Qt translation."""
         # Update window title
-        self.setWindowTitle(TrStrings.APP_TITLE())
+        self.setWindowTitle(tr("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
         
         # Update main buttons
         if hasattr(self, 'refresh_btn'):
-            self.refresh_btn.setText(f"[{TrStrings.REFRESH()}] {TrStrings.REFRESH_DEVICES()}")
+            self.refresh_btn.setText(f"[{tr('MainWindow', 'REFRESH')}] {tr('MainWindow', 'Refresh Devices')}")
         
         if hasattr(self, 'history_btn'):
-            self.history_btn.setText(f"[{TrStrings.DEVICE_HISTORY()}] {TrStrings.DEVICE_HISTORY()}")
+            self.history_btn.setText(f"[{tr('MainWindow', 'HISTORY')}] {tr('MainWindow', 'Device History')}")
         
         if hasattr(self, 'templates_btn'):
-            self.templates_btn.setText(f"[{TrStrings.DEVICE_TEMPLATES()}] {TrStrings.DEVICE_TEMPLATES()}")
+            self.templates_btn.setText(f"[{tr('MainWindow', 'TEMPLATES')}] {tr('MainWindow', 'Templates')}")
         
         if hasattr(self, 'search_btn'):
-            self.search_btn.setText(f"[{TrStrings.SEARCH()}] {TrStrings.SEARCH_DEVICES()}")
+            self.search_btn.setText(f"[{tr('MainWindow', 'SEARCH')}] {tr('MainWindow', 'Search')}")
         
         if hasattr(self, 'flash_btn'):
-            self.flash_btn.setText(f"[{TrStrings.FLASH_FIRMWARE()}] {TrStrings.FLASH_FIRMWARE()}")
+            self.flash_btn.setText(f"[{tr('MainWindow', 'FLASH')}] {tr('MainWindow', 'Flash Firmware')}")
         
         if hasattr(self, 'report_btn'):
-            self.report_btn.setText(f"[{TrStrings.GENERATE_REPORT()}] {TrStrings.GENERATE_REPORT()}")
+            self.report_btn.setText(f"[{tr('MainWindow', 'REPORT')}] {tr('MainWindow', 'Generate Excel Report')}")
         
         if hasattr(self, 'email_btn'):
-            self.email_btn.setText(f"[{TrStrings.SEND_EMAIL()}] {TrStrings.SEND_EMAIL()}")
+            self.email_btn.setText(f"[{tr('MainWindow', 'EMAIL')}] {tr('MainWindow', 'Send Email')}")
         
         if hasattr(self, 'theme_lang_btn'):
-            self.theme_lang_btn.setText(f"🎨 {TrStrings.THEME_LANGUAGE()}")
+            self.theme_lang_btn.setText(f"🎨 {tr('MainWindow', 'Theme & Language')}")
         
         # Update settings buttons
         if hasattr(self, 'email_settings_btn'):
-            self.email_settings_btn.setText(f"[{TrStrings.EMAIL_SETTINGS()}] {TrStrings.EMAIL_SETTINGS()}")
+            self.email_settings_btn.setText(f"[{tr('Settings', 'CONFIG')}] {tr('Settings', 'Configure Email')}")
         
         if hasattr(self, 'machine_settings_btn'):
-            self.machine_settings_btn.setText(f"[{TrStrings.MACHINE_SETTINGS()}] {TrStrings.MACHINE_SETTINGS()}")
+            self.machine_settings_btn.setText(f"[{tr('Settings', 'MACHINE')}] {tr('Settings', 'Machine Types')}")
         
         if hasattr(self, 'onedrive_settings_btn'):
-            self.onedrive_settings_btn.setText(f"[{TrStrings.ONEDRIVE_SETTINGS()}] {TrStrings.ONEDRIVE_SETTINGS()}")
+            self.onedrive_settings_btn.setText(f"[{tr('Settings', 'ONEDRIVE')}] {tr('Settings', 'OneDrive')}")
         
         # Update device table headers
         if hasattr(self, 'device_table'):
             headers = [
-                TrStrings.PORT(),
-                TrStrings.DEVICE_TYPE(),
+                tr("MainWindow", "Port"),
+                tr("MainWindow", "Type"),
                 "VID:PID",  # Keep technical term
-                TrStrings.STATUS(),
-                TrStrings.HEALTH_SCORE(),
-                TrStrings.DEVICE_NAME(),
-                TrStrings.LAST_SEEN(),
-                "Action"  # Keep technical term
+                tr("MainWindow", "Status"),
+                tr("MainWindow", "Health"),
+                tr("MainWindow", "Name"),
+                tr("MainWindow", "Last Seen"),
+                tr("MainWindow", "Action")
             ]
             self.device_table.setHorizontalHeaderLabels(headers)
         
         # Update log area placeholder
         if hasattr(self, 'log_area'):
-            self.log_area.setPlaceholderText(TrStrings.LOADING())
+            self.log_area.setPlaceholderText(tr("MainWindow", "Loading"))
         
         # Update status messages
-        self.log(f"[{tr(TrContext.MESSAGES, 'Language Applied')}] {tr(TrContext.MESSAGES, 'Language Applied')}")
+        self.log(f"[{tr('Messages', 'Language Applied')}] {tr('Messages', 'Language Applied')}")
     
     def show_theme_language_dialog(self):
         """Show visual theme and language selection dialog."""
         dialog = ThemeLanguageSelectionDialog(self.theme_manager, self.translation_manager, self)
         if dialog.exec() == QDialog.Accepted:
-            self.log(f"[{tr(TrContext.MESSAGES, 'Settings Applied')}] {tr(TrContext.MESSAGES, 'Theme and language settings have been applied successfully!')}")
-            QMessageBox.information(self, tr(TrContext.DIALOGS, "Settings Applied"), 
-                                  tr(TrContext.MESSAGES, "Theme and language settings have been applied successfully!"))
+            self.log(f"[{tr('Messages', 'Settings Applied')}] {tr('Messages', 'Theme and language settings have been applied successfully!')}")
+            QMessageBox.information(self, tr("Dialogs", "Settings Applied"), 
+                                  tr("Messages", "Theme and language settings have been applied successfully!"))
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
