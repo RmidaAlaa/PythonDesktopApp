@@ -20,7 +20,8 @@ from ..core.email_sender import EmailSender
 from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
-from ..core.theme_manager import ThemeManager, ThemeType
+from ..core.language_manager import LanguageManager, LanguageType
+from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 
 logger = setup_logger("MainWindow")
@@ -61,6 +62,10 @@ class MainWindow(QMainWindow):
         # Initialize theme manager
         self.theme_manager = ThemeManager()
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
+        
+        # Initialize language manager
+        self.language_manager = LanguageManager()
+        self.language_manager.language_changed.connect(self.on_language_changed)
         
         # Initialize components
         self.device_detector = DeviceDetector()
@@ -232,6 +237,10 @@ class MainWindow(QMainWindow):
         theme_settings_btn = QPushButton("[THEME] Theme Settings")
         theme_settings_btn.clicked.connect(self.show_theme_settings_dialog)
         settings_layout.addWidget(theme_settings_btn)
+        
+        theme_lang_btn = QPushButton("[THEME & LANGUAGE] Visual Selection")
+        theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
+        settings_layout.addWidget(theme_lang_btn)
         
         layout.addLayout(settings_layout)
         
@@ -2255,6 +2264,30 @@ Please find the attached Excel report with complete device information including
             stylesheet = self.theme_manager.get_theme_stylesheet(ThemeType(theme_name.split('_')[0]))
             app.setStyleSheet(stylesheet)
     
+    def on_language_changed(self, language_name: str):
+        """Handle language change."""
+        self.log(f"[LANGUAGE] Language changed to: {language_name}")
+        # Update UI text with new language
+        self.update_ui_text()
+        # Apply RTL layout if needed
+        if self.language_manager.is_rtl_language():
+            self.setLayoutDirection(Qt.RightToLeft)
+        else:
+            self.setLayoutDirection(Qt.LeftToRight)
+    
+    def update_ui_text(self):
+        """Update UI text with current language."""
+        # Update window title
+        self.setWindowTitle(self.language_manager.get_text("app_title"))
+        
+        # Update button texts
+        if hasattr(self, 'refresh_btn'):
+            self.refresh_btn.setText(f"[{self.language_manager.get_text('refresh')}] {self.language_manager.get_text('refresh_devices')}")
+        
+        # Update other UI elements as needed
+        # This is a simplified version - in a full implementation,
+        # you would update all text elements throughout the UI
+    
     def show_theme_settings_dialog(self):
         """Show theme settings dialog."""
         dialog = QDialog(self)
@@ -2393,6 +2426,14 @@ Please find the attached Excel report with complete device information including
         self.theme_manager.create_custom_theme(name, color_dict, f"Custom theme: {name}")
         QMessageBox.information(dialog, "Theme Created", f"Custom theme '{name}' has been created!")
         dialog.accept()
+    
+    def show_theme_language_dialog(self):
+        """Show visual theme and language selection dialog."""
+        dialog = ThemeLanguageSelectionDialog(self.theme_manager, self.language_manager, self)
+        if dialog.exec() == QDialog.Accepted:
+            self.log("[SETTINGS] Theme and language selection applied")
+            QMessageBox.information(self, "Settings Applied", 
+                                  "Theme and language settings have been applied successfully!")
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
