@@ -64,24 +64,27 @@ class ThemeCard(QFrame):
         if self.theme_type == ThemeType.LIGHT:
             return """
             QWidget {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #ffffff, stop:0.5 #f8f9fa, stop:1 #e9ecef);
+                border: 2px solid #dee2e6;
                 border-radius: 8px;
             }
             """
         elif self.theme_type == ThemeType.DARK:
             return """
             QWidget {
-                background-color: #212529;
-                border: 1px solid #495057;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #212529, stop:0.5 #343a40, stop:1 #495057);
+                border: 2px solid #6c757d;
                 border-radius: 8px;
             }
             """
         else:  # Custom theme
             return """
             QWidget {
-                background-color: #6f42c1;
-                border: 1px solid #5a32a3;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #6f42c1, stop:0.5 #5a32a3, stop:1 #4c2a85);
+                border: 2px solid #5a32a3;
                 border-radius: 8px;
             }
             """
@@ -218,10 +221,10 @@ class LanguageCard(QFrame):
 class ThemeLanguageSelectionDialog(QDialog):
     """Dialog for selecting theme and language."""
     
-    def __init__(self, theme_manager: ThemeManager, language_manager: LanguageManager, parent=None):
+    def __init__(self, theme_manager: ThemeManager, translation_manager, parent=None):
         super().__init__(parent)
         self.theme_manager = theme_manager
-        self.language_manager = language_manager
+        self.translation_manager = translation_manager
         
         self.theme_cards = {}
         self.language_cards = {}
@@ -290,7 +293,12 @@ class ThemeLanguageSelectionDialog(QDialog):
         language_layout = QHBoxLayout()
         
         # Create language cards
-        languages = self.language_manager.get_available_languages()
+        languages = {
+            "🇺🇸 English": "en",
+            "🇸🇦 العربية": "ar", 
+            "🇫🇷 Français": "fr"
+        }
+        
         for display_name, language_value in languages.items():
             if language_value == "en":
                 language_type = LanguageType.ENGLISH
@@ -299,7 +307,7 @@ class ThemeLanguageSelectionDialog(QDialog):
             elif language_value == "fr":
                 language_type = LanguageType.FRENCH
             
-            is_selected = language_value == self.language_manager.get_current_language()
+            is_selected = language_value == self.translation_manager.get_current_language()
             
             card = LanguageCard(display_name, language_type, is_selected)
             card.language_selected.connect(self.on_language_selected)
@@ -375,7 +383,7 @@ class ThemeLanguageSelectionDialog(QDialog):
         # Apply language
         for language_value, card in self.language_cards.items():
             if card.is_selected:
-                self.language_manager.apply_language_by_name(language_value)
+                self.translation_manager.set_language(language_value)
                 break
         
         self.accept()

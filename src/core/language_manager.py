@@ -373,9 +373,9 @@ class LanguageManager(QObject):
     def get_available_languages(self) -> Dict[str, str]:
         """Get list of available languages."""
         return {
-            "English": LanguageType.ENGLISH.value,
-            "Arabic": LanguageType.ARABIC.value,
-            "French": LanguageType.FRENCH.value,
+            "🇺🇸 English": LanguageType.ENGLISH.value,
+            "🇸🇦 العربية": LanguageType.ARABIC.value,
+            "🇫🇷 Français": LanguageType.FRENCH.value,
         }
     
     def apply_language(self, language_type: LanguageType):

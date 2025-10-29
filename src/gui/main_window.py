@@ -21,7 +21,7 @@ from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
 from ..core.theme_manager import ThemeManager, ThemeType
-from ..core.language_manager import LanguageManager, LanguageType
+from ..core.translation_manager import TranslationManager, tr, TrContext, TrStrings
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 
@@ -64,9 +64,8 @@ class MainWindow(QMainWindow):
         self.theme_manager = ThemeManager()
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         
-        # Initialize language manager
-        self.language_manager = LanguageManager()
-        self.language_manager.language_changed.connect(self.on_language_changed)
+        # Initialize translation manager
+        self.translation_manager = TranslationManager()
         
         # Initialize components
         self.device_detector = DeviceDetector()
@@ -229,6 +228,28 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(flash_btn)
         self.flash_btn = flash_btn  # Store as instance variable for translation
         
+        theme_lang_btn = QPushButton("🎨 Theme & Language")
+        theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
+        theme_lang_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6f42c1;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #5a32a3;
+            }
+            QPushButton:pressed {
+                background-color: #4c2a85;
+            }
+        """)
+        button_layout.addWidget(theme_lang_btn)
+        self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
+        
         layout.addLayout(button_layout)
         
         # Settings buttons
@@ -248,11 +269,6 @@ class MainWindow(QMainWindow):
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
-        
-        theme_lang_btn = QPushButton("[THEME & LANGUAGE] Visual Selection")
-        theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
-        settings_layout.addWidget(theme_lang_btn)
-        self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
         
         layout.addLayout(settings_layout)
         
@@ -2276,88 +2292,74 @@ Please find the attached Excel report with complete device information including
             stylesheet = self.theme_manager.get_theme_stylesheet(ThemeType(theme_name.split('_')[0]))
             app.setStyleSheet(stylesheet)
     
-    def on_language_changed(self, language_name: str):
-        """Handle language change."""
-        self.log(f"[LANGUAGE] Language changed to: {language_name}")
-        # Update UI text with new language
-        self.update_ui_text()
-        # Apply RTL layout if needed
-        if self.language_manager.is_rtl_language():
-            self.setLayoutDirection(Qt.RightToLeft)
-        else:
-            self.setLayoutDirection(Qt.LeftToRight)
-    
     def update_ui_text(self):
-        """Update UI text with current language."""
+        """Update UI text with current language using Qt translation."""
         # Update window title
-        self.setWindowTitle(self.language_manager.get_text("app_title"))
+        self.setWindowTitle(TrStrings.APP_TITLE())
         
         # Update main buttons
         if hasattr(self, 'refresh_btn'):
-            self.refresh_btn.setText(f"[{self.language_manager.get_text('refresh')}] {self.language_manager.get_text('refresh_devices')}")
+            self.refresh_btn.setText(f"[{TrStrings.REFRESH()}] {TrStrings.REFRESH_DEVICES()}")
         
         if hasattr(self, 'history_btn'):
-            self.history_btn.setText(f"[{self.language_manager.get_text('device_history')}] {self.language_manager.get_text('device_history')}")
+            self.history_btn.setText(f"[{TrStrings.DEVICE_HISTORY()}] {TrStrings.DEVICE_HISTORY()}")
         
         if hasattr(self, 'templates_btn'):
-            self.templates_btn.setText(f"[{self.language_manager.get_text('device_templates')}] {self.language_manager.get_text('device_templates')}")
+            self.templates_btn.setText(f"[{TrStrings.DEVICE_TEMPLATES()}] {TrStrings.DEVICE_TEMPLATES()}")
         
         if hasattr(self, 'search_btn'):
-            self.search_btn.setText(f"[{self.language_manager.get_text('search')}] {self.language_manager.get_text('search_devices')}")
+            self.search_btn.setText(f"[{TrStrings.SEARCH()}] {TrStrings.SEARCH_DEVICES()}")
         
         if hasattr(self, 'flash_btn'):
-            self.flash_btn.setText(f"[{self.language_manager.get_text('flash_firmware')}] {self.language_manager.get_text('flash_firmware')}")
+            self.flash_btn.setText(f"[{TrStrings.FLASH_FIRMWARE()}] {TrStrings.FLASH_FIRMWARE()}")
         
         if hasattr(self, 'report_btn'):
-            self.report_btn.setText(f"[{self.language_manager.get_text('generate_report')}] {self.language_manager.get_text('generate_report')}")
+            self.report_btn.setText(f"[{TrStrings.GENERATE_REPORT()}] {TrStrings.GENERATE_REPORT()}")
         
         if hasattr(self, 'email_btn'):
-            self.email_btn.setText(f"[{self.language_manager.get_text('send_email')}] {self.language_manager.get_text('send_email')}")
+            self.email_btn.setText(f"[{TrStrings.SEND_EMAIL()}] {TrStrings.SEND_EMAIL()}")
         
-        if hasattr(self, 'onedrive_btn'):
-            self.onedrive_btn.setText(f"[{self.language_manager.get_text('onedrive_sync')}] {self.language_manager.get_text('onedrive_sync')}")
+        if hasattr(self, 'theme_lang_btn'):
+            self.theme_lang_btn.setText(f"🎨 {TrStrings.THEME_LANGUAGE()}")
         
         # Update settings buttons
         if hasattr(self, 'email_settings_btn'):
-            self.email_settings_btn.setText(f"[{self.language_manager.get_text('email_settings')}] {self.language_manager.get_text('email_settings')}")
+            self.email_settings_btn.setText(f"[{TrStrings.EMAIL_SETTINGS()}] {TrStrings.EMAIL_SETTINGS()}")
         
         if hasattr(self, 'machine_settings_btn'):
-            self.machine_settings_btn.setText(f"[{self.language_manager.get_text('machine_settings')}] {self.language_manager.get_text('machine_settings')}")
+            self.machine_settings_btn.setText(f"[{TrStrings.MACHINE_SETTINGS()}] {TrStrings.MACHINE_SETTINGS()}")
         
         if hasattr(self, 'onedrive_settings_btn'):
-            self.onedrive_settings_btn.setText(f"[{self.language_manager.get_text('onedrive_settings')}] {self.language_manager.get_text('onedrive_settings')}")
-        
-        if hasattr(self, 'theme_lang_btn'):
-            self.theme_lang_btn.setText(f"[{self.language_manager.get_text('theme_settings')} & {self.language_manager.get_text('language_settings')}] Visual Selection")
+            self.onedrive_settings_btn.setText(f"[{TrStrings.ONEDRIVE_SETTINGS()}] {TrStrings.ONEDRIVE_SETTINGS()}")
         
         # Update device table headers
         if hasattr(self, 'device_table'):
             headers = [
-                self.language_manager.get_text("port"),
-                self.language_manager.get_text("device_type"),
+                TrStrings.PORT(),
+                TrStrings.DEVICE_TYPE(),
                 "VID:PID",  # Keep technical term
-                self.language_manager.get_text("status"),
-                self.language_manager.get_text("health_score"),
-                self.language_manager.get_text("device_name"),
-                self.language_manager.get_text("last_seen"),
+                TrStrings.STATUS(),
+                TrStrings.HEALTH_SCORE(),
+                TrStrings.DEVICE_NAME(),
+                TrStrings.LAST_SEEN(),
                 "Action"  # Keep technical term
             ]
             self.device_table.setHorizontalHeaderLabels(headers)
         
         # Update log area placeholder
         if hasattr(self, 'log_area'):
-            self.log_area.setPlaceholderText(self.language_manager.get_text("loading"))
+            self.log_area.setPlaceholderText(TrStrings.LOADING())
         
         # Update status messages
-        self.log(f"[{self.language_manager.get_text('language_applied')}] {self.language_manager.get_text('language_applied')}")
+        self.log(f"[{tr(TrContext.MESSAGES, 'Language Applied')}] {tr(TrContext.MESSAGES, 'Language Applied')}")
     
     def show_theme_language_dialog(self):
         """Show visual theme and language selection dialog."""
-        dialog = ThemeLanguageSelectionDialog(self.theme_manager, self.language_manager, self)
+        dialog = ThemeLanguageSelectionDialog(self.theme_manager, self.translation_manager, self)
         if dialog.exec() == QDialog.Accepted:
-            self.log("[SETTINGS] Theme and language selection applied")
-            QMessageBox.information(self, "Settings Applied", 
-                                  "Theme and language settings have been applied successfully!")
+            self.log(f"[{tr(TrContext.MESSAGES, 'Settings Applied')}] {tr(TrContext.MESSAGES, 'Theme and language settings have been applied successfully!')}")
+            QMessageBox.information(self, tr(TrContext.DIALOGS, "Settings Applied"), 
+                                  tr(TrContext.MESSAGES, "Theme and language settings have been applied successfully!"))
     
     def show_device_history_dialog(self):
         """Show device history dialog."""

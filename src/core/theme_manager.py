@@ -77,13 +77,13 @@ class ThemeManager(QObject):
     def get_available_themes(self) -> Dict[str, str]:
         """Get list of available themes."""
         themes = {
-            "Light Theme": ThemeType.LIGHT.value,
-            "Dark Theme": ThemeType.DARK.value,
+            "☀️ Light Mode": ThemeType.LIGHT.value,
+            "🌙 Dark Mode": ThemeType.DARK.value,
         }
         
         # Add custom themes
         for name, theme_data in self.custom_themes.items():
-            themes[f"Custom: {name}"] = f"custom_{name}"
+            themes[f"🎨 {name}"] = f"custom_{name}"
         
         return themes
     
