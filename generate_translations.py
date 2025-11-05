@@ -104,7 +104,7 @@ def generate_translation_files():
 
 def compile_translations():
     """Compile .ts files to .qm files using lrelease."""
-    translations_dir = Path(__file__).parent.parent / "translations"
+    translations_dir = Path(__file__).parent / "translations"
     
     if not translations_dir.exists():
         print("No translations directory found")

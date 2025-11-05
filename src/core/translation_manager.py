@@ -61,13 +61,32 @@ class TranslationManager:
         
         # Load new translation if not English
         if self.current_language != "en":
+            # Primary: user app-data translations
             translation_file = self.translations_dir / f"app_{self.current_language}.qm"
+            loaded = False
             if translation_file.exists():
                 if self.translator.load(str(translation_file)):
                     app.installTranslator(self.translator)
-                    logger.info(f"Loaded translation: {self.current_language}")
+                    logger.info(f"Loaded translation from app data: {self.current_language}")
+                    loaded = True
                 else:
-                    logger.warning(f"Failed to load translation: {self.current_language}")
+                    logger.warning(f"Failed to load app-data translation: {self.current_language}")
+
+            # Fallback: project translations directory (developer environment)
+            if not loaded:
+                try:
+                    from pathlib import Path as _Path
+                    project_dir = _Path(__file__).resolve().parents[2]  # repo root
+                    fallback = project_dir / "translations" / f"app_{self.current_language}.qm"
+                    if fallback.exists() and self.translator.load(str(fallback)):
+                        app.installTranslator(self.translator)
+                        logger.info(f"Loaded translation from project: {self.current_language}")
+                        loaded = True
+                except Exception as e:
+                    logger.debug(f"Fallback translation load error: {e}")
+
+            if not loaded:
+                logger.warning(f"No translation file found for: {self.current_language}")
     
     def set_language(self, language_code: str):
         """Set application language."""

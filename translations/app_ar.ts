@@ -4,145 +4,149 @@
   <context>
     <name>MainWindow</name>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2308" />
-      <location filename="..\src\gui\main_window.py" line="95" />
-      <source>AWG Kumulus Device Manager v1.0.0</source>
-      <translation>مدير أجهزة AWG كومولوس v1.0.0</translation>
+      <location filename="..\src\gui\main_window.py" line="2370" />
+      <location filename="..\src\gui\main_window.py" line="92" />
+      <source>MainWindow</source>
+      <comment>AWG Kumulus Device Manager v1.0.0</comment>
+      <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2348" />
+      <location filename="..\src\gui\main_window.py" line="2410" />
+      <location filename="..\src\gui\main_window.py" line="136" />
+      <source>MainWindow</source>
+      <comment>Port</comment>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="..\src\gui\main_window.py" line="2411" />
+      <location filename="..\src\gui\main_window.py" line="137" />
+      <source>MainWindow</source>
+      <comment>Type</comment>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="..\src\gui\main_window.py" line="2413" />
       <location filename="..\src\gui\main_window.py" line="139" />
-      <source>Port</source>
-      <translation>المنفذ</translation>
+      <source>MainWindow</source>
+      <comment>Status</comment>
+      <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2349" />
+      <location filename="..\src\gui\main_window.py" line="2414" />
       <location filename="..\src\gui\main_window.py" line="140" />
-      <source>Type</source>
-      <translation>النوع</translation>
-    </message>
-    <message>
-      <location filename="..\src\gui\main_window.py" line="2351" />
-      <location filename="..\src\gui\main_window.py" line="142" />
-      <source>Status</source>
-      <translation>الحالة</translation>
-    </message>
-    <message>
-      <location filename="..\src\gui\main_window.py" line="2352" />
-      <location filename="..\src\gui\main_window.py" line="143" />
       <source>MainWindow</source>
       <comment>Health</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2353" />
-      <location filename="..\src\gui\main_window.py" line="144" />
+      <location filename="..\src\gui\main_window.py" line="2415" />
+      <location filename="..\src\gui\main_window.py" line="141" />
       <source>MainWindow</source>
       <comment>Name</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2354" />
-      <location filename="..\src\gui\main_window.py" line="145" />
+      <location filename="..\src\gui\main_window.py" line="2416" />
+      <location filename="..\src\gui\main_window.py" line="142" />
       <source>MainWindow</source>
       <comment>Last Seen</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2355" />
-      <location filename="..\src\gui\main_window.py" line="146" />
+      <location filename="..\src\gui\main_window.py" line="2417" />
+      <location filename="..\src\gui\main_window.py" line="143" />
       <source>MainWindow</source>
       <comment>Action</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2312" />
-      <location filename="..\src\gui\main_window.py" line="152" />
+      <location filename="..\src\gui\main_window.py" line="2374" />
+      <location filename="..\src\gui\main_window.py" line="149" />
       <source>MainWindow</source>
       <comment>REFRESH</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2312" />
-      <location filename="..\src\gui\main_window.py" line="152" />
+      <location filename="..\src\gui\main_window.py" line="2374" />
+      <location filename="..\src\gui\main_window.py" line="149" />
       <source>MainWindow</source>
       <comment>Refresh Devices</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2315" />
-      <location filename="..\src\gui\main_window.py" line="160" />
+      <location filename="..\src\gui\main_window.py" line="2377" />
+      <location filename="..\src\gui\main_window.py" line="157" />
       <source>MainWindow</source>
       <comment>HISTORY</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2315" />
-      <location filename="..\src\gui\main_window.py" line="160" />
+      <location filename="..\src\gui\main_window.py" line="2377" />
+      <location filename="..\src\gui\main_window.py" line="157" />
       <source>MainWindow</source>
       <comment>Device History</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2318" />
-      <location filename="..\src\gui\main_window.py" line="165" />
+      <location filename="..\src\gui\main_window.py" line="2380" />
+      <location filename="..\src\gui\main_window.py" line="162" />
       <source>MainWindow</source>
       <comment>TEMPLATES</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2318" />
-      <location filename="..\src\gui\main_window.py" line="165" />
+      <location filename="..\src\gui\main_window.py" line="2380" />
+      <location filename="..\src\gui\main_window.py" line="162" />
       <source>MainWindow</source>
       <comment>Templates</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2321" />
-      <location filename="..\src\gui\main_window.py" line="170" />
+      <location filename="..\src\gui\main_window.py" line="2383" />
+      <location filename="..\src\gui\main_window.py" line="167" />
       <source>MainWindow</source>
       <comment>SEARCH</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2321" />
-      <location filename="..\src\gui\main_window.py" line="170" />
+      <location filename="..\src\gui\main_window.py" line="2383" />
+      <location filename="..\src\gui\main_window.py" line="167" />
       <source>MainWindow</source>
       <comment>Search</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="185" />
+      <location filename="..\src\gui\main_window.py" line="182" />
       <source>MainWindow</source>
       <comment>Operator Information</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="188" />
+      <location filename="..\src\gui\main_window.py" line="185" />
       <source>MainWindow</source>
       <comment>Name:</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="193" />
+      <location filename="..\src\gui\main_window.py" line="190" />
       <source>MainWindow</source>
       <comment>Email:</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="202" />
+      <location filename="..\src\gui\main_window.py" line="199" />
       <source>MainWindow</source>
       <comment>Machine Information</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="205" />
+      <location filename="..\src\gui\main_window.py" line="202" />
       <source>MainWindow</source>
       <comment>Machine Type:</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="215" />
+      <location filename="..\src\gui\main_window.py" line="213" />
       <source>MainWindow</source>
       <comment>Machine ID:</comment>
       <translation type="unfinished" />
@@ -154,145 +158,173 @@
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2327" />
-      <location filename="..\src\gui\main_window.py" line="226" />
+      <location filename="..\src\gui\main_window.py" line="222" />
+      <source>MainWindow</source>
+      <comment>ID Prefix:</comment>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="..\src\gui\main_window.py" line="229" />
+      <source>MainWindow</source>
+      <comment>ID Suffix:</comment>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="..\src\gui\main_window.py" line="2389" />
+      <location filename="..\src\gui\main_window.py" line="248" />
       <source>MainWindow</source>
       <comment>REPORT</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2327" />
-      <location filename="..\src\gui\main_window.py" line="226" />
+      <location filename="..\src\gui\main_window.py" line="2389" />
+      <location filename="..\src\gui\main_window.py" line="248" />
       <source>MainWindow</source>
       <comment>Generate Excel Report</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2330" />
-      <location filename="..\src\gui\main_window.py" line="231" />
+      <location filename="..\src\gui\main_window.py" line="2392" />
+      <location filename="..\src\gui\main_window.py" line="253" />
       <source>MainWindow</source>
       <comment>EMAIL</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2330" />
-      <location filename="..\src\gui\main_window.py" line="231" />
+      <location filename="..\src\gui\main_window.py" line="2392" />
+      <location filename="..\src\gui\main_window.py" line="253" />
       <source>MainWindow</source>
       <comment>Send Email</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2324" />
-      <location filename="..\src\gui\main_window.py" line="236" />
+      <location filename="..\src\gui\main_window.py" line="2386" />
+      <location filename="..\src\gui\main_window.py" line="258" />
       <source>MainWindow</source>
       <comment>FLASH</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2324" />
-      <location filename="..\src\gui\main_window.py" line="236" />
+      <location filename="..\src\gui\main_window.py" line="2386" />
+      <location filename="..\src\gui\main_window.py" line="258" />
       <source>MainWindow</source>
       <comment>Flash Firmware</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2333" />
-      <location filename="..\src\gui\main_window.py" line="241" />
+      <location filename="..\src\gui\main_window.py" line="2395" />
+      <location filename="..\src\gui\main_window.py" line="263" />
       <source>MainWindow</source>
       <comment>Theme &amp; Language</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2337" />
-      <location filename="..\src\gui\main_window.py" line="268" />
+      <location filename="..\src\gui\main_window.py" line="2399" />
+      <location filename="..\src\gui\main_window.py" line="290" />
       <source>Settings</source>
       <comment>CONFIG</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2337" />
-      <location filename="..\src\gui\main_window.py" line="268" />
+      <location filename="..\src\gui\main_window.py" line="2399" />
+      <location filename="..\src\gui\main_window.py" line="290" />
       <source>Settings</source>
       <comment>Configure Email</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2340" />
-      <location filename="..\src\gui\main_window.py" line="273" />
+      <location filename="..\src\gui\main_window.py" line="2402" />
+      <location filename="..\src\gui\main_window.py" line="295" />
       <source>Settings</source>
       <comment>MACHINE</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2340" />
-      <location filename="..\src\gui\main_window.py" line="273" />
+      <location filename="..\src\gui\main_window.py" line="2402" />
+      <location filename="..\src\gui\main_window.py" line="295" />
       <source>Settings</source>
       <comment>Machine Types</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2343" />
-      <location filename="..\src\gui\main_window.py" line="278" />
+      <location filename="..\src\gui\main_window.py" line="2405" />
+      <location filename="..\src\gui\main_window.py" line="300" />
       <source>Settings</source>
       <comment>ONEDRIVE</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2343" />
-      <location filename="..\src\gui\main_window.py" line="278" />
+      <location filename="..\src\gui\main_window.py" line="2405" />
+      <location filename="..\src\gui\main_window.py" line="300" />
       <source>Settings</source>
       <comment>OneDrive</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="291" />
+      <location filename="..\src\gui\main_window.py" line="313" />
       <source>MainWindow</source>
       <comment>Logs:</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="303" />
+      <location filename="..\src\gui\main_window.py" line="325" />
       <source>MainWindow</source>
       <comment>Scanning for devices...</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="306" />
+      <location filename="..\src\gui\main_window.py" line="328" />
       <source>MainWindow</source>
       <comment>Found {count} device(s)</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2361" />
+      <location filename="..\src\gui\main_window.py" line="2423" />
       <source>MainWindow</source>
       <comment>Loading</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2364" />
-      <location filename="..\src\gui\main_window.py" line="2364" />
+      <location filename="..\src\gui\main_window.py" line="2426" />
+      <location filename="..\src\gui\main_window.py" line="2426" />
       <source>Messages</source>
       <comment>Language Applied</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2370" />
+      <location filename="..\src\gui\main_window.py" line="2432" />
       <source>Messages</source>
       <comment>Settings Applied</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2372" />
-      <location filename="..\src\gui\main_window.py" line="2370" />
+      <location filename="..\src\gui\main_window.py" line="2434" />
+      <location filename="..\src\gui\main_window.py" line="2432" />
       <source>Messages</source>
       <comment>Theme and language settings have been applied successfully!</comment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="..\src\gui\main_window.py" line="2371" />
+      <location filename="..\src\gui\main_window.py" line="2433" />
       <source>Dialogs</source>
       <comment>Settings Applied</comment>
       <translation type="unfinished" />
+    </message>
+    <message>
+      <source>AWG Kumulus Device Manager v1.0.0</source>
+      <translation type="vanished">مدير أجهزة AWG كومولوس v1.0.0</translation>
+    </message>
+    <message>
+      <source>Port</source>
+      <translation type="vanished">المنفذ</translation>
+    </message>
+    <message>
+      <source>Type</source>
+      <translation type="vanished">النوع</translation>
+    </message>
+    <message>
+      <source>Status</source>
+      <translation type="vanished">الحالة</translation>
     </message>
   </context>
 </TS>

@@ -570,3 +570,4 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to cleanup firmware files: {e}")
 
+ 

@@ -10,13 +10,8 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
     QSpinBox, QTabWidget, QInputDialog
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QCoreApplication
-from PySide6.QtGui import QFont
-
-# Import tr directly from Qt for pylupdate compatibility
-def tr(context, text, disambiguation=None, n=-1):
-    """Translation function compatible with pylupdate."""
-    return QCoreApplication.translate(context, text, disambiguation, n)
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression
+from PySide6.QtGui import QFont, QRegularExpressionValidator
 
 from ..core.config import Config
 from ..core.device_detector import DeviceDetector, Device
@@ -26,7 +21,7 @@ from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
 from ..core.theme_manager import ThemeManager, ThemeType
-from ..core.translation_manager import TranslationManager
+from ..core.translation_manager import TranslationManager, tr, TrContext
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 
@@ -159,17 +154,17 @@ class MainWindow(QMainWindow):
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton(f"[{tr('MainWindow', 'HISTORY')}] {tr('MainWindow', 'Device History')}")
+        history_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Device History"))
         history_btn.clicked.connect(self.show_device_history_dialog)
         device_mgmt_layout.addWidget(history_btn)
         self.history_btn = history_btn  # Store as instance variable for translation
         
-        templates_btn = QPushButton(f"[{tr('MainWindow', 'TEMPLATES')}] {tr('MainWindow', 'Templates')}")
+        templates_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Templates"))
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         device_mgmt_layout.addWidget(templates_btn)
         self.templates_btn = templates_btn  # Store as instance variable for translation
         
-        search_btn = QPushButton(f"[{tr('MainWindow', 'SEARCH')}] {tr('MainWindow', 'Search')}")
+        search_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Search"))
         search_btn.clicked.connect(self.show_device_search_dialog)
         device_mgmt_layout.addWidget(search_btn)
         self.search_btn = search_btn  # Store as instance variable for translation
@@ -214,10 +209,35 @@ class MainWindow(QMainWindow):
         self.machine_type.currentTextChanged.connect(self.on_machine_type_changed)
         machine_layout.addWidget(self.machine_type)
         
+        # Machine ID composed of prefix + numeric suffix
         machine_layout.addWidget(QLabel(tr("MainWindow", "Machine ID:")))
+        # Read-only field showing the composed ID
         self.machine_id = QLineEdit()
+        self.machine_id.setReadOnly(True)
         self.machine_id.setPlaceholderText(tr("MainWindow", "Enter machine ID"))
         machine_layout.addWidget(self.machine_id)
+
+        # Display the current prefix and provide an editable suffix dropdown
+        prefix_row = QHBoxLayout()
+        prefix_row.addWidget(QLabel(tr("MainWindow", "ID Prefix:")))
+        self.machine_id_prefix_display = QLabel("-")
+        self.machine_id_prefix_display.setStyleSheet("font-family: monospace; font-weight: bold;")
+        prefix_row.addWidget(self.machine_id_prefix_display)
+        machine_layout.addLayout(prefix_row)
+
+        suffix_row = QHBoxLayout()
+        suffix_row.addWidget(QLabel(tr("MainWindow", "ID Suffix:")))
+        self.machine_id_suffix = QComboBox()
+        self.machine_id_suffix.setEditable(True)
+        self.machine_id_suffix.setInsertPolicy(QComboBox.NoInsert)
+        # Update composed ID whenever the suffix changes
+        self.machine_id_suffix.editTextChanged.connect(self.on_machine_id_suffix_changed)
+        self.machine_id_suffix.currentTextChanged.connect(self.on_machine_id_suffix_changed)
+        suffix_row.addWidget(self.machine_id_suffix)
+        machine_layout.addLayout(suffix_row)
+
+        # Initialize ID widgets for the current machine type
+        self.on_machine_type_changed(self.machine_type.currentText())
         
         machine_group.setLayout(machine_layout)
         layout.addWidget(machine_group)
@@ -363,14 +383,54 @@ class MainWindow(QMainWindow):
     
     def on_machine_type_changed(self, text):
         """Handle machine type change."""
-        # Reset machine ID placeholder with prefix
+        # Reset machine ID widgets to reflect the selected type
         machine_types = Config.get_machine_types(self.config)
         if text in machine_types:
             prefix = machine_types[text]['prefix']
             length = machine_types[text]['length']
-            remaining = length - len(prefix)
-            placeholder = prefix + "X" * remaining
+            remaining = max(0, length - len(prefix))
+
+            # Update prefix display
+            self.machine_id_prefix_display.setText(prefix)
+
+            # Configure suffix editor with numeric validator of exact length
+            regex = QRegularExpression(fr"^\d{{{remaining}}}$")
+            validator = QRegularExpressionValidator(regex)
+            # Ensure the line edit exists for the editable combo box
+            if self.machine_id_suffix.lineEdit():
+                self.machine_id_suffix.lineEdit().setValidator(validator)
+                self.machine_id_suffix.lineEdit().setPlaceholderText("0" * remaining)
+
+            # Seed a few example suffixes for quick selection
+            examples = [
+                "0" * remaining,
+                "1" * remaining,
+                ("1234567890"[:remaining] if remaining > 0 else ""),
+                "9" * remaining,
+            ]
+            self.machine_id_suffix.clear()
+            # Filter empty or duplicates
+            for ex in [e for e in examples if e]:
+                if ex not in [self.machine_id_suffix.itemText(i) for i in range(self.machine_id_suffix.count())]:
+                    self.machine_id_suffix.addItem(ex)
+
+            # Update full ID placeholder and composed text
+            placeholder = prefix + ("X" * remaining)
             self.machine_id.setPlaceholderText(f"e.g., {placeholder}")
+            current_suffix = self.machine_id_suffix.currentText().strip()
+            if current_suffix:
+                self.machine_id.setText(prefix + current_suffix)
+            else:
+                self.machine_id.clear()
+
+    def on_machine_id_suffix_changed(self, text):
+        """Compose full machine ID from prefix + suffix as the user edits."""
+        prefix = self.machine_id_prefix_display.text()
+        suffix = text.strip()
+        if prefix and suffix:
+            self.machine_id.setText(prefix + suffix)
+        else:
+            self.machine_id.clear()
     
     def generate_report(self):
         """Generate Excel report."""
