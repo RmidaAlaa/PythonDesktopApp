@@ -7,12 +7,12 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QWidget, QFrame, QScrollArea, QGridLayout
 )
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QCoreApplication
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont, QPalette
 
 from ..core.theme_manager import ThemeManager, ThemeType
 from ..core.language_manager import LanguageManager, LanguageType
-from ..core.translation_manager import tr, TrContext, TrStrings
+from ..core.translation_manager import TrContext
 from .ui_styles import card_frame_style, primary_button_style, secondary_button_style
 
 
@@ -203,7 +203,7 @@ class ThemeLanguageSelectionDialog(QDialog):
         self.language_cards = {}
         
         # Localized window title
-        self.setWindowTitle(TrStrings.THEME_LANGUAGE())
+        self.setWindowTitle(QCoreApplication.translate("Settings", "Theme & Language"))
         self.setMinimumSize(800, 600)
         self.setup_ui()
     
@@ -212,7 +212,7 @@ class ThemeLanguageSelectionDialog(QDialog):
         layout = QVBoxLayout()
         
         # Title (localized)
-        title_label = QLabel(tr(TrContext.DIALOGS, "Choose Your Theme & Language"))
+        title_label = QLabel(QCoreApplication.translate("Dialogs", "Choose Your Theme & Language"))
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setFont(QFont("Arial", 16, QFont.Bold))
         # Use palette highlight color for title to avoid hardcoded color
@@ -224,7 +224,7 @@ class ThemeLanguageSelectionDialog(QDialog):
         layout.addWidget(title_label)
         
         # Theme Selection (localized)
-        theme_section = QLabel(tr(TrContext.SETTINGS, "Select Theme"))
+        theme_section = QLabel(QCoreApplication.translate("Settings", "Select Theme"))
         theme_section.setFont(QFont("Arial", 12, QFont.Bold))
         layout.addWidget(theme_section)
         
@@ -264,7 +264,7 @@ class ThemeLanguageSelectionDialog(QDialog):
         layout.addWidget(theme_scroll)
         
         # Language Selection (localized)
-        language_section = QLabel(tr(TrContext.SETTINGS, "Select Language"))
+        language_section = QLabel(QCoreApplication.translate("Settings", "Select Language"))
         language_section.setFont(QFont("Arial", 12, QFont.Bold))
         layout.addWidget(language_section)
         
@@ -280,15 +280,12 @@ class ThemeLanguageSelectionDialog(QDialog):
         # Create language cards
         languages = {
             "🇺🇸 English": "en",
-            "🇸🇦 العربية": "ar", 
             "🇫🇷 Français": "fr"
         }
         
         for display_name, language_value in languages.items():
             if language_value == "en":
                 language_type = LanguageType.ENGLISH
-            elif language_value == "ar":
-                language_type = LanguageType.ARABIC
             elif language_value == "fr":
                 language_type = LanguageType.FRENCH
             
@@ -310,12 +307,12 @@ class ThemeLanguageSelectionDialog(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
         
-        apply_btn = QPushButton(tr(TrContext.DIALOGS, "Apply Selection"))
+        apply_btn = QPushButton(QCoreApplication.translate("Dialogs", "Apply Selection"))
         apply_btn.clicked.connect(self.apply_selection)
         apply_btn.setDefault(True)
         apply_btn.setStyleSheet(primary_button_style())
         
-        cancel_btn = QPushButton(TrStrings.CANCEL())
+        cancel_btn = QPushButton(QCoreApplication.translate("Dialogs", "Cancel"))
         cancel_btn.clicked.connect(self.reject)
         cancel_btn.setStyleSheet(secondary_button_style())
         

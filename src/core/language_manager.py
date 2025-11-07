@@ -18,7 +18,6 @@ logger = setup_logger("LanguageManager")
 class LanguageType(Enum):
     """Available language types."""
     ENGLISH = "en"
-    ARABIC = "ar"
     FRENCH = "fr"
 
 
@@ -139,105 +138,6 @@ class LanguageManager(QObject):
                 "stm32": "STM32",
                 "arduino": "Arduino",
                 "unknown_device": "Unknown Device",
-            },
-            
-            LanguageType.ARABIC.value: {
-                # Main Interface
-                "app_title": "مدير أجهزة AWG Kumulus الإصدار 1.0.0",
-                "device_manager": "مدير الأجهزة",
-                "firmware_manager": "مدير البرامج الثابتة",
-                "settings": "الإعدادات",
-                "help": "المساعدة",
-                
-                # Device Management
-                "refresh_devices": "تحديث الأجهزة",
-                "device_history": "تاريخ الأجهزة",
-                "device_templates": "قوالب الأجهزة",
-                "search_devices": "البحث في الأجهزة",
-                "flash_firmware": "تثبيت البرنامج الثابت",
-                "generate_report": "إنشاء تقرير",
-                "send_email": "إرسال بريد إلكتروني",
-                "onedrive_sync": "مزامنة OneDrive",
-                
-                # Device Information
-                "device_name": "اسم الجهاز",
-                "device_type": "نوع الجهاز",
-                "port": "المنفذ",
-                "status": "الحالة",
-                "firmware_version": "إصدار البرنامج الثابت",
-                "health_score": "درجة الصحة",
-                "last_seen": "آخر ظهور",
-                "connection_count": "عدد الاتصالات",
-                
-                # Status Messages
-                "connected": "متصل",
-                "disconnected": "غير متصل",
-                "unknown": "غير معروف",
-                "detected": "تم اكتشافه",
-                "new_device": "جهاز جديد",
-                "device_disconnected": "تم قطع الاتصال بالجهاز",
-                
-                # Settings
-                "theme_settings": "إعدادات المظهر",
-                "language_settings": "إعدادات اللغة",
-                "email_settings": "إعدادات البريد الإلكتروني",
-                "machine_settings": "إعدادات الجهاز",
-                "onedrive_settings": "إعدادات OneDrive",
-                
-                # Themes
-                "light_theme": "المظهر الفاتح",
-                "dark_theme": "المظهر الداكن",
-                "custom_theme": "مظهر مخصص",
-                "apply_theme": "تطبيق المظهر",
-                "create_custom_theme": "إنشاء مظهر مخصص",
-                "theme_name": "اسم المظهر",
-                "window_color": "لون النافذة",
-                "text_color": "لون النص",
-                "button_color": "لون الزر",
-                "highlight_color": "لون التمييز",
-                "choose_color": "اختيار اللون",
-                
-                # Languages
-                "english": "الإنجليزية",
-                "arabic": "العربية",
-                "french": "الفرنسية",
-                "select_language": "اختيار اللغة",
-                "apply_language": "تطبيق اللغة",
-                
-                # Common Actions
-                "ok": "موافق",
-                "cancel": "إلغاء",
-                "apply": "تطبيق",
-                "save": "حفظ",
-                "delete": "حذف",
-                "create": "إنشاء",
-                "edit": "تعديل",
-                "close": "إغلاق",
-                "refresh": "تحديث",
-                "search": "بحث",
-                "browse": "تصفح",
-                "upload": "رفع",
-                "download": "تحميل",
-                
-                # Messages
-                "theme_applied": "تم تطبيق المظهر",
-                "language_applied": "تم تطبيق اللغة",
-                "settings_saved": "تم حفظ الإعدادات",
-                "operation_successful": "تمت العملية بنجاح",
-                "operation_failed": "فشلت العملية",
-                "please_wait": "يرجى الانتظار",
-                "loading": "جاري التحميل",
-                "error": "خطأ",
-                "warning": "تحذير",
-                "information": "معلومات",
-                "success": "نجح",
-                
-                # Device Types
-                "esp32": "ESP32",
-                "esp8266": "ESP8266",
-                "stm32": "STM32",
-                "arduino": "Arduino",
-                "unknown_device": "جهاز غير معروف",
             },
             
             LanguageType.FRENCH.value: {
@@ -374,7 +274,6 @@ class LanguageManager(QObject):
         """Get list of available languages."""
         return {
             "🇺🇸 English": LanguageType.ENGLISH.value,
-            "🇸🇦 العربية": LanguageType.ARABIC.value,
             "🇫🇷 Français": LanguageType.FRENCH.value,
         }
     
@@ -389,8 +288,6 @@ class LanguageManager(QObject):
         """Apply language by name."""
         if language_name == LanguageType.ENGLISH.value:
             self.apply_language(LanguageType.ENGLISH)
-        elif language_name == LanguageType.ARABIC.value:
-            self.apply_language(LanguageType.ARABIC)
         elif language_name == LanguageType.FRENCH.value:
             self.apply_language(LanguageType.FRENCH)
     
@@ -404,4 +301,4 @@ class LanguageManager(QObject):
     
     def is_rtl_language(self) -> bool:
         """Check if current language is right-to-left."""
-        return self.current_language == LanguageType.ARABIC
+        return False

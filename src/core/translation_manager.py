@@ -1,9 +1,15 @@
 """
 Translation utilities using QCoreApplication.translate().
 Provides proper Qt translation support with pylupdate compatibility.
+
+Implements full i18n logic:
+- Language enum with locale codes (en_US, fr_FR)
+- QTranslator management and dynamic switching
+- QLocale default setting for number/date formatting
+- .qm loading from translations/ directory (app data and project root)
 """
 
-from PySide6.QtCore import QCoreApplication, QTranslator, QLocale
+from PySide6.QtCore import QCoreApplication, QTranslator, QLocale, QSettings, Qt
 from PySide6.QtWidgets import QApplication
 import os
 from pathlib import Path
@@ -14,86 +20,161 @@ from .logger import setup_logger
 logger = setup_logger("TranslationManager")
 
 
+class Language:
+    """Language constants with locale codes."""
+    ENGLISH = "en"      # en_US
+    FRENCH = "fr"       # fr_FR
+
+    @staticmethod
+    def to_locale_code(lang: str) -> str:
+        return {
+            Language.ENGLISH: "en_US",
+            Language.FRENCH: "fr_FR",
+        }.get(lang, "en_US")
+
+    @staticmethod
+    def is_rtl(lang: str) -> bool:
+        # No RTL languages supported in current configuration
+        return False
+
+
 class TranslationManager:
     """Manages Qt translations using QCoreApplication.translate()."""
     
     def __init__(self):
         self.translator = QTranslator()
-        self.current_language = "en"
+        self.current_language = Language.ENGLISH
         self.translations_dir = Path(Config.get_app_data_dir()) / "translations"
         self.translations_dir.mkdir(exist_ok=True)
         
         # Load saved language
         self._load_saved_language()
+        self._apply_locale_and_direction()
         self._load_translation()
     
     def _load_saved_language(self):
-        """Load saved language from config."""
+        """Load saved language from settings or legacy config."""
         try:
+            # Prefer QSettings per i18n requirements
+            settings = QSettings("AWG", "KumulusDeviceManager")
+            saved = settings.value("language", None)
+            if isinstance(saved, str) and saved in (Language.ENGLISH, Language.FRENCH):
+                self.current_language = saved
+                return
+
+            # Legacy fallback: language.json
             config_file = Path(Config.get_app_data_dir()) / "language.json"
             if config_file.exists():
                 import json
                 with open(config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.current_language = data.get('language', 'en')
+                    legacy_lang = data.get('language', Language.ENGLISH)
+                    if legacy_lang in (Language.ENGLISH, Language.FRENCH):
+                        self.current_language = legacy_lang
+                        # Migrate to QSettings
+                        settings.setValue("language", legacy_lang)
+                        return
+                    else:
+                        # Previously saved Arabic or unknown code -> fallback to English
+                        self.current_language = Language.ENGLISH
+                        settings.setValue("language", self.current_language)
+                        return
         except Exception as e:
             logger.error(f"Failed to load saved language: {e}")
-            self.current_language = "en"
+            self.current_language = Language.ENGLISH
     
     def _save_language(self):
-        """Save current language to config."""
+        """Persist current language to QSettings (and legacy file for compatibility)."""
         try:
+            settings = QSettings("AWG", "KumulusDeviceManager")
+            settings.setValue("language", self.current_language)
+            # Also write legacy file to keep older versions in sync
             config_file = Path(Config.get_app_data_dir()) / "language.json"
             import json
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump({'language': self.current_language}, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save language: {e}")
+
+    def _apply_locale_and_direction(self):
+        """Set default locale and layout direction based on current language."""
+        app = QApplication.instance()
+        # Set default QLocale for number/date formatting
+        locale_code = Language.to_locale_code(self.current_language)
+        try:
+            locale = QLocale(locale_code)
+            QLocale.setDefault(locale)
+            logger.debug(f"Set QLocale default to {locale_code}")
+        except Exception as e:
+            logger.debug(f"Failed to set QLocale {locale_code}: {e}")
+        # Set application layout direction
+        if app:
+            app.setLayoutDirection(Qt.RightToLeft if Language.is_rtl(self.current_language) else Qt.LeftToRight)
     
-    def _load_translation(self):
-        """Load translation file for current language."""
+    def _load_translation(self) -> bool:
+        """Load translation file for current language.
+        
+        Returns True if a translation was loaded, False otherwise.
+        """
         app = QApplication.instance()
         if not app:
-            return
-        
-        # Remove existing translator
+            return False
+
+        # Remove any existing translator first
         app.removeTranslator(self.translator)
-        
-        # Load new translation if not English
-        if self.current_language != "en":
-            # Primary: user app-data translations
-            translation_file = self.translations_dir / f"app_{self.current_language}.qm"
-            loaded = False
-            if translation_file.exists():
-                if self.translator.load(str(translation_file)):
+
+        # English uses no translator
+        if self.current_language == Language.ENGLISH:
+            return True
+
+        loaded = False
+
+        # Primary: user app-data translations
+        translation_file = self.translations_dir / f"app_{self.current_language}.qm"
+        if translation_file.exists():
+            if self.translator.load(str(translation_file)):
+                app.installTranslator(self.translator)
+                logger.info(f"Loaded translation from app data: {self.current_language}")
+                loaded = True
+            else:
+                logger.warning(f"Failed to load app-data translation: {self.current_language}")
+
+        # Fallback: project translations directory (developer environment)
+        if not loaded:
+            try:
+                from pathlib import Path as _Path
+                project_dir = _Path(__file__).resolve().parents[2]  # repo root
+                fallback = project_dir / "translations" / f"app_{self.current_language}.qm"
+                if fallback.exists() and self.translator.load(str(fallback)):
                     app.installTranslator(self.translator)
-                    logger.info(f"Loaded translation from app data: {self.current_language}")
+                    logger.info(f"Loaded translation from project: {self.current_language}")
                     loaded = True
-                else:
-                    logger.warning(f"Failed to load app-data translation: {self.current_language}")
+            except Exception as e:
+                logger.debug(f"Fallback translation load error: {e}")
 
-            # Fallback: project translations directory (developer environment)
-            if not loaded:
-                try:
-                    from pathlib import Path as _Path
-                    project_dir = _Path(__file__).resolve().parents[2]  # repo root
-                    fallback = project_dir / "translations" / f"app_{self.current_language}.qm"
-                    if fallback.exists() and self.translator.load(str(fallback)):
-                        app.installTranslator(self.translator)
-                        logger.info(f"Loaded translation from project: {self.current_language}")
-                        loaded = True
-                except Exception as e:
-                    logger.debug(f"Fallback translation load error: {e}")
+        if not loaded:
+            # Ensure we run with English and without a translator
+            app.removeTranslator(self.translator)
+            logger.warning(f"No translation file found for: {self.current_language}. Falling back to English.")
 
-            if not loaded:
-                logger.warning(f"No translation file found for: {self.current_language}")
+        return loaded
     
     def set_language(self, language_code: str):
-        """Set application language."""
+        """Set application language.
+        Applies the translator if available; otherwise falls back to English.
+        """
         self.current_language = language_code
-        self._save_language()
-        self._load_translation()
-        logger.info(f"Language changed to: {language_code}")
+        # Apply locale and layout first to ensure immediate UI direction change
+        self._apply_locale_and_direction()
+        loaded = self._load_translation()
+        if loaded:
+            self._save_language()
+            logger.info(f"Language changed to: {language_code}")
+        else:
+            # Fall back to English and persist the fallback to avoid repeated warnings
+            self.current_language = Language.ENGLISH
+            self._save_language()
+            logger.info("Translation missing; language set to English (fallback)")
     
     def get_current_language(self) -> str:
         """Get current language code."""
@@ -101,7 +182,7 @@ class TranslationManager:
     
     def is_rtl_language(self) -> bool:
         """Check if current language is right-to-left."""
-        return self.current_language == "ar"
+        return Language.is_rtl(self.current_language)
 
 
 def tr(context: str, text: str, disambiguation: str = None, n: int = -1) -> str:
