@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
     QSpinBox, QTabWidget, QInputDialog
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication
 from PySide6.QtGui import QFont, QRegularExpressionValidator
 
 from ..core.config import Config
@@ -21,7 +21,7 @@ from ..core.firmware_flasher import FirmwareFlasher
 from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
 from ..core.theme_manager import ThemeManager, ThemeType
-from ..core.translation_manager import TranslationManager, tr, TrContext
+from ..core.translation_manager import TranslationManager, TrContext
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 
@@ -76,6 +76,20 @@ class MainWindow(QMainWindow):
         
         # Update UI text with current language
         self.update_ui_text()
+
+        # Add language selector to status bar now that translation manager exists
+        self.language_combo = QComboBox()
+        self.language_combo.addItem("English", "en")
+        self.language_combo.addItem("Français", "fr")
+        current_lang = self.translation_manager.get_current_language()
+        try:
+            codes = [self.language_combo.itemData(i) for i in range(self.language_combo.count())]
+            index = codes.index(current_lang) if current_lang in codes else 0
+        except Exception:
+            index = 0
+        self.language_combo.setCurrentIndex(index)
+        self.language_combo.currentIndexChanged.connect(self.on_language_combo_changed)
+        self.statusBar().addPermanentWidget(self.language_combo)
         
         # Auto-detect devices on startup
         QTimer.singleShot(500, self.refresh_devices)
@@ -89,7 +103,7 @@ class MainWindow(QMainWindow):
     
     def setup_ui(self):
         """Set up the user interface."""
-        self.setWindowTitle(tr("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
+        self.setWindowTitle(QCoreApplication.translate("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
         self.setMinimumSize(1200, 800)
         
         # Center window on screen
@@ -116,7 +130,7 @@ class MainWindow(QMainWindow):
         splitter.setSizes([400, 800])
         
         # Status bar
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Ready"))
     
     def create_device_panel(self):
         """Create the device list panel."""
@@ -133,20 +147,20 @@ class MainWindow(QMainWindow):
         self.device_table.setColumnCount(8)
         # Use default headers initially, will be updated by language manager
         self.device_table.setHorizontalHeaderLabels([
-            tr("MainWindow", "Port"), 
-            tr("MainWindow", "Type"), 
+            QCoreApplication.translate("MainWindow", "Port"), 
+            QCoreApplication.translate("MainWindow", "Type"), 
             "VID:PID", 
-            tr("MainWindow", "Status"), 
-            tr("MainWindow", "Health"), 
-            tr("MainWindow", "Name"), 
-            tr("MainWindow", "Last Seen"), 
-            tr("MainWindow", "Action")
+            QCoreApplication.translate("MainWindow", "Status"), 
+            QCoreApplication.translate("MainWindow", "Health"), 
+            QCoreApplication.translate("MainWindow", "Name"), 
+            QCoreApplication.translate("MainWindow", "Last Seen"), 
+            QCoreApplication.translate("MainWindow", "Action")
         ])
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.device_table)
         
         # Refresh button
-        refresh_btn = QPushButton(f"[{tr('MainWindow', 'REFRESH')}] {tr('MainWindow', 'Refresh Devices')}")
+        refresh_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'REFRESH')}] {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
         refresh_btn.clicked.connect(self.refresh_devices)
         layout.addWidget(refresh_btn)
         self.refresh_btn = refresh_btn  # Store as instance variable for translation
@@ -154,17 +168,17 @@ class MainWindow(QMainWindow):
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Device History"))
+        history_btn = QPushButton(QCoreApplication.translate("MainWindow", "Device History"))
         history_btn.clicked.connect(self.show_device_history_dialog)
         device_mgmt_layout.addWidget(history_btn)
         self.history_btn = history_btn  # Store as instance variable for translation
         
-        templates_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Templates"))
+        templates_btn = QPushButton(QCoreApplication.translate("MainWindow", "Templates"))
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         device_mgmt_layout.addWidget(templates_btn)
         self.templates_btn = templates_btn  # Store as instance variable for translation
         
-        search_btn = QPushButton(tr(TrContext.MAIN_WINDOW, "Search"))
+        search_btn = QPushButton(QCoreApplication.translate("MainWindow", "Search"))
         search_btn.clicked.connect(self.show_device_search_dialog)
         device_mgmt_layout.addWidget(search_btn)
         self.search_btn = search_btn  # Store as instance variable for translation
@@ -179,15 +193,15 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(panel)
         
         # Operator info group
-        op_group = QGroupBox(tr("MainWindow", "Operator Information"))
+        op_group = QGroupBox(QCoreApplication.translate("MainWindow", "Operator Information"))
         op_layout = QVBoxLayout()
         
-        op_layout.addWidget(QLabel(tr("MainWindow", "Name:")))
+        op_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Name:")))
         self.operator_name = QLineEdit()
         self.operator_name.setText(self.config.get('operator', {}).get('name', ''))
         op_layout.addWidget(self.operator_name)
         
-        op_layout.addWidget(QLabel(tr("MainWindow", "Email:")))
+        op_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Email:")))
         self.operator_email = QLineEdit()
         self.operator_email.setText(self.config.get('operator', {}).get('email', ''))
         op_layout.addWidget(self.operator_email)
@@ -196,10 +210,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(op_group)
         
         # Machine info group
-        machine_group = QGroupBox(tr("MainWindow", "Machine Information"))
+        machine_group = QGroupBox(QCoreApplication.translate("MainWindow", "Machine Information"))
         machine_layout = QVBoxLayout()
         
-        machine_layout.addWidget(QLabel(tr("MainWindow", "Machine Type:")))
+        machine_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Machine Type:")))
         self.machine_type = QComboBox()
         self.update_machine_type_combo()
         machine_type_idx = list(Config.get_machine_types(self.config).keys()).index(
@@ -210,23 +224,23 @@ class MainWindow(QMainWindow):
         machine_layout.addWidget(self.machine_type)
         
         # Machine ID composed of prefix + numeric suffix
-        machine_layout.addWidget(QLabel(tr("MainWindow", "Machine ID:")))
+        machine_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Machine ID:")))
         # Read-only field showing the composed ID
         self.machine_id = QLineEdit()
         self.machine_id.setReadOnly(True)
-        self.machine_id.setPlaceholderText(tr("MainWindow", "Enter machine ID"))
+        self.machine_id.setPlaceholderText(QCoreApplication.translate("MainWindow", "Enter machine ID"))
         machine_layout.addWidget(self.machine_id)
 
         # Display the current prefix and provide an editable suffix dropdown
         prefix_row = QHBoxLayout()
-        prefix_row.addWidget(QLabel(tr("MainWindow", "ID Prefix:")))
+        prefix_row.addWidget(QLabel(QCoreApplication.translate("MainWindow", "ID Prefix:")))
         self.machine_id_prefix_display = QLabel("-")
         self.machine_id_prefix_display.setStyleSheet("font-family: monospace; font-weight: bold;")
         prefix_row.addWidget(self.machine_id_prefix_display)
         machine_layout.addLayout(prefix_row)
 
         suffix_row = QHBoxLayout()
-        suffix_row.addWidget(QLabel(tr("MainWindow", "ID Suffix:")))
+        suffix_row.addWidget(QLabel(QCoreApplication.translate("MainWindow", "ID Suffix:")))
         self.machine_id_suffix = QComboBox()
         self.machine_id_suffix.setEditable(True)
         self.machine_id_suffix.setInsertPolicy(QComboBox.NoInsert)
@@ -245,22 +259,28 @@ class MainWindow(QMainWindow):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        export_btn = QPushButton(f"[{tr('MainWindow', 'REPORT')}] {tr('MainWindow', 'Generate Excel Report')}")
+        export_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'REPORT')}] {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
         export_btn.clicked.connect(self.generate_report)
         button_layout.addWidget(export_btn)
         self.report_btn = export_btn  # Store as instance variable for translation
         
-        email_btn = QPushButton(f"[{tr('MainWindow', 'EMAIL')}] {tr('MainWindow', 'Send Email')}")
+        email_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'EMAIL')}] {QCoreApplication.translate('MainWindow', 'Send Email')}")
         email_btn.clicked.connect(self.send_email)
         button_layout.addWidget(email_btn)
         self.email_btn = email_btn  # Store as instance variable for translation
         
-        flash_btn = QPushButton(f"[{tr('MainWindow', 'FLASH')}] {tr('MainWindow', 'Flash Firmware')}")
+        flash_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'FLASH')}] {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         button_layout.addWidget(flash_btn)
         self.flash_btn = flash_btn  # Store as instance variable for translation
-        
-        theme_lang_btn = QPushButton(f"🎨 {tr('MainWindow', 'Theme & Language')}")
+
+        # Open STM32 Project
+        open_stm32_btn = QPushButton(QCoreApplication.translate("MainWindow", "Open STM32 Project"))
+        open_stm32_btn.clicked.connect(self.open_stm32_project_dialog)
+        button_layout.addWidget(open_stm32_btn)
+        self.open_stm32_btn = open_stm32_btn  # Store for translation
+
+        theme_lang_btn = QPushButton(f"🎨 {QCoreApplication.translate('MainWindow', 'Theme & Language')}")
         theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
         theme_lang_btn.setStyleSheet("""
             QPushButton {
@@ -281,23 +301,23 @@ class MainWindow(QMainWindow):
         """)
         button_layout.addWidget(theme_lang_btn)
         self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
-        
+
         layout.addLayout(button_layout)
         
         # Settings buttons
         settings_layout = QHBoxLayout()
         
-        email_settings_btn = QPushButton(f"[{tr('Settings', 'CONFIG')}] {tr('Settings', 'Configure Email')}")
+        email_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'CONFIG')}] {QCoreApplication.translate('Settings', 'Configure Email')}")
         email_settings_btn.clicked.connect(self.configure_email_dialog)
         settings_layout.addWidget(email_settings_btn)
         self.email_settings_btn = email_settings_btn  # Store as instance variable for translation
         
-        machine_settings_btn = QPushButton(f"[{tr('Settings', 'MACHINE')}] {tr('Settings', 'Machine Types')}")
+        machine_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'MACHINE')}] {QCoreApplication.translate('Settings', 'Machine Types')}")
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
         settings_layout.addWidget(machine_settings_btn)
         self.machine_settings_btn = machine_settings_btn  # Store as instance variable for translation
         
-        onedrive_settings_btn = QPushButton(f"[{tr('Settings', 'ONEDRIVE')}] {tr('Settings', 'OneDrive')}")
+        onedrive_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'ONEDRIVE')}] {QCoreApplication.translate('Settings', 'OneDrive')}")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
@@ -310,7 +330,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar)
         
         # Log area
-        log_label = QLabel(tr("MainWindow", "Logs:"))
+        log_label = QLabel(QCoreApplication.translate("MainWindow", "Logs:"))
         layout.addWidget(log_label)
         
         self.log_area = QTextEdit()
@@ -322,10 +342,10 @@ class MainWindow(QMainWindow):
     
     def refresh_devices(self):
         """Refresh the device list."""
-        self.statusBar().showMessage(tr("MainWindow", "Scanning for devices..."))
+        self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Scanning for devices..."))
         self.devices = self.device_detector.detect_devices()
         self.update_device_table()
-        self.statusBar().showMessage(tr("MainWindow", "Found {count} device(s)").format(count=len(self.devices)))
+        self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Found {count} device(s)").format(count=len(self.devices)))
     
     def update_device_table(self):
         """Update the device table with current devices."""
@@ -2367,71 +2387,117 @@ Please find the attached Excel report with complete device information including
     def update_ui_text(self):
         """Update UI text with current language using Qt translation."""
         # Update window title
-        self.setWindowTitle(tr("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
+        self.setWindowTitle(QCoreApplication.translate("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
         
         # Update main buttons
         if hasattr(self, 'refresh_btn'):
-            self.refresh_btn.setText(f"[{tr('MainWindow', 'REFRESH')}] {tr('MainWindow', 'Refresh Devices')}")
+            self.refresh_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'REFRESH')}] {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
         
         if hasattr(self, 'history_btn'):
-            self.history_btn.setText(f"[{tr('MainWindow', 'HISTORY')}] {tr('MainWindow', 'Device History')}")
+            self.history_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'HISTORY')}] {QCoreApplication.translate('MainWindow', 'Device History')}")
         
         if hasattr(self, 'templates_btn'):
-            self.templates_btn.setText(f"[{tr('MainWindow', 'TEMPLATES')}] {tr('MainWindow', 'Templates')}")
+            self.templates_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'TEMPLATES')}] {QCoreApplication.translate('MainWindow', 'Templates')}")
         
         if hasattr(self, 'search_btn'):
-            self.search_btn.setText(f"[{tr('MainWindow', 'SEARCH')}] {tr('MainWindow', 'Search')}")
+            self.search_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'SEARCH')}] {QCoreApplication.translate('MainWindow', 'Search')}")
         
         if hasattr(self, 'flash_btn'):
-            self.flash_btn.setText(f"[{tr('MainWindow', 'FLASH')}] {tr('MainWindow', 'Flash Firmware')}")
+            self.flash_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'FLASH')}] {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
         
         if hasattr(self, 'report_btn'):
-            self.report_btn.setText(f"[{tr('MainWindow', 'REPORT')}] {tr('MainWindow', 'Generate Excel Report')}")
+            self.report_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'REPORT')}] {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
         
         if hasattr(self, 'email_btn'):
-            self.email_btn.setText(f"[{tr('MainWindow', 'EMAIL')}] {tr('MainWindow', 'Send Email')}")
+            self.email_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'EMAIL')}] {QCoreApplication.translate('MainWindow', 'Send Email')}")
         
         if hasattr(self, 'theme_lang_btn'):
-            self.theme_lang_btn.setText(f"🎨 {tr('MainWindow', 'Theme & Language')}")
+            self.theme_lang_btn.setText(f"🎨 {QCoreApplication.translate('MainWindow', 'Theme & Language')}")
+
+        if hasattr(self, 'open_stm32_btn'):
+            self.open_stm32_btn.setText(QCoreApplication.translate('MainWindow', 'Open STM32 Project'))
         
         # Update settings buttons
         if hasattr(self, 'email_settings_btn'):
-            self.email_settings_btn.setText(f"[{tr('Settings', 'CONFIG')}] {tr('Settings', 'Configure Email')}")
+            self.email_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'CONFIG')}] {QCoreApplication.translate('Settings', 'Configure Email')}")
         
         if hasattr(self, 'machine_settings_btn'):
-            self.machine_settings_btn.setText(f"[{tr('Settings', 'MACHINE')}] {tr('Settings', 'Machine Types')}")
+            self.machine_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'MACHINE')}] {QCoreApplication.translate('Settings', 'Machine Types')}")
         
         if hasattr(self, 'onedrive_settings_btn'):
-            self.onedrive_settings_btn.setText(f"[{tr('Settings', 'ONEDRIVE')}] {tr('Settings', 'OneDrive')}")
+            self.onedrive_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'ONEDRIVE')}] {QCoreApplication.translate('Settings', 'OneDrive')}")
         
         # Update device table headers
         if hasattr(self, 'device_table'):
             headers = [
-                tr("MainWindow", "Port"),
-                tr("MainWindow", "Type"),
+                QCoreApplication.translate("MainWindow", "Port"),
+                QCoreApplication.translate("MainWindow", "Type"),
                 "VID:PID",  # Keep technical term
-                tr("MainWindow", "Status"),
-                tr("MainWindow", "Health"),
-                tr("MainWindow", "Name"),
-                tr("MainWindow", "Last Seen"),
-                tr("MainWindow", "Action")
+                QCoreApplication.translate("MainWindow", "Status"),
+                QCoreApplication.translate("MainWindow", "Health"),
+                QCoreApplication.translate("MainWindow", "Name"),
+                QCoreApplication.translate("MainWindow", "Last Seen"),
+                QCoreApplication.translate("MainWindow", "Action")
             ]
             self.device_table.setHorizontalHeaderLabels(headers)
         
         # Update log area placeholder
         if hasattr(self, 'log_area'):
-            self.log_area.setPlaceholderText(tr("MainWindow", "Loading"))
+            self.log_area.setPlaceholderText(QCoreApplication.translate("MainWindow", "Loading"))
+
+        # Update status bar message
+        self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Ready"))
+
+        # Update language combo labels (keep native script labels)
+        if hasattr(self, 'language_combo'):
+            labels = ["English", "Français"]
+            for i, label in enumerate(labels):
+                if i < self.language_combo.count():
+                    self.language_combo.setItemText(i, label)
         
         # Update status messages
-        self.log(f"[{tr('Messages', 'Language Applied')}] {tr('Messages', 'Language Applied')}")
+        self.log(f"[{QCoreApplication.translate('Messages', 'Language Applied')}] {QCoreApplication.translate('Messages', 'Language Applied')}")
     
     def show_theme_language_dialog(self):
         """Show visual theme and language selection dialog."""
         dialog = ThemeLanguageSelectionDialog(self.theme_manager, self.translation_manager, self)
         if dialog.exec() == QDialog.Accepted:
-            self.log(f"[{tr('Messages', 'Settings Applied')}] {tr('Messages', 'Theme and language settings have been applied successfully!')}")
-            QMessageBox.information(self, tr("Dialogs", "Settings Applied"), 
-                                  tr("Messages", "Theme and language settings have been applied successfully!"))
+            # Refresh all UI strings immediately after language/theme change
+            self.update_ui_text()
+
+            # Adjust layout direction for RTL languages
+            if self.translation_manager.is_rtl_language():
+                self.setLayoutDirection(Qt.RightToLeft)
+            else:
+                self.setLayoutDirection(Qt.LeftToRight)
+
+            self.log(f"[{QCoreApplication.translate('Messages', 'Settings Applied')}] {QCoreApplication.translate('Messages', 'Theme and language settings have been applied successfully!')}")
+            QMessageBox.information(self, QCoreApplication.translate("Dialogs", "Settings Applied"), 
+                                   QCoreApplication.translate("Messages", "Theme and language settings have been applied successfully!"))
+
+    def on_language_combo_changed(self, index: int):
+        """Handle language selection from status bar combo box."""
+        code = self.language_combo.itemData(index)
+        if code:
+            self.translation_manager.set_language(code)
+            # UI update is triggered by translator via LanguageChange, but ensure immediate refresh
+            self.update_ui_text()
+            # Update layout direction as well
+            if self.translation_manager.is_rtl_language():
+                self.setLayoutDirection(Qt.RightToLeft)
+            else:
+                self.setLayoutDirection(Qt.LeftToRight)
+
+    def changeEvent(self, event):
+        """React to Qt language change events by retranslating UI."""
+        from PySide6.QtCore import QEvent
+        if event.type() == QEvent.LanguageChange:
+            self.retranslateUi()
+        super().changeEvent(event)
+
+    def retranslateUi(self):
+        """Re-apply all translations to visible UI elements."""
+        self.update_ui_text()
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
@@ -2495,6 +2561,167 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(buttons)
         
         dialog.setLayout(layout)
+        dialog.exec()
+
+    def open_stm32_project_dialog(self):
+        """Ask user for local project path or Git URL, then open STM32CubeIDE."""
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QRadioButton, QLineEdit, QHBoxLayout,
+            QPushButton, QLabel, QFileDialog, QDialogButtonBox
+        )
+        from pathlib import Path
+        import subprocess
+        import shutil
+        from src.core.ide_launcher import launch_stm32cubeide, stm32cubeide_install_status
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(QCoreApplication.translate('MainWindow', 'Open STM32 Project'))
+        dialog.setMinimumWidth(560)
+
+        layout = QVBoxLayout()
+
+        # IDE status
+        ide_status_label = QLabel()
+        installed, ide_path, source = stm32cubeide_install_status()
+        if installed and ide_path:
+            ide_status_label.setText(QCoreApplication.translate('MainWindow', f'STM32CubeIDE: Found at {ide_path} (via {source})'))
+            ide_status_label.setStyleSheet('color: #2e7d32;')  # green
+        else:
+            ide_status_label.setText(QCoreApplication.translate(
+                'MainWindow',
+                'STM32CubeIDE: Not found. Install it or set env var STM32CUBEIDE_BIN to the exe path.'
+            ))
+            ide_status_label.setStyleSheet('color: #c62828;')  # red
+        layout.addWidget(ide_status_label)
+
+        # Mode selection
+        mode_local = QRadioButton(QCoreApplication.translate('MainWindow', 'Use local project path'))
+        mode_git = QRadioButton(QCoreApplication.translate('MainWindow', 'Clone from Git URL'))
+        mode_local.setChecked(True)
+        layout.addWidget(mode_local)
+        layout.addWidget(mode_git)
+
+        # Local path chooser (wrapped in a container for visibility toggle)
+        from PySide6.QtWidgets import QWidget
+        local_container = QWidget()
+        local_container_row = QHBoxLayout()
+        local_container.setLayout(local_container_row)
+        local_container_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Project Folder:')))
+        local_input = QLineEdit()
+        local_input.setPlaceholderText(QCoreApplication.translate('MainWindow', 'Select a folder containing the project'))
+        local_container_row.addWidget(local_input)
+        browse_local = QPushButton(QCoreApplication.translate('MainWindow', 'Browse...'))
+        def _browse_local():
+            d = QFileDialog.getExistingDirectory(dialog, QCoreApplication.translate('MainWindow', 'Select Project Folder'))
+            if d:
+                local_input.setText(d)
+        browse_local.clicked.connect(_browse_local)
+        local_container_row.addWidget(browse_local)
+        layout.addWidget(local_container)
+
+        # Helper hint (shown for local mode)
+        hint_label = QLabel()
+        hint_label.setStyleSheet('color: #616161; font-size: 12px;')
+        layout.addWidget(hint_label)
+
+        # Git URL (wrapped in a container for visibility toggle)
+        git_url_container = QWidget()
+        git_url_row = QHBoxLayout()
+        git_url_container.setLayout(git_url_row)
+        git_url_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Git URL:')))
+        git_url_input = QLineEdit()
+        git_url_input.setPlaceholderText('https://gitlab.com/owner/repo.git')
+        git_url_row.addWidget(git_url_input)
+        layout.addWidget(git_url_container)
+
+        dest_container = QWidget()
+        dest_row = QHBoxLayout()
+        dest_container.setLayout(dest_row)
+        dest_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Destination Folder:')))
+        dest_input = QLineEdit()
+        dest_input.setPlaceholderText(QCoreApplication.translate('MainWindow', 'Where to clone on your laptop'))
+        dest_row.addWidget(dest_input)
+        browse_dest = QPushButton(QCoreApplication.translate('MainWindow', 'Select'))
+        def _browse_dest():
+            d = QFileDialog.getExistingDirectory(dialog, QCoreApplication.translate('MainWindow', 'Select Destination Folder'))
+            if d:
+                dest_input.setText(d)
+        browse_dest.clicked.connect(_browse_dest)
+        dest_row.addWidget(browse_dest)
+        layout.addWidget(dest_container)
+
+        # Visibility toggle based on mode selection
+        def _update_mode():
+            if mode_local.isChecked():
+                local_container.setVisible(True)
+                hint_label.setVisible(True)
+                git_url_container.setVisible(False)
+                dest_container.setVisible(False)
+                hint_label.setText(QCoreApplication.translate(
+                    'MainWindow',
+                    'Tip: If the selected folder lacks a .project file, I will auto-search up to two subfolders and import the first CubeIDE project found. You can also import manually in CubeIDE via File → Import → Existing Projects into Workspace.'
+                ))
+            else:
+                local_container.setVisible(False)
+                hint_label.setVisible(True)
+                git_url_container.setVisible(True)
+                dest_container.setVisible(True)
+                hint_label.setText(QCoreApplication.translate(
+                    'MainWindow',
+                    'After cloning, I will try to auto-import the project into the workspace using the same detection logic.'
+                ))
+
+        mode_local.toggled.connect(_update_mode)
+        mode_git.toggled.connect(_update_mode)
+        _update_mode()
+
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+        dialog.setLayout(layout)
+
+        def _on_accept():
+            try:
+                if mode_local.isChecked():
+                    proj = local_input.text().strip()
+                    if not proj:
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Validation Error'), QCoreApplication.translate('Messages', 'Please select a project folder'))
+                        return
+                    p = Path(proj)
+                    if not p.exists():
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Not Found'), QCoreApplication.translate('Messages', 'Selected folder does not exist'))
+                        return
+                    ok, msg = launch_stm32cubeide(p)
+                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
+                    if not ok:
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
+                    dialog.accept()
+                else:
+                    url = git_url_input.text().strip()
+                    dest = dest_input.text().strip()
+                    if not url or not dest:
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Validation Error'), QCoreApplication.translate('Messages', 'Please provide both Git URL and destination'))
+                        return
+                    if not shutil.which('git'):
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Git Not Found'), QCoreApplication.translate('Messages', 'Please install Git and ensure it is in PATH'))
+                        return
+                    self.log(QCoreApplication.translate('Messages', 'Cloning repository...'))
+                    try:
+                        subprocess.run(['git', 'clone', url, dest], check=True)
+                    except subprocess.CalledProcessError as e:
+                        QMessageBox.critical(dialog, QCoreApplication.translate('Dialogs', 'Clone Failed'), f"{QCoreApplication.translate('Messages', 'Git clone failed')}: {e}")
+                        return
+                    self.log(QCoreApplication.translate('Messages', 'Repository cloned successfully'))
+                    ok, msg = launch_stm32cubeide(Path(dest))
+                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
+                    if not ok:
+                        QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
+                    dialog.accept()
+            except Exception as e:
+                QMessageBox.critical(dialog, QCoreApplication.translate('Dialogs', 'Error'), str(e))
+
+        buttons.accepted.connect(_on_accept)
+        buttons.rejected.connect(dialog.reject)
         dialog.exec()
     
     def show_device_templates_dialog(self):

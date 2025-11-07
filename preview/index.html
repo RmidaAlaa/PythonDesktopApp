@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Language Selector Preview</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; background: #1e1e1e; color: #ddd; margin: 0; }
+      header { padding: 16px 24px; background: #2b2b2b; border-bottom: 1px solid #3a3a3a; }
+      main { padding: 24px; max-width: 800px; margin: 0 auto; }
+      .card { background: #2b2b2b; border: 1px solid #3a3a3a; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+      .row { display: flex; gap: 12px; align-items: center; }
+      select { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; border-radius: 6px; padding: 8px 12px; }
+      .note { font-size: 13px; color: #aaa; }
+      .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; background: #6f42c1; color: #fff; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 style="margin:0">AWG Kumulus Desktop – Language Options</h1>
+    </header>
+    <main>
+      <div class="card">
+        <div class="row">
+          <label for="lang">Language:</label>
+          <select id="lang">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+          <span class="badge">Arabic removed</span>
+        </div>
+        <p class="note">This preview reflects app changes: only English and French are available. RTL layout is disabled.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">What changed</h3>
+        <ul>
+          <li>Removed Arabic from language manager and dialog.</li>
+          <li>Updated status bar selector to only English/French.</li>
+          <li>Deleted Arabic Qt translation file and build target.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">STM32CubeIDE Detection</h3>
+        <p class="note">The "Open STM32 Project" dialog now shows installation status before launching the IDE.</p>
+        <div class="row" style="gap:8px">
+          <span style="color:#2e7d32">Example (found):</span>
+          <code>STM32CubeIDE: Found at C:\\Program Files\\STMicroelectronics\\STM32CubeIDE\\STM32CubeIDE.exe (via registry)</code>
+        </div>
+        <div class="row" style="gap:8px; margin-top:8px">
+          <span style="color:#c62828">Example (not found):</span>
+          <code>STM32CubeIDE: Not found. Install it or set env var STM32CUBEIDE_BIN to the exe path.</code>
+        </div>
+        <p class="note">Detection checks environment variables, Windows Registry, common install paths, then PATH.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Open STM32 Project (Preview)</h3>
+        <div class="row">
+          <label><input type="radio" name="mode" value="local" checked> Use local project path</label>
+          <label><input type="radio" name="mode" value="git"> Clone from Git URL</label>
+        </div>
+        <div id="local" style="margin-top:10px">
+          <div class="row">
+            <label>Project Folder:</label>
+            <input type="text" placeholder="Select a folder containing the project" style="flex:1; background:#3a3a3a; color:#fff; border:1px solid #4a4a4a; border-radius:6px; padding:8px 12px;">
+            <button style="background:#444; color:#fff; border:1px solid #555; border-radius:6px; padding:8px 12px;">Browse...</button>
+          </div>
+          <p class="note">Tip: If the selected folder lacks a .project file, the app auto-searches up to two subfolders and imports the first CubeIDE project found. You can also import manually in CubeIDE (File → Import → Existing Projects into Workspace).</p>
+        </div>
+        <div id="git" style="margin-top:10px; display:none">
+          <div class="row">
+            <label>Git URL:</label>
+            <input type="text" placeholder="https://gitlab.com/owner/repo.git" style="flex:1; background:#3a3a3a; color:#fff; border:1px solid #4a4a4a; border-radius:6px; padding:8px 12px;">
+          </div>
+          <div class="row" style="margin-top:8px">
+            <label>Destination Folder:</label>
+            <input type="text" placeholder="Where to clone on your laptop" style="flex:1; background:#3a3a3a; color:#fff; border:1px solid #4a4a4a; border-radius:6px; padding:8px 12px;">
+            <button style="background:#444; color:#fff; border:1px solid #555; border-radius:6px; padding:8px 12px;">Select</button>
+          </div>
+          <p class="note">After cloning, the app attempts to auto-import the project into the workspace using the same detection logic.</p>
+        </div>
+        <script>
+          const modes = document.querySelectorAll('input[name="mode"]');
+          const local = document.getElementById('local');
+          const git = document.getElementById('git');
+          modes.forEach(m => m.addEventListener('change', () => {
+            if (m.value === 'local' && m.checked) {
+              local.style.display = 'block';
+              git.style.display = 'none';
+            } else if (m.value === 'git' && m.checked) {
+              local.style.display = 'none';
+              git.style.display = 'block';
+            }
+          }));
+        </script>
+      </div>
+    </main>
+  </body>
+</html>
