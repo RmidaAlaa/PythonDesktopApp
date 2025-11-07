@@ -1,7 +1,10 @@
 """Main application window."""
 
 import sys
-from typing import Dict
+import os
+from pathlib import Path
+import zipfile
+from typing import Dict, Optional
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QTableWidget, QTableWidgetItem, QPushButton, QLabel,
@@ -10,8 +13,8 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
     QSpinBox, QTabWidget, QInputDialog
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication
-from PySide6.QtGui import QFont, QRegularExpressionValidator
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication, QLocale, QDateTime, QUrl
+from PySide6.QtGui import QFont, QRegularExpressionValidator, QDesktopServices
 
 from ..core.config import Config
 from ..core.device_detector import DeviceDetector, Device
@@ -24,6 +27,8 @@ from ..core.theme_manager import ThemeManager, ThemeType
 from ..core.translation_manager import TranslationManager, TrContext
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
+from ..core.system_info import get_timezone, get_location
+from datetime import datetime, timedelta
 
 logger = setup_logger("MainWindow")
 
@@ -77,7 +82,36 @@ class MainWindow(QMainWindow):
         # Update UI text with current language
         self.update_ui_text()
 
-        # Add language selector to status bar now that translation manager exists
+        # Footer UI: devices count, localized date/time with UTC offset, and location/timezone
+        try:
+            # Devices count (left-most)
+            self.footer_devices_label = QLabel()
+            self.footer_clock_label = QLabel()
+            self.footer_geo_label = QLabel()
+            style = "color: #888; font-size: 11px;"
+            self.footer_devices_label.setStyleSheet(style)
+            self.footer_clock_label.setStyleSheet(style)
+            self.footer_geo_label.setStyleSheet(style)
+
+            # Initial render
+            self._update_footer_devices()
+            self._update_footer_clock()
+            self.footer_geo_label.setText(self._format_footer_geo())
+
+            # Add to status bar
+            self.statusBar().addPermanentWidget(self.footer_devices_label)
+            self.statusBar().addPermanentWidget(self.footer_clock_label)
+            self.statusBar().addPermanentWidget(self.footer_geo_label)
+
+            # Update clock every second
+            self._clock_timer = QTimer(self)
+            self._clock_timer.setInterval(1000)
+            self._clock_timer.timeout.connect(self._update_footer_clock)
+            self._clock_timer.start()
+        except Exception as e:
+            logger.warning(f"Failed to initialize improved footer UI: {e}")
+        
+        # Add language selector to status bar (right-most)
         self.language_combo = QComboBox()
         self.language_combo.addItem("English", "en")
         self.language_combo.addItem("Français", "fr")
@@ -321,6 +355,16 @@ class MainWindow(QMainWindow):
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
+
+        help_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'HELP')}] {QCoreApplication.translate('Settings', 'User Manual')}")
+        help_btn.clicked.connect(self.open_user_manual_current_lang)
+        settings_layout.addWidget(help_btn)
+        self.help_btn = help_btn
+
+        support_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'SUPPORT')}] {QCoreApplication.translate('Settings', 'Contact Support')}")
+        support_btn.clicked.connect(self.show_contact_support_dialog)
+        settings_layout.addWidget(support_btn)
+        self.support_btn = support_btn
         
         layout.addLayout(settings_layout)
         
@@ -346,6 +390,10 @@ class MainWindow(QMainWindow):
         self.devices = self.device_detector.detect_devices()
         self.update_device_table()
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Found {count} device(s)").format(count=len(self.devices)))
+        try:
+            self._update_footer_devices()
+        except Exception:
+            pass
     
     def update_device_table(self):
         """Update the device table with current devices."""
@@ -400,6 +448,102 @@ class MainWindow(QMainWindow):
         """Handle device selection."""
         self.log(f"Selected device: {device.port} ({device.board_type.value})")
         self.statusBar().showMessage(f"Selected: {device.port}")
+
+    def show_contact_support_dialog(self):
+        """Open a dialog to send logs and error description to support."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Contact Support")
+        dialog.setMinimumWidth(600)
+
+        v = QVBoxLayout()
+        v.addWidget(QLabel("Describe the issue you're experiencing:"))
+        desc = QTextEdit()
+        desc.setPlaceholderText("What happened? Steps to reproduce, expected vs actual behavior...")
+        v.addWidget(desc)
+
+        include_logs_chk = QCheckBox("Include application logs")
+        include_logs_chk.setChecked(True)
+        v.addWidget(include_logs_chk)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        v.addWidget(btns)
+        dialog.setLayout(v)
+
+        def on_accept():
+            description = desc.toPlainText().strip()
+            if not description:
+                QMessageBox.warning(dialog, "Missing Description", "Please provide a brief description of the issue.")
+                return
+
+            smtp_config = self.config.get('smtp', {})
+            if not smtp_config.get('host') or not smtp_config.get('username'):
+                QMessageBox.warning(dialog, "Email Not Configured", "Please configure SMTP settings first in Settings > Configure Email.")
+                return
+
+            # Prepare optional logs zip
+            attachment_path = None
+            try:
+                if include_logs_chk.isChecked():
+                    logs_dir = Config.LOGS_DIR
+                    zip_path = Config.APPDATA_DIR / "logs_bundle.zip"
+                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                        if logs_dir.exists():
+                            for p in logs_dir.glob('*.log'):
+                                zf.write(p, arcname=p.name)
+                    attachment_path = zip_path if zip_path.exists() else None
+            except Exception as e:
+                logger.warning(f"Failed to build logs zip: {e}")
+                attachment_path = None
+
+            # Build email body
+            operator_name = self.operator_name.text()
+            operator_email = self.operator_email.text()
+            machine_type = self.machine_type.currentText()
+            machine_id = self.machine_id.text()
+            device_summary = self._create_device_summary()
+
+            body = (
+                f"Support request from {operator_name} ({operator_email})\n\n"
+                f"Machine Type: {machine_type}\n"
+                f"Machine ID: {machine_id}\n"
+                f"Devices Detected: {len(self.devices)}\n\n"
+                f"User Description:\n{description}\n\n"
+                f"Device Details:\n{device_summary}\n"
+            )
+
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+
+            def update_progress(msg):
+                self.log(msg)
+                val = self.progress_bar.value()
+                self.progress_bar.setValue(min(100, val + 20))
+
+            success = False
+            try:
+                success = self.email_sender.send_email(
+                    smtp_config=smtp_config,
+                    recipients=["armida@kumuluswater.com"],
+                    subject=f"AWG-Kumulus Support Request - {QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm')}",
+                    body=body,
+                    attachment_path=attachment_path,
+                    progress_callback=update_progress
+                )
+            except Exception as e:
+                self.log(f"Error sending support email: {e}")
+                QMessageBox.critical(dialog, "Error", f"Failed to send support email:\n{e}")
+            finally:
+                self.progress_bar.setVisible(False)
+
+            if success:
+                QMessageBox.information(dialog, "Support Request Sent", "Your request has been sent to support. We'll get back to you soon.")
+                dialog.accept()
+            else:
+                QMessageBox.warning(dialog, "Failed", "Could not send support request. Please check SMTP settings and try again.")
+
+        btns.accepted.connect(on_accept)
+        btns.rejected.connect(dialog.reject)
+        dialog.exec()
     
     def on_machine_type_changed(self, text):
         """Handle machine type change."""
@@ -685,6 +829,10 @@ Please find the attached Excel report with complete device information including
         dialog.setMinimumWidth(600)
         
         layout = QVBoxLayout()
+        # Status banner
+        self.onedrive_status_banner = QLabel("OneDrive is currently disabled")
+        self.onedrive_status_banner.setStyleSheet("background:#fff3cd;color:#664d03;padding:10px;border:1px solid #ffe69c;border-radius:6px;")
+        layout.addWidget(self.onedrive_status_banner)
         
         # Email Provider Selection
         provider_group = QGroupBox("Email Provider")
@@ -2052,6 +2200,12 @@ Please find the attached Excel report with complete device information including
         # OneDrive Settings Tab
         settings_tab = QWidget()
         settings_layout = QVBoxLayout()
+
+        # Status banner at the top
+        self.onedrive_status_banner = QLabel("OneDrive enabled: please test and save settings")
+        self.onedrive_status_banner.setWordWrap(True)
+        self.onedrive_status_banner.setStyleSheet("background:#cff4fc;color:#055160;padding:10px;border:1px solid #b6effb;border-radius:6px;")
+        settings_layout.addWidget(self.onedrive_status_banner)
         
         # Enable OneDrive
         enable_group = QGroupBox("OneDrive Integration")
@@ -2059,6 +2213,8 @@ Please find the attached Excel report with complete device information including
         
         self.onedrive_enabled = QCheckBox("Enable OneDrive Integration")
         self.onedrive_enabled.setChecked(self.config.get('onedrive', {}).get('enabled', False))
+        self.onedrive_enabled.setToolTip("Turn on OneDrive features for saving machine data and firmware history.")
+        self.onedrive_enabled.stateChanged.connect(self._validate_onedrive_inputs)
         enable_layout.addWidget(self.onedrive_enabled)
         
         enable_group.setLayout(enable_layout)
@@ -2074,19 +2230,43 @@ Please find the attached Excel report with complete device information including
         self.onedrive_folder_path = QLineEdit()
         self.onedrive_folder_path.setText(self.config.get('onedrive', {}).get('folder_path', ''))
         self.onedrive_folder_path.setPlaceholderText("e.g., C:\\Users\\Username\\OneDrive\\SharedFolder")
+        self.onedrive_folder_path.setToolTip("The root folder where user/machine subfolders will be created.")
+        self.onedrive_folder_path.textChanged.connect(self._validate_onedrive_inputs)
         folder_layout.addWidget(self.onedrive_folder_path)
         
+        detect_btn = QPushButton("Detect")
+        detect_btn.setToolTip("Auto-detect your OneDrive folder from common locations.")
+        detect_btn.clicked.connect(self._detect_onedrive_folder)
+        folder_layout.addWidget(detect_btn)
+
         browse_folder_btn = QPushButton("[BROWSE] Browse")
         browse_folder_btn.clicked.connect(self._browse_onedrive_folder)
         folder_layout.addWidget(browse_folder_btn)
+
+        open_btn = QPushButton("Open")
+        open_btn.setToolTip("Open the selected folder in Explorer.")
+        open_btn.clicked.connect(self._open_onedrive_folder)
+        folder_layout.addWidget(open_btn)
         path_layout.addLayout(folder_layout)
+
+        # Inline path error
+        self.onedrive_path_error = QLabel("")
+        self.onedrive_path_error.setStyleSheet("color:red;font-size:11px")
+        path_layout.addWidget(self.onedrive_path_error)
         
         # User folder name
         path_layout.addWidget(QLabel("User Folder Name:"))
         self.user_folder_name = QLineEdit()
         self.user_folder_name.setText(self.config.get('onedrive', {}).get('user_folder', ''))
         self.user_folder_name.setPlaceholderText("e.g., JohnDoe_Work")
+        self.user_folder_name.setToolTip("Your personal subfolder under the shared OneDrive path (e.g., JohnDoe_Work).")
+        self.user_folder_name.textChanged.connect(self._validate_onedrive_inputs)
         path_layout.addWidget(self.user_folder_name)
+
+        # Inline user folder error
+        self.user_folder_error = QLabel("")
+        self.user_folder_error.setStyleSheet("color:red;font-size:11px")
+        path_layout.addWidget(self.user_folder_error)
         
         path_group.setLayout(path_layout)
         settings_layout.addWidget(path_group)
@@ -2110,7 +2290,7 @@ Please find the attached Excel report with complete device information including
         test_group = QGroupBox("Test Connection")
         test_layout = QVBoxLayout()
         
-        test_btn = QPushButton("[TEST] Test OneDrive Connection")
+        test_btn = QPushButton("Test OneDrive Connection")
         test_btn.clicked.connect(self.test_onedrive_connection)
         test_layout.addWidget(test_btn)
         
@@ -2235,12 +2415,15 @@ Please find the attached Excel report with complete device information including
         
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.onedrive_buttons = buttons
         buttons.accepted.connect(lambda: self.save_onedrive_settings(dialog))
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         
         dialog.setLayout(layout)
-        
+        # Initial validation and banner
+        self._validate_onedrive_inputs()
+
         if dialog.exec():
             pass  # Settings saved
     
@@ -2254,6 +2437,54 @@ Please find the attached Excel report with complete device information including
         )
         if folder_path:
             self.onedrive_folder_path.setText(folder_path)
+            self._validate_onedrive_inputs()
+
+    def _detect_onedrive_folder(self):
+        """Attempt to detect OneDrive base folder from common locations."""
+        try:
+            candidates = []
+            # Environment variables commonly set by OneDrive
+            for env_key in ("OneDrive", "OneDriveCommercial", "OneDriveConsumer"):
+                p = os.environ.get(env_key)
+                if p:
+                    candidates.append(Path(p))
+
+            # Common home subfolders
+            home = Path.home()
+            try:
+                for child in home.iterdir():
+                    if child.is_dir() and child.name.startswith("OneDrive"):
+                        candidates.append(child)
+            except Exception:
+                pass
+
+            # Prefer an existing folder
+            chosen = None
+            for c in candidates:
+                try:
+                    if c.exists() and c.is_dir():
+                        chosen = c
+                        break
+                except Exception:
+                    continue
+
+            if chosen:
+                self.onedrive_folder_path.setText(str(chosen))
+                self._validate_onedrive_inputs()
+                QMessageBox.information(self, "Detected", f"Detected OneDrive folder: {chosen}")
+            else:
+                QMessageBox.warning(self, "Not Found", "Could not auto-detect a OneDrive folder. Please browse manually.")
+        except Exception as e:
+            QMessageBox.warning(self, "Detection Error", f"Failed to detect OneDrive folder: {e}")
+
+    def _open_onedrive_folder(self):
+        """Open current OneDrive folder in Explorer if valid."""
+        try:
+            p = self.onedrive_folder_path.text().strip()
+            if p:
+                os.startfile(p)
+        except Exception as e:
+            QMessageBox.warning(self, "Open Folder", f"Failed to open folder: {e}")
     
     def test_onedrive_connection(self):
         """Test OneDrive connection."""
@@ -2275,10 +2506,12 @@ Please find the attached Excel report with complete device information including
         
         if success:
             self.onedrive_test_result.setText(f"[SUCCESS] {message}")
-            self.onedrive_test_result.setStyleSheet("color: green; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
+            self.onedrive_test_result.setStyleSheet("color:#0f5132;font-size:12px;padding:10px;border:1px solid #badbcc;border-radius:6px;background:#d1e7dd;")
+            self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=True, text="OneDrive connected")
         else:
             self.onedrive_test_result.setText(f"[ERROR] {message}")
-            self.onedrive_test_result.setStyleSheet("color: red; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
+            self.onedrive_test_result.setStyleSheet("color:#842029;font-size:12px;padding:10px;border:1px solid #f5c2c7;border-radius:6px;background:#f8d7da;")
+            self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=False, text="Connection failed")
     
     def save_onedrive_settings(self, dialog):
         """Save OneDrive settings."""
@@ -2296,6 +2529,7 @@ Please find the attached Excel report with complete device information including
         self.onedrive_manager.config = self.config
         
         QMessageBox.information(dialog, "Settings Saved", "OneDrive configuration saved successfully!")
+        self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=None, text="Settings updated")
     
     def populate_machine_history(self):
         """Populate machine history list."""
@@ -2321,6 +2555,71 @@ Please find the attached Excel report with complete device information including
             item = QListWidgetItem(item_text)
             item.setData(Qt.UserRole, machine)
             self.machine_history_list.addItem(item)
+
+    def _validate_onedrive_inputs(self):
+        """Validate inputs and update button state + banner."""
+        enabled = self.onedrive_enabled.isChecked()
+        folder = self.onedrive_folder_path.text().strip()
+        user = self.user_folder_name.text().strip()
+
+        path_ok = True
+        user_ok = True
+
+        if hasattr(self, 'onedrive_path_error') and hasattr(self, 'user_folder_error'):
+            self.onedrive_path_error.setText("")
+            self.user_folder_error.setText("")
+
+        if enabled:
+            if not folder:
+                if hasattr(self, 'onedrive_path_error'):
+                    self.onedrive_path_error.setText("Please provide a OneDrive folder path.")
+                path_ok = False
+            else:
+                try:
+                    if not Path(folder).exists():
+                        if hasattr(self, 'onedrive_path_error'):
+                            self.onedrive_path_error.setText("Folder does not exist.")
+                        path_ok = False
+                except Exception:
+                    if hasattr(self, 'onedrive_path_error'):
+                        self.onedrive_path_error.setText("Invalid folder path.")
+                    path_ok = False
+
+            if not user:
+                if hasattr(self, 'user_folder_error'):
+                    self.user_folder_error.setText("Please provide a user folder name.")
+                user_ok = False
+            else:
+                if any(ch in user for ch in ['\\\
+','/', ':', '*', '?', '"', '<', '>', '|']):
+                    if hasattr(self, 'user_folder_error'):
+                        self.user_folder_error.setText("User folder name contains invalid characters.")
+                    user_ok = False
+
+        # Enable/disable OK button
+        if hasattr(self, 'onedrive_buttons'):
+            ok_button = self.onedrive_buttons.button(QDialogButtonBox.Ok)
+            ok_button.setEnabled((not enabled) or (path_ok and user_ok))
+
+        # Update status banner
+        self._update_onedrive_status_banner(enabled=enabled, ok=(path_ok and user_ok) if enabled else None)
+
+    def _update_onedrive_status_banner(self, enabled: bool, ok: Optional[bool] = None, text: Optional[str] = None):
+        """Update the top status banner color and message."""
+        if not enabled:
+            self.onedrive_status_banner.setText(text or "OneDrive is currently disabled")
+            self.onedrive_status_banner.setStyleSheet("background:#fff3cd;color:#664d03;padding:10px;border:1px solid #ffe69c;border-radius:6px;")
+            return
+
+        if ok is True:
+            self.onedrive_status_banner.setText(text or "OneDrive ready: configuration looks valid")
+            self.onedrive_status_banner.setStyleSheet("background:#d1e7dd;color:#0f5132;padding:10px;border:1px solid #badbcc;border-radius:6px;")
+        elif ok is False:
+            self.onedrive_status_banner.setText(text or "OneDrive misconfigured: please fix highlighted fields")
+            self.onedrive_status_banner.setStyleSheet("background:#f8d7da;color:#842029;padding:10px;border:1px solid #f5c2c7;border-radius:6px;")
+        else:
+            self.onedrive_status_banner.setText(text or "OneDrive enabled: please test and save settings")
+            self.onedrive_status_banner.setStyleSheet("background:#cff4fc;color:#055160;padding:10px;border:1px solid #b6effb;border-radius:6px;")
     
     def save_operator_info(self):
         """Save operator information to config."""
@@ -2347,14 +2646,156 @@ Please find the attached Excel report with complete device information including
         logger.info(message)
     
     def show_first_run_dialog(self):
-        """Show first run setup dialog."""
+        """Show first run setup dialog with quick-access to documentation."""
         manager = BootstrapManager()
         success, warnings = manager.run_first_run_setup()
-        
+
+        # Build the dialog
+        dlg = QDialog(self)
+        dlg.setWindowTitle(QCoreApplication.translate("MainWindow", "Welcome to AWG Kumulus"))
+        layout = QVBoxLayout()
+
+        # Intro text
+        intro = QLabel(QCoreApplication.translate(
+            "MainWindow",
+            "Setup completed. You can open the README, USAGE guide, or the full user manual (English or French)."
+        ))
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
         if warnings:
             msg = "\n".join(warnings)
-            QMessageBox.information(self, "First Run Setup",
-                                  f"Setup completed with warnings:\n{msg}")
+            warn = QLabel(QCoreApplication.translate("MainWindow", "Warnings:"))
+            layout.addWidget(warn)
+            warn_text = QTextEdit()
+            warn_text.setReadOnly(True)
+            warn_text.setText(msg)
+            warn_text.setMinimumHeight(80)
+            layout.addWidget(warn_text)
+
+        # Buttons row
+        buttons = QDialogButtonBox()
+        btn_readme = buttons.addButton(QCoreApplication.translate("MainWindow", "Open README"), QDialogButtonBox.ActionRole)
+        btn_usage = buttons.addButton(QCoreApplication.translate("MainWindow", "Open USAGE"), QDialogButtonBox.ActionRole)
+        btn_manual_en = buttons.addButton(QCoreApplication.translate("MainWindow", "Manual (English)"), QDialogButtonBox.ActionRole)
+        btn_manual_fr = buttons.addButton(QCoreApplication.translate("MainWindow", "Manuel (Français)"), QDialogButtonBox.ActionRole)
+        btn_close = buttons.addButton(QDialogButtonBox.Close)
+        layout.addWidget(buttons)
+
+        # Hook up actions
+        def _project_root():
+            # Resolve project root when running from source (…/DesktopApp)
+            try:
+                return Path(__file__).resolve().parents[2]
+            except Exception:
+                return Path.cwd()
+
+        def _exe_dir():
+            # Directory of the running executable or script
+            try:
+                return Path(sys.argv[0]).resolve().parent
+            except Exception:
+                return Path.cwd()
+
+        def _meipass_dir():
+            # PyInstaller onefile temp extraction dir
+            try:
+                base = getattr(sys, "_MEIPASS", None)
+                return Path(base) if base else None
+            except Exception:
+                return None
+
+        def open_readme():
+            candidates = [
+                _project_root() / "README.md",
+                _exe_dir() / "README.md",
+                _project_root() / "release" / "Windows" / "INSTALL_README.txt",
+            ]
+            for p in candidates:
+                if p.exists():
+                    self._open_document_file(p)
+                    return
+            QMessageBox.warning(self, "README", "README file not found.")
+
+        def open_usage():
+            candidates = [
+                _project_root() / "release" / "USAGE.md",
+                _project_root() / "release" / "Windows" / "USAGE.md",
+                _exe_dir() / "USAGE.md",
+                (_meipass_dir() / "USAGE.md") if _meipass_dir() else None,
+            ]
+            for p in candidates:
+                if p.exists():
+                    self._open_document_file(p)
+                    return
+            QMessageBox.warning(self, "USAGE", "USAGE guide not found.")
+
+        def open_manual_en():
+            self._open_manual("en")
+
+        def open_manual_fr():
+            self._open_manual("fr")
+
+        btn_readme.clicked.connect(open_readme)
+        btn_usage.clicked.connect(open_usage)
+        btn_manual_en.clicked.connect(open_manual_en)
+        btn_manual_fr.clicked.connect(open_manual_fr)
+        btn_close.clicked.connect(dlg.close)
+
+        dlg.setLayout(layout)
+        dlg.exec()
+
+    def _open_document_file(self, path: Path):
+        """Open a local document file using the OS default handler."""
+        try:
+            url = QUrl.fromLocalFile(str(path))
+            QDesktopServices.openUrl(url)
+        except Exception as e:
+            QMessageBox.warning(self, "Open Document", f"Failed to open {path}: {e}")
+
+    def _open_manual(self, lang: str):
+        """Open localized HTML manual from docs/manual (handles dev and installed)."""
+        lang = (lang or "en").lower()
+        is_fr = lang.startswith("fr")
+
+        def _project_root():
+            try:
+                return Path(__file__).resolve().parents[2]
+            except Exception:
+                return Path.cwd()
+
+        def _exe_dir():
+            try:
+                return Path(sys.argv[0]).resolve().parent
+            except Exception:
+                return Path.cwd()
+
+        def _meipass_dir():
+            try:
+                base = getattr(sys, "_MEIPASS", None)
+                return Path(base) if base else None
+            except Exception:
+                return None
+
+        filenames = ["user_manual_fr.html" if is_fr else "user_manual_en.html"]
+        candidates = [
+            _project_root() / "docs" / "manual" / filenames[0],
+            _exe_dir() / "docs" / "manual" / filenames[0],
+            (_meipass_dir() / "docs" / "manual" / filenames[0]) if _meipass_dir() else None,
+        ]
+        for p in candidates:
+            if p and p.exists():
+                self._open_document_file(p)
+                return
+        QMessageBox.warning(self, "Manual", "Manual not found in expected locations.")
+
+    def open_user_manual_current_lang(self):
+        """Open manual based on current UI language."""
+        try:
+            lang = self.translation_manager.get_language_code()
+        except Exception:
+            lang = "en"
+        self._open_manual(lang)
     
     def _device_change_callback(self, event_type: str, device: Device):
         """Handle device changes from background thread using Qt signals."""
@@ -2369,11 +2810,24 @@ Please find the attached Excel report with complete device information including
         """Handle device connection in main thread."""
         self.log(f"[CONNECTED] Device connected: {device.get_display_name()}")
         self.refresh_devices()  # Refresh the device table
+        try:
+            self._update_footer_devices()
+        except Exception:
+            pass
     
     def _handle_device_disconnected(self, device: Device):
         """Handle device disconnection in main thread."""
         self.log(f"[DISCONNECTED] Device disconnected: {device.get_display_name()}")
         self.refresh_devices()  # Refresh the device table
+        try:
+            self._update_footer_devices()
+        except Exception:
+            pass
+
+    def _update_footer_devices(self):
+        """Update the footer devices count label."""
+        count = len(getattr(self, 'devices', []) or [])
+        self.footer_devices_label.setText(f"🔌 Devices found: {count}")
     
     def on_theme_changed(self, theme_name: str):
         """Handle theme change."""
@@ -2488,6 +2942,23 @@ Please find the attached Excel report with complete device information including
             else:
                 self.setLayoutDirection(Qt.LeftToRight)
 
+            # Set QLocale default to match selected language for date/time formatting
+            try:
+                if code == "fr":
+                    QLocale.setDefault(QLocale(QLocale.French, QLocale.France))
+                else:
+                    QLocale.setDefault(QLocale(QLocale.English, QLocale.UnitedStates))
+            except Exception:
+                pass
+
+            # Refresh footer labels to reflect new locale
+            try:
+                self._update_footer_clock()
+                if hasattr(self, 'footer_geo_label'):
+                    self.footer_geo_label.setText(self._format_footer_geo())
+            except Exception:
+                pass
+
     def changeEvent(self, event):
         """React to Qt language change events by retranslating UI."""
         from PySide6.QtCore import QEvent
@@ -2498,6 +2969,47 @@ Please find the attached Excel report with complete device information including
     def retranslateUi(self):
         """Re-apply all translations to visible UI elements."""
         self.update_ui_text()
+
+        # Also refresh footer texts on language change
+        try:
+            self._update_footer_clock()
+            if hasattr(self, 'footer_geo_label'):
+                self.footer_geo_label.setText(self._format_footer_geo())
+        except Exception:
+            pass
+
+    def _update_footer_clock(self):
+        """Update the footer clock label with localized date/time and UTC offset."""
+        try:
+            # Localized date & time using QLocale
+            now_qt = QDateTime.currentDateTime()
+            localized_dt = QLocale().toString(now_qt, QLocale.ShortFormat)
+
+            # UTC offset
+            now_py = datetime.now().astimezone()
+            offset = now_py.utcoffset() or timedelta(0)
+            total_minutes = int(offset.total_seconds() // 60)
+            sign = '+' if total_minutes >= 0 else '-'
+            hh = abs(total_minutes) // 60
+            mm = abs(total_minutes) % 60
+            offset_str = f"UTC{sign}{hh:02d}:{mm:02d}"
+
+            self.footer_clock_label.setText(f"🕒 {localized_dt} · {offset_str}")
+        except Exception as e:
+            logger.debug(f"Footer clock update failed: {e}")
+
+    def _format_footer_geo(self) -> str:
+        """Return formatted footer text for location and timezone."""
+        try:
+            tz = get_timezone()
+            city, country = get_location()
+            city = city or QCoreApplication.translate("Footer", "Unknown")
+            country = country or QCoreApplication.translate("Footer", "Unknown")
+            tz = tz or QCoreApplication.translate("Footer", "Unknown")
+            return f"📍 {city}, {country} · 🌐 {tz}"
+        except Exception as e:
+            logger.debug(f"Footer geo format failed: {e}")
+            return QCoreApplication.translate("Footer", "Location: Unknown")
     
     def show_device_history_dialog(self):
         """Show device history dialog."""
@@ -2567,8 +3079,10 @@ Please find the attached Excel report with complete device information including
         """Ask user for local project path or Git URL, then open STM32CubeIDE."""
         from PySide6.QtWidgets import (
             QDialog, QVBoxLayout, QRadioButton, QLineEdit, QHBoxLayout,
-            QPushButton, QLabel, QFileDialog, QDialogButtonBox
+            QPushButton, QLabel, QFileDialog, QDialogButtonBox, QListWidget,
+            QListWidgetItem, QProgressDialog, QWidget
         )
+        from PySide6.QtCore import QProcess, QSettings
         from pathlib import Path
         import subprocess
         import shutil
@@ -2650,6 +3164,23 @@ Please find the attached Excel report with complete device information including
         dest_row.addWidget(browse_dest)
         layout.addWidget(dest_container)
 
+        # Workspace selector (visible in both modes)
+        workspace_container = QWidget()
+        ws_row = QHBoxLayout()
+        workspace_container.setLayout(ws_row)
+        ws_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Workspace Folder:')))
+        workspace_input = QLineEdit()
+        workspace_input.setPlaceholderText(QCoreApplication.translate('MainWindow', 'Leave empty to use default workspace on same drive'))
+        ws_row.addWidget(workspace_input)
+        browse_ws = QPushButton(QCoreApplication.translate('MainWindow', 'Select'))
+        def _browse_ws():
+            d = QFileDialog.getExistingDirectory(dialog, QCoreApplication.translate('MainWindow', 'Select Workspace Folder'))
+            if d:
+                workspace_input.setText(d)
+        browse_ws.clicked.connect(_browse_ws)
+        ws_row.addWidget(browse_ws)
+        layout.addWidget(workspace_container)
+
         # Visibility toggle based on mode selection
         def _update_mode():
             if mode_local.isChecked():
@@ -2677,8 +3208,44 @@ Please find the attached Excel report with complete device information including
 
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok_btn = buttons.button(QDialogButtonBox.Ok)
+        ok_btn.setEnabled(False)
         layout.addWidget(buttons)
         dialog.setLayout(layout)
+
+        # Helper: simple validation for enabling OK
+        def _is_valid_git_url(u: str) -> bool:
+            return u.startswith('https://') or u.startswith('ssh://') or u.startswith('git@')
+
+        def _update_ok_enabled():
+            if mode_local.isChecked():
+                ok_btn.setEnabled(bool(local_input.text().strip()))
+            else:
+                ok_btn.setEnabled(bool(git_url_input.text().strip()) and bool(dest_input.text().strip()) and _is_valid_git_url(git_url_input.text().strip()))
+
+        # Wire validation updates
+        local_input.textChanged.connect(_update_ok_enabled)
+        git_url_input.textChanged.connect(_update_ok_enabled)
+        dest_input.textChanged.connect(_update_ok_enabled)
+        mode_local.toggled.connect(_update_ok_enabled)
+        mode_git.toggled.connect(_update_ok_enabled)
+        _update_ok_enabled()
+
+        # Persist/restore last-used inputs via QSettings
+        settings = QSettings('AWG', 'AWG Kumulus Device Manager')
+        last_mode = settings.value('open_project/mode', 'local')
+        last_local = settings.value('open_project/local_path', '')
+        last_git = settings.value('open_project/git_url', '')
+        last_dest = settings.value('open_project/dest_path', '')
+        last_ws = settings.value('open_project/workspace_path', '')
+        if last_mode == 'git':
+            mode_git.setChecked(True)
+        else:
+            mode_local.setChecked(True)
+        local_input.setText(last_local)
+        git_url_input.setText(last_git)
+        dest_input.setText(last_dest)
+        workspace_input.setText(last_ws)
 
         def _on_accept():
             try:
@@ -2691,7 +3258,16 @@ Please find the attached Excel report with complete device information including
                     if not p.exists():
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Not Found'), QCoreApplication.translate('Messages', 'Selected folder does not exist'))
                         return
-                    ok, msg = launch_stm32cubeide(p)
+                    # If multiple sub-projects found, let user choose
+                    subprojects = _scan_subprojects(p)
+                    chosen_dir = p
+                    if len(subprojects) > 1:
+                        pick = _choose_subproject(subprojects)
+                        if pick:
+                            chosen_dir = pick
+                    ws_text = workspace_input.text().strip()
+                    ws_path = Path(ws_text) if ws_text else None
+                    ok, msg = launch_stm32cubeide(chosen_dir, ws_path)
                     self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
                     if not ok:
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
@@ -2705,14 +3281,50 @@ Please find the attached Excel report with complete device information including
                     if not shutil.which('git'):
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Git Not Found'), QCoreApplication.translate('Messages', 'Please install Git and ensure it is in PATH'))
                         return
-                    self.log(QCoreApplication.translate('Messages', 'Cloning repository...'))
-                    try:
-                        subprocess.run(['git', 'clone', url, dest], check=True)
-                    except subprocess.CalledProcessError as e:
-                        QMessageBox.critical(dialog, QCoreApplication.translate('Dialogs', 'Clone Failed'), f"{QCoreApplication.translate('Messages', 'Git clone failed')}: {e}")
+                    # Use QProcess to stream clone output and allow cancel
+                    progress = QDialog(dialog)
+                    progress.setWindowTitle(QCoreApplication.translate('MainWindow', 'Cloning Repository'))
+                    pv = QVBoxLayout()
+                    log_label = QLabel(QCoreApplication.translate('MainWindow', 'Running: git clone'))
+                    pv.addWidget(log_label)
+                    log_text = QTextEdit()
+                    log_text.setReadOnly(True)
+                    pv.addWidget(log_text)
+                    pb = QDialogButtonBox(QDialogButtonBox.Cancel)
+                    pv.addWidget(pb)
+                    progress.setLayout(pv)
+                    proc = QProcess(progress)
+                    proc.setProgram('git')
+                    proc.setArguments(['clone', url, dest])
+                    def _on_out():
+                        data = bytes(proc.readAllStandardOutput()).decode(errors='ignore')
+                        log_text.append(data)
+                    def _on_err():
+                        data = bytes(proc.readAllStandardError()).decode(errors='ignore')
+                        log_text.append(data)
+                    def _on_finished(code, status):
+                        progress.accept()
+                    proc.readyReadStandardOutput.connect(_on_out)
+                    proc.readyReadStandardError.connect(_on_err)
+                    proc.finished.connect(_on_finished)
+                    pb.rejected.connect(lambda: (proc.kill(), progress.reject()))
+                    proc.start()
+                    progress.exec()
+                    if proc.exitStatus() != QProcess.NormalExit or proc.exitCode() != 0:
+                        QMessageBox.critical(dialog, QCoreApplication.translate('Dialogs', 'Clone Failed'), QCoreApplication.translate('Messages', 'Git clone failed or was cancelled'))
                         return
                     self.log(QCoreApplication.translate('Messages', 'Repository cloned successfully'))
-                    ok, msg = launch_stm32cubeide(Path(dest))
+                    # After clone, scan for subprojects and choose if multiple
+                    dest_path = Path(dest)
+                    subprojects = _scan_subprojects(dest_path)
+                    chosen_dir = dest_path
+                    if len(subprojects) > 1:
+                        pick = _choose_subproject(subprojects)
+                        if pick:
+                            chosen_dir = pick
+                    ws_text = workspace_input.text().strip()
+                    ws_path = Path(ws_text) if ws_text else None
+                    ok, msg = launch_stm32cubeide(chosen_dir, ws_path)
                     self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
                     if not ok:
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
@@ -2722,6 +3334,14 @@ Please find the attached Excel report with complete device information including
 
         buttons.accepted.connect(_on_accept)
         buttons.rejected.connect(dialog.reject)
+        # Persist on close
+        def _persist():
+            settings.setValue('open_project/mode', 'git' if mode_git.isChecked() else 'local')
+            settings.setValue('open_project/local_path', local_input.text().strip())
+            settings.setValue('open_project/git_url', git_url_input.text().strip())
+            settings.setValue('open_project/dest_path', dest_input.text().strip())
+            settings.setValue('open_project/workspace_path', workspace_input.text().strip())
+        dialog.finished.connect(lambda _: _persist())
         dialog.exec()
     
     def show_device_templates_dialog(self):
@@ -2900,4 +3520,62 @@ Please find the attached Excel report with complete device information including
             self.device_detector.delete_device_template(template_name)
             QMessageBox.information(dialog, "Success", f"Template '{template_name}' deleted successfully!")
             dialog.accept()  # Close and reopen to refresh
+
+        local_input.textChanged.connect(_update_ok_enabled)
+        git_url_input.textChanged.connect(_update_ok_enabled)
+        dest_input.textChanged.connect(_update_ok_enabled)
+        mode_local.toggled.connect(_update_ok_enabled)
+        mode_git.toggled.connect(_update_ok_enabled)
+        _update_ok_enabled()
+
+        # Helper: scan for sub-projects containing .project up to depth 2
+        def _scan_subprojects(base: Path) -> list[Path]:
+            results: list[Path] = []
+            try:
+                max_dirs = 4000
+                seen = 0
+                for dirpath, dirnames, filenames in os.walk(base):
+                    try:
+                        rel = Path(dirpath).relative_to(base)
+                        depth = len(rel.parts)
+                    except Exception:
+                        depth = 0
+                    if depth > 2:
+                        dirnames[:] = []
+                        continue
+                    if '.project' in filenames:
+                        results.append(Path(dirpath))
+                    seen += 1
+                    if seen >= max_dirs:
+                        break
+            except Exception:
+                pass
+            return results
+
+        # Helper: choose subproject when multiple found
+        def _choose_subproject(paths: list[Path]) -> Optional[Path]:
+            chooser = QDialog(dialog)
+            chooser.setWindowTitle(QCoreApplication.translate('MainWindow', 'Select Sub-Project'))
+            chooser.setMinimumWidth(560)
+            v = QVBoxLayout()
+            v.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Multiple CubeIDE projects were detected. Please select one:')))
+            lw = QListWidget()
+            for p in paths:
+                item = QListWidgetItem(str(p))
+                lw.addItem(item)
+            v.addWidget(lw)
+            bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            v.addWidget(bb)
+            chooser.setLayout(v)
+            chosen: Optional[Path] = None
+            def _ok():
+                nonlocal chosen
+                it = lw.currentItem()
+                if it:
+                    chosen = Path(it.text())
+                    chooser.accept()
+            bb.accepted.connect(_ok)
+            bb.rejected.connect(chooser.reject)
+            chooser.exec()
+            return chosen
 

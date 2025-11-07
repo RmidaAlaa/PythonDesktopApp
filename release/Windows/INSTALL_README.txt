@@ -19,7 +19,7 @@ Notes:
 
 Localization:
 - The app defaults to English if translation files are not installed.
-- For Arabic/French support, install Qt Linguist tools and rebuild `.qm` files.
+- For French support, install Qt Linguist tools and rebuild `.qm` files.
 
 Support:
 - If you see missing module warnings, contact support to get a new build.

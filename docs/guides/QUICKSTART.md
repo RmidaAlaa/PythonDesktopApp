@@ -94,3 +94,9 @@ sudo usermod -a -G dialout $USER
 - Check [Build Instructions](BUILD.md) to create executables
 - Review the code to understand the architecture
 
+## Footer Information
+
+- The status bar footer shows your local timezone and approximate location.
+- Location is detected using public IP geolocation (ipapi.co) when available; if offline, it falls back to unknown.
+- No personal data is stored; results are displayed only in the UI.
+

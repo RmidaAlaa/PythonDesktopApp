@@ -1,6 +1,6 @@
 """
 Language Manager for the Desktop Application.
-Handles multi-language support (Arabic, French, English).
+Handles multi-language support (English, French).
 """
 
 from PySide6.QtCore import QObject, Signal
@@ -99,7 +99,6 @@ class LanguageManager(QObject):
                 
                 # Languages
                 "english": "English",
-                "arabic": "Arabic",
                 "french": "French",
                 "select_language": "Select Language",
                 "apply_language": "Apply Language",
@@ -198,7 +197,6 @@ class LanguageManager(QObject):
                 
                 # Languages
                 "english": "Anglais",
-                "arabic": "Arabe",
                 "french": "Français",
                 "select_language": "Sélectionner la Langue",
                 "apply_language": "Appliquer la Langue",

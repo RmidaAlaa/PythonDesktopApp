@@ -9,6 +9,10 @@ a = Analysis(
     datas=[
         ('machineTypes.json', '.'),
         ('src', 'src'),
+        ('docs/manual/user_manual_en.html', 'docs/manual'),
+        ('docs/manual/user_manual_fr.html', 'docs/manual'),
+        ('release/USAGE.md', '.'),
+        ('README.md', '.'),
     ],
     hiddenimports=[
         'PySide6.QtCore',

@@ -162,8 +162,6 @@ class LanguageCard(QFrame):
         """Get flag emoji for language."""
         if self.language_type == LanguageType.ENGLISH:
             return "🇺🇸"
-        elif self.language_type == LanguageType.ARABIC:
-            return "🇸🇦"
         elif self.language_type == LanguageType.FRENCH:
             return "🇫🇷"
         return "🌐"

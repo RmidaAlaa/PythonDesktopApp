@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
 from .config import Config
+from .version import format_version_banner
 
 
 def setup_logger(name="AWG Kumulus"):
@@ -48,5 +49,11 @@ def setup_logger(name="AWG Kumulus"):
         # If file logging fails, log to console only
         logger.warning(f"Failed to setup file logging: {e}")
     
+    # Emit version banner once at startup for both console and file logs
+    try:
+        logger.info(format_version_banner())
+    except Exception:
+        pass
+
     return logger
 

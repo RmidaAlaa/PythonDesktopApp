@@ -124,6 +124,12 @@ DesktopApp/
   - Arduino: avrdude
 - Progress reporting and verification
 
+### system_info.py
+- Provides best-effort timezone detection via standard library
+- Fetches approximate location using public IP geolocation (HTTPS)
+- Graceful fallbacks when offline or API unavailable
+- Exposes compact `get_info_text()` for UI footer
+
 ## GUI Components
 
 ### main_window.py
@@ -135,6 +141,7 @@ DesktopApp/
 - Action buttons (Generate Report, Send Email, Flash Firmware)
 - Progress bar and log area
 - Settings integration
+- Status bar footer shows timezone and approximate location
 
 ## Data Flow
 
@@ -144,6 +151,7 @@ DesktopApp/
 4. **Report Generation**: `report_generator.py` creates Excel file
 5. **Email**: `email_sender.py` sends report (credentials from keyring)
 6. **Firmware Flash**: `firmware_flasher.py` flashes firmware to device
+7. **Footer Info**: `main_window.py` queries `system_info.py` and renders timezone/location (non-blocking)
 
 ## Security
 

@@ -75,7 +75,7 @@ class TranslationManager:
                         settings.setValue("language", legacy_lang)
                         return
                     else:
-                        # Previously saved Arabic or unknown code -> fallback to English
+                        # Previously saved unknown code -> fallback to English
                         self.current_language = Language.ENGLISH
                         settings.setValue("language", self.current_language)
                         return
@@ -171,7 +171,7 @@ class TranslationManager:
             self._save_language()
             logger.info(f"Language changed to: {language_code}")
         else:
-            # Fall back to English and persist the fallback to avoid repeated warnings
+        # Fall back to English and persist the fallback to avoid repeated warnings
             self.current_language = Language.ENGLISH
             self._save_language()
             logger.info("Translation missing; language set to English (fallback)")
@@ -279,5 +279,4 @@ class TrStrings:
     
     # Languages
     ENGLISH = lambda: tr(TrContext.SETTINGS, "English")
-    ARABIC = lambda: tr(TrContext.SETTINGS, "Arabic")
     FRENCH = lambda: tr(TrContext.SETTINGS, "French")

@@ -12,6 +12,7 @@ Cross-platform Python desktop application for managing embedded boards (STM32, E
 - **Firmware Flashing**: Flash firmware from local files or remote sources (GitLab, OneDrive, REST API)
 - **First-Run Bootstrap**: Automatically downloads required helper binaries on first launch
 - **Secure Storage**: Uses `keyring` for secure credential management (Windows Credential Manager / macOS Keychain / Linux Secret Service)
+- **Footer Info**: Displays your local timezone and approximate location (city, country)
 
 ## Requirements
 
@@ -105,6 +106,12 @@ DesktopApp/
 1. Launch the application
 2. The app will automatically download required helper binaries (esptool, dfu-util, etc.)
 3. Click "Refresh Devices" to scan for connected boards
+
+### Footer Information
+
+- The status bar footer shows your local timezone and approximate location.
+- Location is detected using public IP geolocation (ipapi.co) when available; if offline, it falls back to unknown.
+- No personal data is stored; results are displayed only in the UI.
 
 ### Detecting Devices
 

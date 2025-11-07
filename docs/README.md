@@ -34,6 +34,13 @@ Welcome to the comprehensive documentation for the AWG-Kumulus Desktop Applicati
 - **[Examples](examples/README.md)** - Practical examples and code snippets
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions (coming soon)
 
+## 🧭 UI Footer Information
+
+- The application displays your local timezone and approximate location in the status bar footer.
+- Timezone is detected from your system settings; location uses public IP geolocation (HTTPS) when available.
+- If offline or detection fails, the footer shows "Unknown" values.
+- No personal data is stored; this information is shown only in the UI.
+
 ## 🎯 Quick Navigation
 
 ### For Developers

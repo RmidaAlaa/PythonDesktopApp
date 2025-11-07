@@ -362,7 +362,7 @@ def shutil_which(cmd: str) -> str | None:
         return None
 
 
-def launch_stm32cubeide(project_dir: Path) -> tuple[bool, str]:
+def launch_stm32cubeide(project_dir: Path, workspace_override: Optional[Path] = None) -> tuple[bool, str]:
     """Launch STM32CubeIDE and show the selected project.
 
     Strategy:
@@ -385,7 +385,20 @@ def launch_stm32cubeide(project_dir: Path) -> tuple[bool, str]:
         )
 
     # Prepare workspace and attempt import
-    workspace = _default_workspace_for(project_dir)
+    # Env override: CUBEIDE_WORKSPACE (takes precedence when no explicit override provided)
+    if workspace_override is None:
+        env_ws = os.environ.get("CUBEIDE_WORKSPACE") or os.environ.get("STM32CUBEIDE_WORKSPACE")
+        if env_ws:
+            try:
+                ws_path = Path(env_ws)
+                ws_path.mkdir(parents=True, exist_ok=True)
+                workspace = ws_path
+            except Exception:
+                workspace = _default_workspace_for(project_dir)
+        else:
+            workspace = _default_workspace_for(project_dir)
+    else:
+        workspace = workspace_override
     console = _find_cubeide_console(exe)
     import_msg = ""
     if console:

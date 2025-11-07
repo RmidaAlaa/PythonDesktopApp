@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AWG Kumulus – Complete User Manual (English)</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; max-width: 980px; margin: 24px auto; line-height: 1.7; padding: 0 16px; }
+      header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 24px; }
+      h1 { margin: 0; color: #0069c2; }
+      h2 { margin-top: 32px; margin-bottom: 16px; color: #0069c2; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+      h3 { margin-top: 24px; margin-bottom: 12px; color: #333; }
+      h4 { margin-top: 16px; margin-bottom: 8px; color: #555; }
+      nav { margin: 16px 0; background: #f8f9fa; padding: 16px; border-radius: 8px; }
+      nav a { margin-right: 10px; text-decoration:none; color:#0069c2; display: inline-block; margin-bottom: 4px; }
+      nav a:hover { text-decoration: underline; }
+      .callout { background: #f4f7ff; border-left: 4px solid #0069c2; padding: 12px 16px; border-radius: 6px; margin: 16px 0; }
+      .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 6px; margin: 16px 0; }
+      .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 12px 16px; border-radius: 6px; margin: 16px 0; }
+      code, kbd { background: #f1f1f1; border-radius: 4px; padding: 2px 6px; font-family: 'Courier New', monospace; }
+      pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; border-left: 3px solid #0069c2; }
+      ul, ol { margin-top: 8px; margin-bottom: 16px; }
+      li { margin: 6px 0; }
+      .step { margin: 12px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; }
+      .step-number { font-weight: bold; color: #0069c2; }
+      .toc { columns: 2; column-gap: 20px; }
+      .muted { color:#666; font-style: italic; }
+      select { padding:6px 10px; border-radius: 4px; border: 1px solid #ccc; }
+      table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+      table th, table td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+      table th { background: #0069c2; color: white; font-weight: bold; }
+      table tr:nth-child(even) { background: #f8f9fa; }
+      .config-example { background: #f5f5f5; padding: 12px; border-radius: 6px; margin: 12px 0; font-family: monospace; font-size: 0.9em; }
+      .feature-box { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; background: #fafafa; }
+      .feature-box h4 { margin-top: 0; color: #0069c2; }
+    </style>
+    <script>
+      function changeLang(sel){
+        const v = sel.value;
+        if(v==='fr') window.location.href = 'user_manual_fr.html';
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>AWG Kumulus Device Manager – Complete User Manual</h1>
+      <div>
+        <label for="lang">Language:</label>
+        <select id="lang" onchange="changeLang(this)">
+          <option value="en" selected>English</option>
+          <option value="fr">Français</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="callout">
+      <strong>Welcome!</strong> This comprehensive manual covers all features, configurations, and processes in AWG Kumulus Device Manager. Follow the step-by-step instructions to use the application effectively.
+    </div>
+
+    <nav class="toc">
+      <a href="#getting-started">Getting Started</a>
+      <a href="#requirements">System Requirements</a>
+      <a href="#installation">Installation & Setup</a>
+      <a href="#first-run">First Run & Bootstrap</a>
+      <a href="#interface">User Interface Overview</a>
+      <a href="#device-detection">Device Detection</a>
+      <a href="#device-management">Device Management</a>
+      <a href="#firmware-management">Firmware Management</a>
+      <a href="#report-generation">Report Generation</a>
+      <a href="#email-config">Email Configuration</a>
+      <a href="#onedrive-config">OneDrive Integration</a>
+      <a href="#machine-types">Machine Types Configuration</a>
+      <a href="#theme-language">Theme & Language Settings</a>
+      <a href="#stm32-ide">STM32 IDE Integration</a>
+      <a href="#system-info">System Information</a>
+      <a href="#config-reference">Configuration Reference</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+      <a href="#advanced">Advanced Features</a>
+    </nav>
+
+    <h2 id="getting-started">Getting Started</h2>
+    <p>AWG Kumulus Device Manager is a cross-platform desktop application for managing embedded boards (STM32, ESP32, ESP8266, Arduino). This manual provides detailed instructions for all features and configurations.</p>
+
+    <h2 id="requirements">System Requirements</h2>
+    <div class="feature-box">
+      <h4>Minimum Requirements</h4>
+      <ul>
+        <li><strong>Operating System:</strong> Windows 10/11 (x64), Linux, or macOS</li>
+        <li><strong>Disk Space:</strong> ~200 MB for application, plus space for logs and reports</li>
+        <li><strong>Memory:</strong> 512 MB RAM minimum</li>
+        <li><strong>USB Port:</strong> For connecting embedded devices</li>
+        <li><strong>Internet Connection:</strong> Required for first-run setup, firmware downloads, and email features</li>
+      </ul>
+    </div>
+
+    <div class="feature-box">
+      <h4>Optional Requirements</h4>
+      <ul>
+        <li><strong>SMTP Credentials:</strong> For email report sending</li>
+        <li><strong>OneDrive Account:</strong> For cloud storage integration</li>
+        <li><strong>STM32CubeIDE:</strong> For STM32 project development (optional)</li>
+        <li><strong>Python 3.11+:</strong> For development/source builds</li>
+      </ul>
+    </div>
+
+    <h2 id="installation">Installation & Setup</h2>
+    
+    <h3>Windows Installation</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Download the installer from the release package
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Run the installer executable (.exe)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Follow the installation wizard prompts
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> The application will be installed to the default location (typically <code>Program Files</code>)
+    </div>
+
+    <h3>Linux Installation</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Extract the AppImage or package file
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Make the AppImage executable: <code>chmod +x AWG-Kumulus-Device-Manager.AppImage</code>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Run the application: <code>./AWG-Kumulus-Device-Manager.AppImage</code>
+    </div>
+    <div class="warning">
+      <strong>Note:</strong> On Linux, you may need to add your user to the <code>dialout</code> group for USB access:
+      <pre>sudo usermod -a -G dialout $USER</pre>
+      Log out and log back in for changes to take effect.
+    </div>
+
+    <h3>macOS Installation</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Download the .app bundle
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Move the .app to your Applications folder
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Right-click and select "Open" (first time only, to bypass Gatekeeper)
+    </div>
+
+    <h2 id="first-run">First Run & Bootstrap</h2>
+    
+    <h3>First Run Dialog</h3>
+    <p>On first launch, the application will:</p>
+    <ol>
+      <li>Display a welcome dialog with options to open:
+        <ul>
+          <li><strong>README.md</strong> - Project overview and information</li>
+          <li><strong>USAGE.md</strong> - Usage guidelines</li>
+          <li><strong>User Manual</strong> - This comprehensive manual</li>
+        </ul>
+      </li>
+      <li>Check for required helper tools and Python packages</li>
+      <li>Create necessary directories:
+        <ul>
+          <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\</code></li>
+          <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/</code></li>
+          <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/</code></li>
+        </ul>
+      </li>
+      <li>Download helper binaries if needed (esptool, dfu-util, STM32CubeProgrammer, avrdude)</li>
+    </ol>
+
+    <h3>Bootstrap Process</h3>
+    <div class="info">
+      <strong>Automatic Setup:</strong> The bootstrap manager automatically:
+      <ul>
+        <li>Checks for required Python packages (pyserial, pyusb, openpyxl, requests, keyring, PySide6)</li>
+        <li>Verifies platform-specific tools availability</li>
+        <li>Downloads missing helper binaries to the tools directory</li>
+        <li>Sets up configuration files with default values</li>
+      </ul>
+    </div>
+
+    <h3>Helper Tools</h3>
+    <p>The application uses the following helper tools (downloaded automatically):</p>
+    <table>
+      <tr>
+        <th>Tool</th>
+        <th>Purpose</th>
+        <th>Platform</th>
+      </tr>
+      <tr>
+        <td>esptool</td>
+        <td>ESP32/ESP8266 flashing</td>
+        <td>All</td>
+      </tr>
+      <tr>
+        <td>dfu-util</td>
+        <td>STM32 DFU mode flashing</td>
+        <td>All</td>
+      </tr>
+      <tr>
+        <td>STM32CubeProgrammer</td>
+        <td>STM32 flashing and programming</td>
+        <td>All</td>
+      </tr>
+      <tr>
+        <td>avrdude</td>
+        <td>Arduino flashing</td>
+        <td>All</td>
+      </tr>
+    </table>
+
+    <h2 id="interface">User Interface Overview</h2>
+    
+    <h3>Main Window Layout</h3>
+    <p>The main window consists of:</p>
+    <ul>
+      <li><strong>Left Panel:</strong> Device list table showing all connected devices</li>
+      <li><strong>Right Panel:</strong> Control panel with tabs for:
+        <ul>
+          <li>Device Information</li>
+          <li>Report Generation</li>
+          <li>Firmware Management</li>
+          <li>Settings</li>
+        </ul>
+      </li>
+      <li><strong>Status Bar (Footer):</strong>
+        <ul>
+          <li>Left: Device count</li>
+          <li>Center: Date/time, timezone, and location</li>
+          <li>Right: Language selector</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Menu Bar</h3>
+    <ul>
+      <li><strong>File:</strong> Exit application</li>
+      <li><strong>Settings:</strong> Access all configuration options</li>
+      <li><strong>Help:</strong> Open user manual, about dialog</li>
+    </ul>
+
+    <h2 id="device-detection">Device Detection</h2>
+    
+    <h3>Supported Board Types</h3>
+    <table>
+      <tr>
+        <th>Board Type</th>
+        <th>VID:PID Examples</th>
+        <th>Detection Method</th>
+      </tr>
+      <tr>
+        <td>STM32</td>
+        <td>0x0483:0x5740, 0x0483:0x3748</td>
+        <td>VID:PID matching, serial communication</td>
+      </tr>
+      <tr>
+        <td>ESP32</td>
+        <td>0x10C4:0xEA60, 0x303A:0x0001</td>
+        <td>VID:PID matching, esptool</td>
+      </tr>
+      <tr>
+        <td>ESP8266</td>
+        <td>0x10C4:0xEA60</td>
+        <td>VID:PID matching, esptool</td>
+      </tr>
+      <tr>
+        <td>Arduino</td>
+        <td>0x2341:0x0043, 0x2341:0x0010</td>
+        <td>VID:PID matching, serial communication</td>
+      </tr>
+    </table>
+
+    <h3>Manual Device Detection</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Connect your device via USB cable
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click the <strong>"Refresh Devices"</strong> button in the device panel
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Wait for the scan to complete (usually 2-5 seconds)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Detected devices will appear in the device table
+    </div>
+
+    <h3>Automatic Device Monitoring</h3>
+    <p>The application includes real-time device monitoring that:</p>
+    <ul>
+      <li>Automatically detects when devices are connected (hotplug)</li>
+      <li>Detects when devices are disconnected</li>
+      <li>Updates the device list every 5 seconds</li>
+      <li>Maintains device history across sessions</li>
+      <li>Tracks connection count and last seen timestamps</li>
+    </ul>
+    <div class="info">
+      <strong>Note:</strong> Real-time monitoring is enabled by default. You can see connection/disconnection events in the log area.
+    </div>
+
+    <h3>Device Information Display</h3>
+    <p>For each detected device, the following information is displayed:</p>
+    <ul>
+      <li><strong>Port:</strong> Serial port identifier (e.g., COM3, /dev/ttyUSB0)</li>
+      <li><strong>Type:</strong> Board type (STM32, ESP32, ESP8266, Arduino)</li>
+      <li><strong>VID:PID:</strong> Vendor ID and Product ID in hexadecimal</li>
+      <li><strong>Status:</strong> Connection status (Connected/Disconnected)</li>
+      <li><strong>Health:</strong> Health score (0-100) based on connection stability and information completeness</li>
+      <li><strong>Name:</strong> Custom name or default name</li>
+      <li><strong>Last Seen:</strong> Timestamp of last detection</li>
+    </ul>
+
+    <h3>Additional Device Information</h3>
+    <p>When you select a device, detailed information is shown:</p>
+    <ul>
+      <li><strong>UID:</strong> Unique device identifier</li>
+      <li><strong>Chip ID:</strong> Chip identifier (for ESP devices)</li>
+      <li><strong>MAC Address:</strong> Network MAC address (for ESP devices)</li>
+      <li><strong>Manufacturer:</strong> Device manufacturer</li>
+      <li><strong>Serial Number:</strong> Device serial number</li>
+      <li><strong>Firmware Version:</strong> Current firmware version</li>
+      <li><strong>Hardware Version:</strong> Hardware revision</li>
+      <li><strong>Flash Size:</strong> Flash memory size</li>
+      <li><strong>CPU Frequency:</strong> Processor frequency</li>
+    </ul>
+
+    <h2 id="device-management">Device Management</h2>
+    
+    <h3>Device History</h3>
+    <p>The application maintains a history of all devices that have been connected:</p>
+    <ul>
+      <li>History is stored in <code>device_history.json</code> in the app data directory</li>
+      <li>Each device entry includes:
+        <ul>
+          <li>First detected timestamp</li>
+          <li>Last seen timestamp</li>
+          <li>Connection count</li>
+          <li>Custom name and tags</li>
+          <li>Notes</li>
+        </ul>
+      </li>
+      <li>History persists across application restarts</li>
+    </ul>
+
+    <h3>Device Templates</h3>
+    <p>Device templates allow you to save and reuse device configurations:</p>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select a device with the desired configuration
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Right-click and select "Create Template" (or use Settings menu)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Enter a template name and description
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Save the template
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Apply templates to new devices from the Templates menu
+    </div>
+
+    <h3>Device Search</h3>
+    <p>Search functionality allows you to find devices by:</p>
+    <ul>
+      <li>Custom name</li>
+      <li>Manufacturer</li>
+      <li>Description</li>
+      <li>Tags</li>
+      <li>Notes</li>
+    </ul>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Click the "Search Devices" button
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Enter your search query
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Results are filtered in real-time
+    </div>
+
+    <h3>Device Customization</h3>
+    <p>You can customize devices with:</p>
+    <ul>
+      <li><strong>Custom Names:</strong> Assign friendly names to devices</li>
+      <li><strong>Tags:</strong> Add tags for categorization</li>
+      <li><strong>Notes:</strong> Add notes with additional information</li>
+    </ul>
+
+    <h3>Batch Operations</h3>
+    <p>Perform operations on multiple devices:</p>
+    <ul>
+      <li>Update device information</li>
+      <li>Add/remove tags</li>
+      <li>Set custom names</li>
+      <li>Add notes</li>
+    </ul>
+
+    <h2 id="firmware-management">Firmware Management</h2>
+    
+    <h3>Firmware Sources</h3>
+    <p>The application supports multiple firmware sources:</p>
+    <table>
+      <tr>
+        <th>Source Type</th>
+        <th>Description</th>
+        <th>Configuration</th>
+      </tr>
+      <tr>
+        <td>Local File</td>
+        <td>Firmware file on your computer</td>
+        <td>Browse to select .bin or .elf file</td>
+      </tr>
+      <tr>
+        <td>URL Download</td>
+        <td>Firmware from HTTP/HTTPS URL</td>
+        <td>Enter URL, name, and version</td>
+      </tr>
+      <tr>
+        <td>GitHub Release</td>
+        <td>Firmware from GitHub releases</td>
+        <td>Repository, release tag, asset name</td>
+      </tr>
+      <tr>
+        <td>GitLab Pipeline</td>
+        <td>Firmware from GitLab CI/CD artifacts</td>
+        <td>Project ID, pipeline ID, artifact name</td>
+      </tr>
+    </table>
+
+    <h3>Flashing Firmware from Local File</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select the target device from the device list
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Flash Firmware"</strong> button
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Choose "Local File" as source
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Browse and select your firmware file (.bin or .elf)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Review firmware information (name, version, size)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Click <strong>"Start Flashing"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Monitor progress in the log area
+    </div>
+    <div class="warning">
+      <strong>Important:</strong> Ensure the device is in bootloader mode if required. Some devices need to be put in bootloader mode manually.
+    </div>
+
+    <h3>Flashing Firmware from URL</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select the target device
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Flash Firmware"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Choose "URL Download" as source
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Enter the firmware URL
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Enter firmware name and version
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Click <strong>"Download and Flash"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Wait for download to complete, then flashing will start automatically
+    </div>
+
+    <h3>Flashing from GitHub Release</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select the target device
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Flash Firmware"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Choose "GitHub Release" as source
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Enter repository in format: <code>owner/repository</code>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Optionally specify release tag (defaults to latest)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Optionally specify asset name (defaults to first .bin/.elf file)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Click <strong>"Add and Flash"</strong>
+    </div>
+
+    <h3>Flashing from GitLab Pipeline</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select the target device
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Flash Firmware"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Choose "GitLab Pipeline" as source
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Enter GitLab project ID
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Optionally specify pipeline ID (defaults to latest successful)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Optionally specify artifact name
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Click <strong>"Add and Flash"</strong>
+    </div>
+
+    <h3>Firmware Database</h3>
+    <p>The application maintains a firmware database that stores:</p>
+    <ul>
+      <li>Firmware metadata (name, version, board type)</li>
+      <li>Source information (URL, repository, branch)</li>
+      <li>File paths and checksums</li>
+      <li>Compatibility information</li>
+      <li>Release notes and dates</li>
+    </ul>
+    <p>Access the firmware database from Settings → Firmware Manager.</p>
+
+    <h3>Firmware Backups</h3>
+    <p>Before flashing new firmware, the application can create backups:</p>
+    <ul>
+      <li>Backups are stored in <code>firmware_backups/</code> directory</li>
+      <li>Each backup includes:
+        <ul>
+          <li>Backup timestamp</li>
+          <li>Original firmware version</li>
+          <li>Backup reason (manual, before_update, before_rollback)</li>
+          <li>Firmware file</li>
+        </ul>
+      </li>
+      <li>Backups are organized by device ID</li>
+    </ul>
+
+    <h3>Firmware Rollback</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select the device with firmware to rollback
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Open Firmware Manager from Settings
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> View available backups
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Select the backup to restore
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Click <strong>"Rollback"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Confirm the rollback operation
+    </div>
+    <div class="warning">
+      <strong>Note:</strong> A backup of the current firmware will be created before rollback.
+    </div>
+
+    <h3>Firmware Validation</h3>
+    <p>The application validates firmware before flashing:</p>
+    <ul>
+      <li>Checksum verification (SHA256)</li>
+      <li>File size verification</li>
+      <li>Format validation</li>
+      <li>Compatibility check with device board type</li>
+    </ul>
+
+    <h3>Firmware Status</h3>
+    <p>For each device, you can view firmware status:</p>
+    <ul>
+      <li><strong>Current Version:</strong> Installed firmware version</li>
+      <li><strong>Status:</strong> Installed, Available, Outdated, Latest, Unknown</li>
+      <li><strong>Available Updates:</strong> List of newer compatible firmware</li>
+      <li><strong>Latest Version:</strong> Most recent compatible firmware version</li>
+      <li><strong>Backups Count:</strong> Number of available backups</li>
+    </ul>
+
+    <h3>Board-Specific Flashing</h3>
+    
+    <h4>ESP32/ESP8266 Flashing</h4>
+    <ul>
+      <li>Uses esptool for flashing</li>
+      <li>Default flash address: 0x1000</li>
+      <li>Flash mode: DIO</li>
+      <li>Flash frequency: 80MHz</li>
+      <li>Baud rate: 460800 (for faster flashing)</li>
+    </ul>
+
+    <h4>STM32 Flashing</h4>
+    <ul>
+      <li>Supports multiple methods:
+        <ul>
+          <li>STM32CubeProgrammer (preferred)</li>
+          <li>dfu-util (DFU mode)</li>
+          <li>OpenOCD (if available)</li>
+        </ul>
+      </li>
+      <li>Supports .bin and .elf file formats</li>
+      <li>ELF files are automatically converted to binary</li>
+    </ul>
+
+    <h4>Arduino Flashing</h4>
+    <ul>
+      <li>Uses avrdude for flashing</li>
+      <li>Requires avrdude configuration files</li>
+      <li>Supports standard Arduino bootloaders</li>
+    </ul>
+
+    <h2 id="report-generation">Report Generation</h2>
+    
+    <h3>Excel Report Generation</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Select devices from the device list (or use all detected devices)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Go to the Control Panel → Report Generation tab
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Enter operator information:
+      <ul>
+        <li>Operator Name</li>
+        <li>Operator Email</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Select machine type from dropdown (Amphore, BOKs, WaterDispenser)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Enter machine ID (must match prefix and length for selected machine type)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Click <strong>"Generate Excel Report"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Report is saved to the app data directory with timestamp
+    </div>
+
+    <h3>Report Contents</h3>
+    <p>Excel reports include two sheets:</p>
+    
+    <h4>Metadata Sheet</h4>
+    <ul>
+      <li>Timestamp</li>
+      <li>Application name and version</li>
+      <li>Operator name and email</li>
+      <li>PC name and OS</li>
+      <li>Platform information</li>
+    </ul>
+
+    <h4>Devices Sheet</h4>
+    <ul>
+      <li>Machine Type and Machine ID</li>
+      <li>Board Type</li>
+      <li>Port</li>
+      <li>VID and PID</li>
+      <li>UID, Chip ID, MAC Address</li>
+      <li>Manufacturer and Serial Number</li>
+      <li>Firmware Version and Hardware Version</li>
+      <li>Flash Size and CPU Frequency</li>
+      <li>Timestamp</li>
+    </ul>
+
+    <h3>Report File Location</h3>
+    <p>Reports are saved with the naming pattern:</p>
+    <pre>AWG_Kumulus_Report_YYYYMMDD_HHMMSS.xlsx</pre>
+    <p>Default location:</p>
+    <ul>
+      <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\</code></li>
+      <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/</code></li>
+      <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/</code></li>
+    </ul>
+
+    <h2 id="email-config">Email Configuration</h2>
+    
+    <h3>SMTP Configuration</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → <strong>Configure Email</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Enter SMTP settings:
+      <ul>
+        <li><strong>Host:</strong> SMTP server address (e.g., smtp.gmail.com)</li>
+        <li><strong>Port:</strong> SMTP port (typically 587 for TLS, 465 for SSL)</li>
+        <li><strong>TLS:</strong> Enable/disable TLS encryption</li>
+        <li><strong>Username:</strong> Your email address</li>
+        <li><strong>Password:</strong> Your email password or app-specific password</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Add recipient email addresses (one per line or comma-separated)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Click <strong>"Save"</strong> to store configuration
+    </div>
+    <div class="info">
+      <strong>Security Note:</strong> Passwords are stored securely using the OS keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service). They are never stored in plain text.
+    </div>
+
+    <h3>Common SMTP Settings</h3>
+    <table>
+      <tr>
+        <th>Provider</th>
+        <th>Host</th>
+        <th>Port</th>
+        <th>TLS</th>
+      </tr>
+      <tr>
+        <td>Gmail</td>
+        <td>smtp.gmail.com</td>
+        <td>587</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Outlook</td>
+        <td>smtp-mail.outlook.com</td>
+        <td>587</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Yahoo</td>
+        <td>smtp.mail.yahoo.com</td>
+        <td>587</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Custom</td>
+        <td>Your SMTP server</td>
+        <td>587 or 465</td>
+        <td>As required</td>
+      </tr>
+    </table>
+
+    <h3>Sending Reports via Email</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Generate a report (see Report Generation section)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Send Email"</strong> button in the Control Panel
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> The latest report will be attached to the email
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Email is sent to all configured recipients
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Check the log area for send status
+    </div>
+
+    <h3>Contact Support Feature</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Help → <strong>Contact Support</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Describe your issue in the message field
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Optionally check "Include Logs" to attach log files
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Click <strong>"Send"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Email is sent to support with your message and optional logs
+    </div>
+
+    <h2 id="onedrive-config">OneDrive Integration</h2>
+    
+    <h3>OneDrive Setup</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → <strong>OneDrive Settings</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Enable OneDrive integration by checking the checkbox
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Enter the base OneDrive folder path (e.g., <code>C:\Users\YourName\OneDrive\AWG-Kumulus</code>)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Enter user folder name (your identifier, e.g., your name or username)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Configure options:
+      <ul>
+        <li><strong>Auto-create folders:</strong> Automatically create folder structure</li>
+        <li><strong>Sync enabled:</strong> Enable synchronization features</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Click <strong>"Test Connection"</strong> to verify access
+    </div>
+    <div class="step">
+      <span class="step-number">Step 7:</span> Click <strong>"Save"</strong> to store configuration
+    </div>
+
+    <h3>OneDrive Folder Structure</h3>
+    <p>The application creates the following folder structure in OneDrive:</p>
+    <pre>
+OneDrive/
+└── [Base Folder]/
+    └── [User Folder]/
+        └── [Machine Type]/
+            └── [Machine ID]/
+                ├── [Machine ID]_data.json
+                └── firmware/
+                    ├── [timestamp]_[firmware_name].bin
+                    └── [timestamp]_firmware_info.json
+    </pre>
+
+    <h3>Saving Machine Data to OneDrive</h3>
+    <p>Machine data is automatically saved to OneDrive when:</p>
+    <ul>
+      <li>Generating reports (if OneDrive is enabled)</li>
+      <li>Flashing firmware (if configured)</li>
+      <li>Manually triggered from Settings</li>
+    </ul>
+    <p>Machine data includes:</p>
+    <ul>
+      <li>Machine information (type, ID, operator)</li>
+      <li>Device information (all detected devices)</li>
+      <li>Firmware history</li>
+      <li>Timestamps and metadata</li>
+    </ul>
+
+    <h3>Firmware Storage in OneDrive</h3>
+    <p>Firmware files can be stored in OneDrive:</p>
+    <ul>
+      <li>Firmware files are copied to the device's firmware folder</li>
+      <li>Each firmware file is timestamped</li>
+      <li>Firmware metadata is stored in JSON format</li>
+      <li>Original and stored names are tracked</li>
+    </ul>
+
+    <h3>Machine History from OneDrive</h3>
+    <p>You can retrieve machine history from OneDrive:</p>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → OneDrive Settings
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"View Machine History"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Select machine type and machine ID
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> View historical data and firmware information
+    </div>
+
+    <h2 id="machine-types">Machine Types Configuration</h2>
+    
+    <h3>Default Machine Types</h3>
+    <p>The application comes with three default machine types:</p>
+    <table>
+      <tr>
+        <th>Machine Type</th>
+        <th>Prefix</th>
+        <th>Length</th>
+        <th>Example</th>
+      </tr>
+      <tr>
+        <td>Amphore</td>
+        <td>AMP-</td>
+        <td>12</td>
+        <td>AMP-12345678</td>
+      </tr>
+      <tr>
+        <td>BOKs</td>
+        <td>BOK-</td>
+        <td>10</td>
+        <td>BOK-123456</td>
+      </tr>
+      <tr>
+        <td>WaterDispenser</td>
+        <td>WD-</td>
+        <td>14</td>
+        <td>WD-1234567890</td>
+      </tr>
+    </table>
+
+    <h3>Machine ID Validation</h3>
+    <p>Machine IDs are validated against their machine type configuration:</p>
+    <ul>
+      <li>Must start with the specified prefix</li>
+      <li>Must match the exact length requirement</li>
+      <li>Validation occurs when generating reports</li>
+    </ul>
+    <div class="warning">
+      <strong>Note:</strong> Invalid machine IDs will prevent report generation. Ensure the ID format matches the machine type requirements.
+    </div>
+
+    <h3>Adding Custom Machine Types</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → <strong>Machine Types</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Add Machine Type"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Enter:
+      <ul>
+        <li>Machine type name</li>
+        <li>Prefix (e.g., "CUSTOM-")</li>
+        <li>Length (total characters including prefix)</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Click <strong>"Save"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> New machine type appears in the dropdown
+    </div>
+
+    <h3>Editing Machine Types</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → Machine Types
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Select the machine type to edit
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Click <strong>"Edit"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Modify name, prefix, or length
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Click <strong>"Save"</strong>
+    </div>
+
+    <h3>Deleting Machine Types</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → Machine Types
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Select the machine type to delete
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Click <strong>"Delete"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Confirm deletion
+    </div>
+    <div class="warning">
+      <strong>Warning:</strong> Deleting a machine type will remove it from the configuration. Existing reports using this type will not be affected.
+    </div>
+
+    <h3>Machine Types Configuration File</h3>
+    <p>Machine types are stored in <code>machineTypes.json</code> in the application directory. You can also edit this file directly:</p>
+    <div class="config-example">
+{
+  "Amphore": {
+    "prefix": "AMP-",
+    "length": 12
+  },
+  "BOKs": {
+    "prefix": "BOK-",
+    "length": 10
+  },
+  "WaterDispenser": {
+    "prefix": "WD-",
+    "length": 14
+  }
+}
+    </div>
+
+    <h2 id="theme-language">Theme & Language Settings</h2>
+    
+    <h3>Theme Selection</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → <strong>Theme & Language</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> In the Theme section, select a theme:
+      <ul>
+        <li><strong>☀️ Light Mode:</strong> Light color scheme</li>
+        <li><strong>🌙 Dark Mode:</strong> Dark color scheme</li>
+        <li><strong>🎨 Custom Themes:</strong> User-created custom themes (if any)</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Theme is applied immediately
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Click <strong>"Apply Selection"</strong> to save preference
+    </div>
+
+    <h3>Creating Custom Themes</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → Theme & Language
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Click <strong>"Create Custom Theme"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Enter theme name and description
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Configure colors:
+      <ul>
+        <li>Window color</li>
+        <li>Text color</li>
+        <li>Button color</li>
+        <li>Highlight color</li>
+        <li>And more...</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> Click <strong>"Save Theme"</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 6:</span> Custom theme appears in the theme list
+    </div>
+
+    <h3>Language Selection</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → Theme & Language
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> In the Language section, select:
+      <ul>
+        <li><strong>🇺🇸 English</strong></li>
+        <li><strong>🇫🇷 Français</strong></li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Language is applied immediately
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Click <strong>"Apply Selection"</strong> to save preference
+    </div>
+    <div class="info">
+      <strong>Quick Access:</strong> You can also change language from the status bar dropdown (bottom right).
+    </div>
+
+    <h3>Theme & Language Persistence</h3>
+    <p>Your theme and language preferences are saved automatically and persist across application restarts. Settings are stored in:</p>
+    <ul>
+      <li><strong>Themes:</strong> <code>themes.json</code> in app data directory</li>
+      <li><strong>Languages:</strong> <code>languages.json</code> in app data directory</li>
+    </ul>
+
+    <h2 id="stm32-ide">STM32 IDE Integration</h2>
+    
+    <h3>STM32CubeIDE Detection</h3>
+    <p>The application automatically detects STM32CubeIDE installation using:</p>
+    <ol>
+      <li>Environment variables (<code>STM32CUBEIDE_BIN</code> or <code>STM32CUBEIDE_HOME</code>)</li>
+      <li>Windows Registry (Uninstall keys)</li>
+      <li>Common installation paths</li>
+      <li>PATH environment variable</li>
+    </ol>
+
+    <h3>Opening STM32 Projects</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Click <strong>"Open STM32 Project"</strong> button (or from menu)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Choose project source:
+      <ul>
+        <li><strong>Local Project:</strong> Browse to project directory</li>
+        <li><strong>Git Repository:</strong> Enter Git URL and clone</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> If STM32CubeIDE is not found, installation page opens automatically
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> Application attempts to import project into workspace (if console executable available)
+    </div>
+    <div class="step">
+      <span class="step-number">Step 5:</span> STM32CubeIDE launches with the project
+    </div>
+
+    <h3>Workspace Management</h3>
+    <p>The application manages STM32CubeIDE workspaces:</p>
+    <ul>
+      <li>Workspace is created on the same drive as the project (if possible)</li>
+      <li>Default workspace: <code>[Drive]:\AWG-Kumulus-Workspace</code></li>
+      <li>Can be overridden with <code>CUBEIDE_WORKSPACE</code> environment variable</li>
+      <li>Projects are automatically imported if possible</li>
+    </ul>
+
+    <h3>STM32CubeIDE Status</h3>
+    <p>You can check STM32CubeIDE installation status:</p>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → STM32 IDE
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> View installation status:
+      <ul>
+        <li>Installed/Not Installed</li>
+        <li>Installation path</li>
+        <li>Detection source (env, registry, filesystem, path)</li>
+      </ul>
+    </div>
+
+    <h2 id="system-info">System Information</h2>
+    
+    <h3>Footer Information</h3>
+    <p>The status bar footer displays:</p>
+    <ul>
+      <li><strong>Left:</strong> Device count (e.g., "Devices: 3")</li>
+      <li><strong>Center:</strong> Date/time with timezone and location:
+        <ul>
+          <li>Localized date and time format</li>
+          <li>UTC offset</li>
+          <li>Timezone name</li>
+          <li>Approximate location (city, country)</li>
+        </ul>
+      </li>
+      <li><strong>Right:</strong> Language selector dropdown</li>
+    </ul>
+
+    <h3>Timezone Detection</h3>
+    <p>Timezone is detected from system settings:</p>
+    <ul>
+      <li>Uses local system timezone information</li>
+      <li>Displays IANA-style timezone names when available</li>
+      <li>Falls back to Windows-style or generic names</li>
+    </ul>
+
+    <h3>Location Detection</h3>
+    <p>Approximate location is detected using:</p>
+    <ul>
+      <li>Public IP geolocation (ipapi.co or ip-api.com)</li>
+      <li>Returns city and country</li>
+      <li>Falls back to "Unknown" if offline or service unavailable</li>
+      <li>No personal data is stored; results displayed only in UI</li>
+    </ul>
+    <div class="info">
+      <strong>Privacy:</strong> Location detection uses public IP geolocation only. No personal information is transmitted or stored.
+    </div>
+
+    <h2 id="config-reference">Configuration Reference</h2>
+    
+    <h3>Configuration File Location</h3>
+    <p>Main configuration is stored in <code>config.json</code>:</p>
+    <ul>
+      <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\config.json</code></li>
+      <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/config.json</code></li>
+      <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/config.json</code></li>
+    </ul>
+
+    <h3>Configuration Structure</h3>
+    <div class="config-example">
+{
+  "version": "1.0.0",
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "tls": true,
+    "username": "your.email@gmail.com",
+    "password": ""
+  },
+  "recipients": [
+    "recipient1@example.com",
+    "recipient2@example.com"
+  ],
+  "machine_types": {
+    "Amphore": {
+      "prefix": "AMP-",
+      "length": 12
+    },
+    "BOKs": {
+      "prefix": "BOK-",
+      "length": 10
+    },
+    "WaterDispenser": {
+      "prefix": "WD-",
+      "length": 14
+    }
+  },
+  "machine_type": "Amphore",
+  "operator": {
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  },
+  "onedrive": {
+    "enabled": false,
+    "folder_path": "",
+    "user_folder": "",
+    "sync_enabled": true,
+    "auto_create_folders": true
+  }
+}
+    </div>
+
+    <h3>Environment Variables</h3>
+    <p>You can override certain settings using environment variables:</p>
+    <table>
+      <tr>
+        <th>Variable</th>
+        <th>Purpose</th>
+      </tr>
+      <tr>
+        <td><code>STM32CUBEIDE_BIN</code></td>
+        <td>Path to STM32CubeIDE executable</td>
+      </tr>
+      <tr>
+        <td><code>STM32CUBEIDE_HOME</code></td>
+        <td>STM32CubeIDE installation directory</td>
+      </tr>
+      <tr>
+        <td><code>CUBEIDE_WORKSPACE</code></td>
+        <td>STM32CubeIDE workspace path</td>
+      </tr>
+    </table>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    
+    <h3>Device Detection Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> No devices detected
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Verify USB cable is properly connected</li>
+      <li>Check that device is powered on</li>
+      <li>Ensure appropriate drivers are installed:
+        <ul>
+          <li>STM32: STM32 Virtual COM Port drivers</li>
+          <li>ESP32/ESP8266: CP210x or CH340 drivers</li>
+          <li>Arduino: Arduino drivers</li>
+        </ul>
+      </li>
+      <li>On Linux, add user to dialout group: <code>sudo usermod -a -G dialout $USER</code></li>
+      <li>Try clicking "Refresh Devices" manually</li>
+      <li>Check Device Manager (Windows) or <code>lsusb</code> (Linux) to verify device is recognized by OS</li>
+    </ol>
+
+    <h3>Firmware Flashing Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> Firmware flashing fails
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Ensure device is in bootloader mode (if required):
+        <ul>
+          <li>ESP32/ESP8266: Hold BOOT button while pressing RESET</li>
+          <li>STM32: Enter DFU mode (varies by board)</li>
+        </ul>
+      </li>
+      <li>Verify firmware file format is correct (.bin or .elf)</li>
+      <li>Check that firmware is compatible with device board type</li>
+      <li>Try a different USB port</li>
+      <li>Verify helper tools are installed (check logs)</li>
+      <li>Check device is not in use by another application</li>
+      <li>Review log output for specific error messages</li>
+    </ol>
+
+    <h3>Email Sending Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> Email not sending
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Verify SMTP settings are correct:
+        <ul>
+          <li>Host and port match your email provider</li>
+          <li>TLS/SSL settings are correct</li>
+        </ul>
+      </li>
+      <li>Check credentials are stored in keyring:
+        <ul>
+          <li>Windows: Credential Manager</li>
+          <li>macOS: Keychain Access</li>
+          <li>Linux: Secret Service</li>
+        </ul>
+      </li>
+      <li>For Gmail, use app-specific password (not regular password)</li>
+      <li>Verify network connection is active</li>
+      <li>Check firewall settings aren't blocking SMTP</li>
+      <li>Review log output for specific error messages</li>
+    </ol>
+
+    <h3>OneDrive Integration Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> OneDrive sync not working
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Verify OneDrive folder path is correct and accessible</li>
+      <li>Check that you have write permissions to the folder</li>
+      <li>Ensure OneDrive is running and synced</li>
+      <li>Test connection using "Test Connection" button in settings</li>
+      <li>Verify user folder name is set correctly</li>
+      <li>Check that auto-create folders is enabled if needed</li>
+    </ol>
+
+    <h3>STM32CubeIDE Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> STM32CubeIDE not found
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Install STM32CubeIDE from STMicroelectronics website</li>
+      <li>Set <code>STM32CUBEIDE_BIN</code> environment variable to executable path</li>
+      <li>Or set <code>STM32CUBEIDE_HOME</code> to installation directory</li>
+      <li>Verify installation by running STM32CubeIDE manually</li>
+      <li>Check Windows Registry if on Windows (for automatic detection)</li>
+    </ol>
+
+    <h3>Application Crashes</h3>
+    <div class="warning">
+      <strong>Problem:</strong> Application crashes or freezes
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Check log files in app data directory for error messages</li>
+      <li>Verify all required Python packages are installed</li>
+      <li>Try deleting configuration file and restarting (backup first!)</li>
+      <li>Check available disk space</li>
+      <li>Verify system requirements are met</li>
+      <li>Contact support with log files</li>
+    </ol>
+
+    <h3>Log Files</h3>
+    <p>Log files are stored in:</p>
+    <ul>
+      <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\logs\</code></li>
+      <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/logs/</code></li>
+      <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/logs/</code></li>
+    </ul>
+    <p>Log files are named with timestamps and can be attached when contacting support.</p>
+
+    <h2 id="advanced">Advanced Features</h2>
+    
+    <h3>Device Health Scoring</h3>
+    <p>The application calculates device health scores (0-100) based on:</p>
+    <ul>
+      <li>Connection stability (reduces score for frequent disconnections)</li>
+      <li>Firmware version availability (+5 points)</li>
+      <li>Hardware information completeness:
+        <ul>
+          <li>UID available (+5 points)</li>
+          <li>Chip ID available (+5 points)</li>
+          <li>MAC address available (+5 points)</li>
+        </ul>
+      </li>
+      <li>Manufacturer information (+5 points)</li>
+    </ul>
+
+    <h3>Firmware Database Management</h3>
+    <p>Advanced firmware management features:</p>
+    <ul>
+      <li>View all firmware in database</li>
+      <li>Delete firmware entries</li>
+      <li>Validate firmware integrity</li>
+      <li>View firmware metadata</li>
+      <li>Check for available updates</li>
+    </ul>
+
+    <h3>Device Statistics</h3>
+    <p>View device statistics from Settings:</p>
+    <ul>
+      <li>Total devices in history</li>
+      <li>Currently connected devices</li>
+      <li>Disconnected devices</li>
+      <li>Board type distribution</li>
+      <li>Manufacturer distribution</li>
+      <li>Template count</li>
+    </ul>
+
+    <h3>Backup Management</h3>
+    <p>Manage firmware backups:</p>
+    <ul>
+      <li>View all backups for a device</li>
+      <li>Delete old backups</li>
+      <li>Automatic cleanup of backups older than 30 days (configurable)</li>
+      <li>Backup before firmware updates (automatic)</li>
+    </ul>
+
+    <h3>Batch Operations</h3>
+    <p>Perform operations on multiple devices simultaneously:</p>
+    <ul>
+      <li>Select multiple devices (Ctrl+Click or Shift+Click)</li>
+      <li>Update device information for all selected</li>
+      <li>Add/remove tags in batch</li>
+      <li>Set custom names for multiple devices</li>
+      <li>Add notes to multiple devices</li>
+    </ul>
+
+    <h3>Custom Configuration</h3>
+    <p>Advanced users can customize:</p>
+    <ul>
+      <li>Edit <code>config.json</code> directly for advanced settings</li>
+      <li>Modify <code>machineTypes.json</code> for machine type definitions</li>
+      <li>Create custom themes with full color control</li>
+      <li>Use environment variables for path overrides</li>
+    </ul>
+
+    <div class="callout" style="margin-top: 48px;">
+      <strong>End of Manual</strong><br>
+      For additional support, use the Contact Support feature in the Help menu. Include log files for faster troubleshooting.
+    </div>
+
+    <p class="muted" style="margin-top: 32px; text-align: center;">
+      AWG Kumulus Device Manager v1.0.0<br>
+      Last updated: 2024
+    </p>
+  </body>
+</html>
