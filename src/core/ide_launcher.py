@@ -184,14 +184,44 @@ def find_stm32cubeide_exe_for_project(project_dir: Path) -> Path | None:
 
 
 def _find_cubeide_console(exe_gui: Path) -> Optional[Path]:
-    """Try to locate the CubeIDE console executable (stm32cubeidec.exe)."""
-    cand = exe_gui.parent / "stm32cubeidec.exe"
-    if cand.exists():
-        return cand
-    # Try PATH
+    """Try to locate the CubeIDE console executable (stm32cubeidec.exe).
+
+    Improves detection by scanning common install locations and case variations,
+    and by falling back to Eclipse console (eclipsec.exe) if present.
+    """
+    # 1) Same directory as GUI exe
+    for name in ("stm32cubeidec.exe", "STM32CubeIDEc.exe", "stm32cubeidec"):
+        cand = exe_gui.parent / name
+        if cand.exists():
+            return cand
+
+    # 2) PATH lookup
     p = shutil_which("stm32cubeidec.exe") or shutil_which("stm32cubeidec")
     if p:
         return Path(p)
+
+    # 3) Try Eclipse console near GUI
+    for name in ("eclipsec.exe", "eclipsec"):
+        cand = exe_gui.parent / name
+        if cand.exists():
+            return cand
+
+    # 4) Search common locations across drives similar to GUI search
+    try:
+        patterns = [
+            r"C:\\ST\\STM32CubeIDE*\\STM32CubeIDE\\stm32cubeidec.exe",
+            r"C:\\Program Files\\ST\\STM32CubeIDE*\\STM32CubeIDE\\stm32cubeidec.exe",
+            r"C:\\Program Files (x86)\\ST\\STM32CubeIDE*\\STM32CubeIDE\\stm32cubeidec.exe",
+            r"C:\\Program Files\\STMicroelectronics\\STM32CubeIDE\\stm32cubeidec.exe",
+            r"C:\\Program Files (x86)\\STMicroelectronics\\STM32CubeIDE\\stm32cubeidec.exe",
+        ]
+        for pattern in patterns:
+            for match in glob.glob(pattern):
+                pth = Path(match)
+                if pth.exists():
+                    return pth
+    except Exception:
+        pass
     return None
 
 
@@ -247,6 +277,7 @@ def _import_project_into_workspace(console_exe: Path, workspace: Path, project_d
     if not looks_like_project:
         return False, "Selected folder is not an Eclipse project (.project missing)."
 
+    # Some installations provide eclipsec.exe instead of stm32cubeidec.exe; both accept the same flags.
     args = [
         str(console_exe),
         "--launcher.suppressErrors",

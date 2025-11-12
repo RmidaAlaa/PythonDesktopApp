@@ -4,6 +4,7 @@ import sys
 import os
 from pathlib import Path
 import zipfile
+import re
 from typing import Dict, Optional
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -11,9 +12,9 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QTextEdit, QProgressBar, QMessageBox,
     QGroupBox, QSplitter, QApplication, QHeaderView, QDialog,
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
-    QSpinBox, QTabWidget, QInputDialog
+    QSpinBox, QTabWidget, QInputDialog, QMenu
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication, QLocale, QDateTime, QUrl
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication, QLocale, QDateTime, QUrl, QProcess
 from PySide6.QtGui import QFont, QRegularExpressionValidator, QDesktopServices
 
 from ..core.config import Config
@@ -29,6 +30,7 @@ from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 from ..core.system_info import get_timezone, get_location
 from datetime import datetime, timedelta
+from .ui_styles import primary_button_style
 
 logger = setup_logger("MainWindow")
 
@@ -98,8 +100,9 @@ class MainWindow(QMainWindow):
             self._update_footer_clock()
             self.footer_geo_label.setText(self._format_footer_geo())
 
-            # Add to status bar
-            self.statusBar().addPermanentWidget(self.footer_devices_label)
+            # Do not show devices count in status bar (requested removal)
+            # Keep label instance for internal safety but hide it
+            self.footer_devices_label.setVisible(False)
             self.statusBar().addPermanentWidget(self.footer_clock_label)
             self.statusBar().addPermanentWidget(self.footer_geo_label)
 
@@ -154,14 +157,17 @@ class MainWindow(QMainWindow):
         
         # Left panel - Device list
         left_panel = self.create_device_panel()
+        left_panel.setMinimumWidth(420)
         splitter.addWidget(left_panel)
         
         # Right panel - Controls
         right_panel = self.create_control_panel()
+        right_panel.setMinimumWidth(700)
         splitter.addWidget(right_panel)
         
         # Set splitter proportions
-        splitter.setSizes([400, 800])
+        splitter.setSizes([500, 700])
+        splitter.setStyleSheet("QSplitter::handle { width: 8px; }")
         
         # Status bar
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Ready"))
@@ -191,29 +197,40 @@ class MainWindow(QMainWindow):
             QCoreApplication.translate("MainWindow", "Action")
         ])
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        # Enable context menu for device customization
+        self.device_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.device_table.customContextMenuRequested.connect(self.show_device_context_menu)
         layout.addWidget(self.device_table)
         
         # Refresh button
-        refresh_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'REFRESH')}] {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
+        refresh_btn = QPushButton(f"🔄 {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
         refresh_btn.clicked.connect(self.refresh_devices)
+        refresh_btn.setStyleSheet(primary_button_style())
+        refresh_btn.setMinimumHeight(44)
         layout.addWidget(refresh_btn)
         self.refresh_btn = refresh_btn  # Store as instance variable for translation
         
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton(QCoreApplication.translate("MainWindow", "Device History"))
+        history_btn = QPushButton(f"🕘 {QCoreApplication.translate('MainWindow', 'Device History')}")
         history_btn.clicked.connect(self.show_device_history_dialog)
+        history_btn.setStyleSheet(primary_button_style())
+        history_btn.setMinimumHeight(44)
         device_mgmt_layout.addWidget(history_btn)
         self.history_btn = history_btn  # Store as instance variable for translation
         
-        templates_btn = QPushButton(QCoreApplication.translate("MainWindow", "Templates"))
+        templates_btn = QPushButton(f"📦 {QCoreApplication.translate('MainWindow', 'Templates')}")
         templates_btn.clicked.connect(self.show_device_templates_dialog)
+        templates_btn.setStyleSheet(primary_button_style())
+        templates_btn.setMinimumHeight(44)
         device_mgmt_layout.addWidget(templates_btn)
         self.templates_btn = templates_btn  # Store as instance variable for translation
         
-        search_btn = QPushButton(QCoreApplication.translate("MainWindow", "Search"))
+        search_btn = QPushButton(f"🔎 {QCoreApplication.translate('MainWindow', 'Search')}")
         search_btn.clicked.connect(self.show_device_search_dialog)
+        search_btn.setStyleSheet(primary_button_style())
+        search_btn.setMinimumHeight(44)
         device_mgmt_layout.addWidget(search_btn)
         self.search_btn = search_btn  # Store as instance variable for translation
         
@@ -293,46 +310,39 @@ class MainWindow(QMainWindow):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        export_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'REPORT')}] {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
+        export_btn = QPushButton(f"📊 {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
         export_btn.clicked.connect(self.generate_report)
+        export_btn.setStyleSheet(primary_button_style())
+        export_btn.setMinimumHeight(44)
         button_layout.addWidget(export_btn)
         self.report_btn = export_btn  # Store as instance variable for translation
         
-        email_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'EMAIL')}] {QCoreApplication.translate('MainWindow', 'Send Email')}")
+        email_btn = QPushButton(f"✉️ {QCoreApplication.translate('MainWindow', 'Send Email')}")
         email_btn.clicked.connect(self.send_email)
+        email_btn.setStyleSheet(primary_button_style())
+        email_btn.setMinimumHeight(44)
         button_layout.addWidget(email_btn)
         self.email_btn = email_btn  # Store as instance variable for translation
         
-        flash_btn = QPushButton(f"[{QCoreApplication.translate('MainWindow', 'FLASH')}] {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
+        flash_btn = QPushButton(f"⚡ {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
         flash_btn.clicked.connect(self.flash_firmware_dialog)
+        flash_btn.setStyleSheet(primary_button_style())
+        flash_btn.setMinimumHeight(44)
         button_layout.addWidget(flash_btn)
         self.flash_btn = flash_btn  # Store as instance variable for translation
 
         # Open STM32 Project
-        open_stm32_btn = QPushButton(QCoreApplication.translate("MainWindow", "Open STM32 Project"))
+        open_stm32_btn = QPushButton(f"🧰 {QCoreApplication.translate('MainWindow', 'Open STM32 Project')}")
         open_stm32_btn.clicked.connect(self.open_stm32_project_dialog)
+        open_stm32_btn.setStyleSheet(primary_button_style())
+        open_stm32_btn.setMinimumHeight(44)
         button_layout.addWidget(open_stm32_btn)
         self.open_stm32_btn = open_stm32_btn  # Store for translation
 
         theme_lang_btn = QPushButton(f"🎨 {QCoreApplication.translate('MainWindow', 'Theme & Language')}")
         theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
-        theme_lang_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6f42c1;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 6px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #5a32a3;
-            }
-            QPushButton:pressed {
-                background-color: #4c2a85;
-            }
-        """)
+        theme_lang_btn.setStyleSheet(primary_button_style())
+        theme_lang_btn.setMinimumHeight(44)
         button_layout.addWidget(theme_lang_btn)
         self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
 
@@ -341,28 +351,38 @@ class MainWindow(QMainWindow):
         # Settings buttons
         settings_layout = QHBoxLayout()
         
-        email_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'CONFIG')}] {QCoreApplication.translate('Settings', 'Configure Email')}")
+        email_settings_btn = QPushButton(f"⚙️ {QCoreApplication.translate('Settings', 'Configure Email')}")
         email_settings_btn.clicked.connect(self.configure_email_dialog)
+        email_settings_btn.setStyleSheet(primary_button_style())
+        email_settings_btn.setMinimumHeight(44)
         settings_layout.addWidget(email_settings_btn)
         self.email_settings_btn = email_settings_btn  # Store as instance variable for translation
         
-        machine_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'MACHINE')}] {QCoreApplication.translate('Settings', 'Machine Types')}")
+        machine_settings_btn = QPushButton(f"🛠️ {QCoreApplication.translate('Settings', 'Machine Types')}")
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
+        machine_settings_btn.setStyleSheet(primary_button_style())
+        machine_settings_btn.setMinimumHeight(44)
         settings_layout.addWidget(machine_settings_btn)
         self.machine_settings_btn = machine_settings_btn  # Store as instance variable for translation
         
-        onedrive_settings_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'ONEDRIVE')}] {QCoreApplication.translate('Settings', 'OneDrive')}")
+        onedrive_settings_btn = QPushButton(f"☁️ {QCoreApplication.translate('Settings', 'OneDrive')}")
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
+        onedrive_settings_btn.setStyleSheet(primary_button_style())
+        onedrive_settings_btn.setMinimumHeight(44)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
 
-        help_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'HELP')}] {QCoreApplication.translate('Settings', 'User Manual')}")
+        help_btn = QPushButton(f"📖 {QCoreApplication.translate('Settings', 'User Manual')}")
         help_btn.clicked.connect(self.open_user_manual_current_lang)
+        help_btn.setStyleSheet(primary_button_style())
+        help_btn.setMinimumHeight(44)
         settings_layout.addWidget(help_btn)
         self.help_btn = help_btn
 
-        support_btn = QPushButton(f"[{QCoreApplication.translate('Settings', 'SUPPORT')}] {QCoreApplication.translate('Settings', 'Contact Support')}")
+        support_btn = QPushButton(f"🆘 {QCoreApplication.translate('Settings', 'Contact Support')}")
         support_btn.clicked.connect(self.show_contact_support_dialog)
+        support_btn.setStyleSheet(primary_button_style())
+        support_btn.setMinimumHeight(44)
         settings_layout.addWidget(support_btn)
         self.support_btn = support_btn
         
@@ -440,8 +460,10 @@ class MainWindow(QMainWindow):
             self.device_table.setItem(row, 6, QTableWidgetItem(last_seen))
             
             # Action button
-            btn = QPushButton("Select")
+            btn = QPushButton("✅ Select")
             btn.clicked.connect(lambda checked, d=device: self.select_device(d))
+            btn.setStyleSheet(primary_button_style())
+            btn.setMinimumHeight(36)
             self.device_table.setCellWidget(row, 7, btn)
     
     def select_device(self, device: Device):
@@ -3247,6 +3269,57 @@ Please find the attached Excel report with complete device information including
         dest_input.setText(last_dest)
         workspace_input.setText(last_ws)
 
+        # Helper: scan for sub-projects containing .project up to depth 2
+        def _scan_subprojects(base: Path) -> list[Path]:
+            results: list[Path] = []
+            try:
+                max_dirs = 4000
+                seen = 0
+                for dirpath, dirnames, filenames in os.walk(base):
+                    try:
+                        rel = Path(dirpath).relative_to(base)
+                        depth = len(rel.parts)
+                    except Exception:
+                        depth = 0
+                    if depth > 2:
+                        dirnames[:] = []
+                        continue
+                    if '.project' in filenames:
+                        results.append(Path(dirpath))
+                    seen += 1
+                    if seen >= max_dirs:
+                        break
+            except Exception:
+                pass
+            return results
+
+        # Helper: choose subproject when multiple found
+        def _choose_subproject(paths: list[Path]) -> Optional[Path]:
+            chooser = QDialog(dialog)
+            chooser.setWindowTitle(QCoreApplication.translate('MainWindow', 'Select Sub-Project'))
+            chooser.setMinimumWidth(560)
+            v = QVBoxLayout()
+            v.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Multiple CubeIDE projects were detected. Please select one:')))
+            lw = QListWidget()
+            for p in paths:
+                item = QListWidgetItem(str(p))
+                lw.addItem(item)
+            v.addWidget(lw)
+            bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            v.addWidget(bb)
+            chooser.setLayout(v)
+            chosen: Optional[Path] = None
+            def _ok():
+                nonlocal chosen
+                it = lw.currentItem()
+                if it:
+                    chosen = Path(it.text())
+                    chooser.accept()
+            bb.accepted.connect(_ok)
+            bb.rejected.connect(chooser.reject)
+            chooser.exec()
+            return chosen
+
         def _on_accept():
             try:
                 if mode_local.isChecked():
@@ -3258,6 +3331,24 @@ Please find the attached Excel report with complete device information including
                     if not p.exists():
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Not Found'), QCoreApplication.translate('Messages', 'Selected folder does not exist'))
                         return
+                    # If folder already contains one or more CubeIDE projects, confirm with user
+                    existing_subprojects = _scan_subprojects(p)
+                    if existing_subprojects:
+                        confirm = QMessageBox(dialog)
+                        confirm.setIcon(QMessageBox.Warning)
+                        confirm.setWindowTitle(QCoreApplication.translate('MainWindow', 'Confirm Project Folder'))
+                        confirm.setText(QCoreApplication.translate(
+                            'MainWindow',
+                            'The selected folder already contains a CubeIDE project. Do you want to open this folder, or choose another?'
+                        ))
+                        use_btn = confirm.addButton(QCoreApplication.translate('MainWindow', 'Use This Folder'), QMessageBox.YesRole)
+                        choose_btn = confirm.addButton(QCoreApplication.translate('MainWindow', 'Choose Another'), QMessageBox.NoRole)
+                        confirm.exec()
+                        if confirm.clickedButton() == choose_btn:
+                            d = QFileDialog.getExistingDirectory(dialog, QCoreApplication.translate('MainWindow', 'Select Project Folder'))
+                            if d:
+                                local_input.setText(d)
+                            return  # Let user re-try with the new folder
                     # If multiple sub-projects found, let user choose
                     subprojects = _scan_subprojects(p)
                     chosen_dir = p
@@ -3281,12 +3372,42 @@ Please find the attached Excel report with complete device information including
                     if not shutil.which('git'):
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Git Not Found'), QCoreApplication.translate('Messages', 'Please install Git and ensure it is in PATH'))
                         return
+                    # Pre-clone check: if destination exists and contains a CubeIDE project (or any files), confirm with user
+                    dest_path = Path(dest)
+                    pre_existing_projects = _scan_subprojects(dest_path) if dest_path.exists() else []
+                    dest_has_files = False
+                    try:
+                        dest_has_files = dest_path.exists() and any(dest_path.iterdir())
+                    except Exception:
+                        dest_has_files = False
+                    if pre_existing_projects or dest_has_files:
+                        confirm = QMessageBox(dialog)
+                        confirm.setIcon(QMessageBox.Warning)
+                        confirm.setWindowTitle(QCoreApplication.translate('MainWindow', 'Confirm Destination'))
+                        confirm.setText(QCoreApplication.translate(
+                            'MainWindow',
+                            'The destination folder already contains files or a CubeIDE project. Do you want to use this folder for the new clone, or choose another?'
+                        ))
+                        use_btn = confirm.addButton(QCoreApplication.translate('MainWindow', 'Use This Folder'), QMessageBox.YesRole)
+                        choose_btn = confirm.addButton(QCoreApplication.translate('MainWindow', 'Choose Another'), QMessageBox.NoRole)
+                        confirm.exec()
+                        if confirm.clickedButton() == choose_btn:
+                            d = QFileDialog.getExistingDirectory(dialog, QCoreApplication.translate('MainWindow', 'Select Destination Folder'))
+                            if d:
+                                dest_input.setText(d)
+                            return  # Let user re-try with the new destination
                     # Use QProcess to stream clone output and allow cancel
                     progress = QDialog(dialog)
                     progress.setWindowTitle(QCoreApplication.translate('MainWindow', 'Cloning Repository'))
                     pv = QVBoxLayout()
                     log_label = QLabel(QCoreApplication.translate('MainWindow', 'Running: git clone'))
                     pv.addWidget(log_label)
+                    # Progress bar for clone percent
+                    progress_bar = QProgressBar()
+                    progress_bar.setRange(0, 100)
+                    progress_bar.setValue(0)
+                    pv.addWidget(progress_bar)
+                    # Live log view
                     log_text = QTextEdit()
                     log_text.setReadOnly(True)
                     pv.addWidget(log_text)
@@ -3295,13 +3416,23 @@ Please find the attached Excel report with complete device information including
                     progress.setLayout(pv)
                     proc = QProcess(progress)
                     proc.setProgram('git')
-                    proc.setArguments(['clone', url, dest])
+                    # Request progress output and parse stderr lines such as
+                    # "Receiving objects:  12%" to drive the progress bar
+                    proc.setArguments(['clone', '--progress', url, dest])
+                    proc.setProcessChannelMode(QProcess.SeparateChannels)
                     def _on_out():
                         data = bytes(proc.readAllStandardOutput()).decode(errors='ignore')
                         log_text.append(data)
                     def _on_err():
                         data = bytes(proc.readAllStandardError()).decode(errors='ignore')
                         log_text.append(data)
+                        # Try to extract percentage from progress lines
+                        m = re.search(r"(\d+)%", data)
+                        if m:
+                            try:
+                                progress_bar.setValue(int(m.group(1)))
+                            except Exception:
+                                pass
                     def _on_finished(code, status):
                         progress.accept()
                     proc.readyReadStandardOutput.connect(_on_out)
@@ -3315,7 +3446,7 @@ Please find the attached Excel report with complete device information including
                         return
                     self.log(QCoreApplication.translate('Messages', 'Repository cloned successfully'))
                     # After clone, scan for subprojects and choose if multiple
-                    dest_path = Path(dest)
+                    dest_path = Path(dest_input.text().strip()) if dest_input.text().strip() else Path(dest)
                     subprojects = _scan_subprojects(dest_path)
                     chosen_dir = dest_path
                     if len(subprojects) > 1:
@@ -3501,6 +3632,232 @@ Please find the attached Excel report with complete device information including
         else:
             QMessageBox.warning(dialog, "Error", "Failed to apply template")
     
+    def show_device_context_menu(self, position):
+        """Show context menu for device customization."""
+        item = self.device_table.itemAt(position)
+        if not item:
+            return
+        
+        row = item.row()
+        if row >= len(self.devices):
+            return
+        
+        device = self.devices[row]
+        
+        menu = QMenu(self)
+        
+        # Customize device action
+        customize_action = menu.addAction(QCoreApplication.translate("MainWindow", "Customize Device"))
+        customize_action.triggered.connect(lambda: self.customize_device_dialog(device))
+        
+        # View firmware backups action
+        backups_action = menu.addAction(QCoreApplication.translate("MainWindow", "View Firmware Backups"))
+        backups_action.triggered.connect(lambda: self.show_firmware_backups_dialog(device))
+        
+        # Show menu
+        menu.exec(self.device_table.viewport().mapToGlobal(position))
+    
+    def customize_device_dialog(self, device: Device):
+        """Open dialog to customize device (name, notes)."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Customize Device"))
+        dialog.setMinimumWidth(500)
+        
+        layout = QVBoxLayout()
+        
+        # Device info
+        info_label = QLabel(f"<b>{QCoreApplication.translate('MainWindow', 'Device:')}</b> {device.port} ({device.board_type.value})")
+        layout.addWidget(info_label)
+        
+        # Custom name
+        name_label = QLabel(QCoreApplication.translate("MainWindow", "Custom Name:"))
+        layout.addWidget(name_label)
+        name_input = QLineEdit()
+        name_input.setText(device.custom_name or "")
+        name_input.setPlaceholderText(QCoreApplication.translate("MainWindow", "Enter a custom name for this device"))
+        layout.addWidget(name_input)
+        
+        # Notes
+        notes_label = QLabel(QCoreApplication.translate("MainWindow", "Notes:"))
+        layout.addWidget(notes_label)
+        notes_input = QTextEdit()
+        notes_input.setPlainText(device.notes or "")
+        notes_input.setPlaceholderText(QCoreApplication.translate("MainWindow", "Add notes about this device"))
+        notes_input.setMaximumHeight(150)
+        layout.addWidget(notes_input)
+        
+        # Health score display
+        health_score = self.device_detector.get_device_health_score(device)
+        health_label = QLabel(f"<b>{QCoreApplication.translate('MainWindow', 'Health Score:')}</b> {health_score}%")
+        if health_score >= 80:
+            health_label.setStyleSheet("color: green;")
+        elif health_score >= 60:
+            health_label.setStyleSheet("color: orange;")
+        else:
+            health_label.setStyleSheet("color: red;")
+        layout.addWidget(health_label)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        dialog.setLayout(layout)
+        
+        if dialog.exec() == QDialog.Accepted:
+            # Update device
+            device.custom_name = name_input.text().strip() if name_input.text().strip() else None
+            device.notes = notes_input.toPlainText().strip() if notes_input.toPlainText().strip() else None
+            
+            # Update health score
+            device.health_score = self.device_detector.get_device_health_score(device)
+            
+            # Save to history
+            self.device_detector.update_device_in_history(device)
+            
+            # Refresh table
+            self.update_device_table()
+            
+            QMessageBox.information(self, "Success", QCoreApplication.translate("MainWindow", "Device customized successfully!"))
+    
+    def show_firmware_backups_dialog(self, device: Device):
+        """Show dialog to view and manage firmware backups for a device."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Firmware Backups"))
+        dialog.setMinimumWidth(700)
+        dialog.setMinimumHeight(500)
+        
+        layout = QVBoxLayout()
+        
+        # Device info
+        info_label = QLabel(f"<b>{QCoreApplication.translate('MainWindow', 'Device:')}</b> {device.get_display_name()} ({device.port})")
+        layout.addWidget(info_label)
+        
+        # Get backups
+        backups = self.firmware_flasher.firmware_manager.get_device_backups(device)
+        
+        if not backups:
+            no_backups_label = QLabel(QCoreApplication.translate("MainWindow", "No firmware backups available for this device."))
+            no_backups_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(no_backups_label)
+        else:
+            # Backups table
+            backups_table = QTableWidget()
+            backups_table.setColumnCount(5)
+            backups_table.setHorizontalHeaderLabels([
+                QCoreApplication.translate("MainWindow", "Date"),
+                QCoreApplication.translate("MainWindow", "Version"),
+                QCoreApplication.translate("MainWindow", "Reason"),
+                QCoreApplication.translate("MainWindow", "Size"),
+                QCoreApplication.translate("MainWindow", "Actions")
+            ])
+            backups_table.setRowCount(len(backups))
+            
+            for row, backup in enumerate(backups):
+                # Date
+                backup_date = backup.backup_date.split('T')[0] if backup.backup_date else "Unknown"
+                backups_table.setItem(row, 0, QTableWidgetItem(backup_date))
+                
+                # Version
+                version = backup.firmware_info.version if backup.firmware_info else "Unknown"
+                backups_table.setItem(row, 1, QTableWidgetItem(version))
+                
+                # Reason
+                reason = backup.reason.replace('_', ' ').title()
+                backups_table.setItem(row, 2, QTableWidgetItem(reason))
+                
+                # Size
+                size = backup.firmware_info.size if backup.firmware_info else 0
+                size_str = f"{size / 1024:.1f} KB" if size else "Unknown"
+                backups_table.setItem(row, 3, QTableWidgetItem(size_str))
+                
+                # Actions
+                action_widget = QWidget()
+                action_layout = QHBoxLayout(action_widget)
+                action_layout.setContentsMargins(2, 2, 2, 2)
+                
+                rollback_btn = QPushButton(QCoreApplication.translate("MainWindow", "Rollback"))
+                rollback_btn.clicked.connect(lambda checked, b=backup, idx=row: self._rollback_from_backup_dialog(device, b, idx))
+                action_layout.addWidget(rollback_btn)
+                
+                delete_btn = QPushButton(QCoreApplication.translate("MainWindow", "Delete"))
+                delete_btn.clicked.connect(lambda checked, b=backup, idx=row: self._delete_backup(device, b, idx, backups_table))
+                action_layout.addWidget(delete_btn)
+                
+                backups_table.setCellWidget(row, 4, action_widget)
+            
+            backups_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            layout.addWidget(backups_table)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        dialog.setLayout(layout)
+        dialog.exec()
+    
+    def _rollback_from_backup_dialog(self, device: Device, backup, backup_index: int):
+        """Rollback firmware from backup."""
+        reply = QMessageBox.question(
+            self,
+            QCoreApplication.translate("MainWindow", "Confirm Rollback"),
+            QCoreApplication.translate("MainWindow", "Are you sure you want to rollback to this firmware version?\n\nA backup of the current firmware will be created first."),
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                def progress_callback(message):
+                    self.log(message)
+                
+                success = self.firmware_flasher.rollback_firmware(device, backup_index, progress_callback)
+                
+                if success:
+                    QMessageBox.information(self, "Success", QCoreApplication.translate("MainWindow", "Firmware rollback completed successfully!"))
+                    self.refresh_devices()
+                else:
+                    QMessageBox.warning(self, "Failed", QCoreApplication.translate("MainWindow", "Firmware rollback failed!"))
+            
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"{QCoreApplication.translate('MainWindow', 'Rollback error:')} {str(e)}")
+                logger.error(f"Rollback error: {e}")
+    
+    def _delete_backup(self, device: Device, backup, backup_index: int, table: QTableWidget):
+        """Delete a firmware backup."""
+        reply = QMessageBox.question(
+            self,
+            QCoreApplication.translate("MainWindow", "Confirm Delete"),
+            QCoreApplication.translate("MainWindow", "Are you sure you want to delete this backup?\n\nThis action cannot be undone."),
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                device_id = device.get_unique_id()
+                backups = self.firmware_flasher.firmware_manager.firmware_backups.get(device_id, [])
+                
+                if backup_index < len(backups):
+                    # Delete backup file if exists
+                    backup_path = Path(backups[backup_index].backup_path)
+                    if backup_path.exists():
+                        backup_path.unlink()
+                    
+                    # Remove from list
+                    backups.pop(backup_index)
+                    self.firmware_flasher.firmware_manager.firmware_backups[device_id] = backups
+                    self.firmware_flasher.firmware_manager._save_firmware_backups()
+                    
+                    # Refresh table
+                    self.show_firmware_backups_dialog(device)
+                    
+                    QMessageBox.information(self, "Success", QCoreApplication.translate("MainWindow", "Backup deleted successfully!"))
+            
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"{QCoreApplication.translate('MainWindow', 'Delete error:')} {str(e)}")
+                logger.error(f"Delete backup error: {e}")
+    
     def delete_template(self, dialog, templates_list):
         """Delete selected template."""
         current_item = templates_list.currentItem()
@@ -3520,62 +3877,4 @@ Please find the attached Excel report with complete device information including
             self.device_detector.delete_device_template(template_name)
             QMessageBox.information(dialog, "Success", f"Template '{template_name}' deleted successfully!")
             dialog.accept()  # Close and reopen to refresh
-
-        local_input.textChanged.connect(_update_ok_enabled)
-        git_url_input.textChanged.connect(_update_ok_enabled)
-        dest_input.textChanged.connect(_update_ok_enabled)
-        mode_local.toggled.connect(_update_ok_enabled)
-        mode_git.toggled.connect(_update_ok_enabled)
-        _update_ok_enabled()
-
-        # Helper: scan for sub-projects containing .project up to depth 2
-        def _scan_subprojects(base: Path) -> list[Path]:
-            results: list[Path] = []
-            try:
-                max_dirs = 4000
-                seen = 0
-                for dirpath, dirnames, filenames in os.walk(base):
-                    try:
-                        rel = Path(dirpath).relative_to(base)
-                        depth = len(rel.parts)
-                    except Exception:
-                        depth = 0
-                    if depth > 2:
-                        dirnames[:] = []
-                        continue
-                    if '.project' in filenames:
-                        results.append(Path(dirpath))
-                    seen += 1
-                    if seen >= max_dirs:
-                        break
-            except Exception:
-                pass
-            return results
-
-        # Helper: choose subproject when multiple found
-        def _choose_subproject(paths: list[Path]) -> Optional[Path]:
-            chooser = QDialog(dialog)
-            chooser.setWindowTitle(QCoreApplication.translate('MainWindow', 'Select Sub-Project'))
-            chooser.setMinimumWidth(560)
-            v = QVBoxLayout()
-            v.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Multiple CubeIDE projects were detected. Please select one:')))
-            lw = QListWidget()
-            for p in paths:
-                item = QListWidgetItem(str(p))
-                lw.addItem(item)
-            v.addWidget(lw)
-            bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-            v.addWidget(bb)
-            chooser.setLayout(v)
-            chosen: Optional[Path] = None
-            def _ok():
-                nonlocal chosen
-                it = lw.currentItem()
-                if it:
-                    chosen = Path(it.text())
-                    chooser.accept()
-            bb.accepted.connect(_ok)
-            bb.rejected.connect(chooser.reject)
-            chooser.exec()
-            return chosen
 

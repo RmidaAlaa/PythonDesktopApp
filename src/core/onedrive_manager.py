@@ -25,6 +25,18 @@ class OneDriveManager:
         """Check if OneDrive integration is enabled."""
         return self.config.get('onedrive', {}).get('enabled', False)
     
+    def _normalize_path(self, raw: str) -> Path:
+        """Normalize user-provided path inputs for Windows and cross‑platform compatibility.
+        Handles cases like 'G/' or 'G' by converting to 'G:/', expands env vars, and user home.
+        """
+        p = os.path.expanduser(os.path.expandvars(raw.strip()))
+        # Handle drive letter inputs like 'G' or 'G/'
+        if len(p) == 1 and p.isalpha():
+            return Path(f"{p}:/")
+        if len(p) == 2 and p[1] in ('/', '\\') and p[0].isalpha():
+            return Path(f"{p[0]}:/")
+        return Path(p)
+
     def get_base_path(self) -> Optional[Path]:
         """Get the base OneDrive folder path."""
         if not self.is_enabled():
@@ -34,7 +46,7 @@ class OneDriveManager:
         if not folder_path:
             return None
         
-        return Path(folder_path)
+        return self._normalize_path(folder_path)
     
     def get_user_folder_path(self) -> Optional[Path]:
         """Get the user-specific folder path."""
@@ -264,27 +276,53 @@ class OneDriveManager:
             return []
     
     def test_connection(self) -> Tuple[bool, str]:
-        """Test OneDrive connection and folder access."""
+        """Test OneDrive connection and folder access.
+        If auto-create is enabled, create the base and user folders when missing.
+        Prefer testing write access inside the user folder when provided.
+        """
         try:
             if not self.is_enabled():
                 return False, "OneDrive integration is disabled"
-            
+
+            od_cfg = self.config.get('onedrive', {})
+            auto_create = bool(od_cfg.get('auto_create_folders', False))
+
             base_path = self.get_base_path()
             if not base_path:
                 return False, "OneDrive folder path not configured"
-            
+
             if not base_path.exists():
-                return False, f"OneDrive folder does not exist: {base_path}"
-            
+                if auto_create:
+                    try:
+                        base_path.mkdir(parents=True, exist_ok=True)
+                    except Exception as e:
+                        return False, f"Failed to create base OneDrive folder: {e}"
+                else:
+                    return False, f"OneDrive folder does not exist: {base_path}"
+
+            # Determine target for write test: prefer user folder if set
+            user_folder_path = self.get_user_folder_path()
+            target_path = user_folder_path or base_path
+
+            if not target_path.exists():
+                if auto_create:
+                    try:
+                        target_path.mkdir(parents=True, exist_ok=True)
+                    except Exception as e:
+                        return False, f"Failed to create user OneDrive folder: {e}"
+                else:
+                    return False, f"OneDrive user folder does not exist: {target_path}"
+
             # Test write access
-            test_file = base_path / ".test_write_access"
+            test_file = target_path / ".test_write_access"
             try:
                 test_file.write_text("test")
                 test_file.unlink()
             except Exception as e:
                 return False, f"No write access to OneDrive folder: {e}"
-            
-            return True, "OneDrive connection successful"
-            
+
+            location = "user folder" if user_folder_path else "base folder"
+            return True, f"OneDrive connection successful (write access verified in {location})"
+
         except Exception as e:
             return False, f"OneDrive test failed: {e}"
