@@ -8,6 +8,8 @@ import sys
 import os
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import Qt
 
 from src.core.config import Config
 from src.core.bootstrap import BootstrapManager
@@ -44,6 +46,12 @@ def main():
     # Initialize config
     Config.ensure_directories()
     
+    # High-DPI: use Qt6 rounding policy instead of deprecated attributes
+    try:
+        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    except Exception:
+        pass
+
     # Create Qt application
     app = QApplication(sys.argv)
     
@@ -65,4 +73,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

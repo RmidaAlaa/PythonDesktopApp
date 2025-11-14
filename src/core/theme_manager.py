@@ -108,6 +108,10 @@ class ThemeManager(QObject):
                 self._apply_light_theme(palette)
         
         app.setPalette(palette)
+        try:
+            app.setStyleSheet(self.get_theme_stylesheet(theme_type))
+        except Exception:
+            pass
         self.current_theme = theme_type
         self._save_themes()
         self.theme_changed.emit(theme_type.value)

@@ -12,10 +12,11 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QTextEdit, QProgressBar, QMessageBox,
     QGroupBox, QSplitter, QApplication, QHeaderView, QDialog,
     QDialogButtonBox, QCheckBox, QFileDialog, QListWidget, QListWidgetItem,
-    QSpinBox, QTabWidget, QInputDialog, QMenu
+    QSpinBox, QTabWidget, QInputDialog, QMenu, QFormLayout, QStyledItemDelegate
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication, QLocale, QDateTime, QUrl, QProcess
-from PySide6.QtGui import QFont, QRegularExpressionValidator, QDesktopServices
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QRegularExpression, QCoreApplication, QLocale, QDateTime, QUrl, QProcess, QSize
+from PySide6.QtGui import QFont, QRegularExpressionValidator, QDesktopServices, QIcon, QKeySequence, QColor, QPainter, QShortcut
+from PySide6.QtWidgets import QStyle, QSizePolicy
 
 from ..core.config import Config
 from ..core.device_detector import DeviceDetector, Device
@@ -70,16 +71,16 @@ class MainWindow(QMainWindow):
         # Initialize theme manager
         self.theme_manager = ThemeManager()
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
+        try:
+            self.on_theme_changed(self.theme_manager.get_current_theme())
+        except Exception:
+            pass
         
         # Initialize translation manager
         self.translation_manager = TranslationManager()
         
-        # Initialize components
-        self.device_detector = DeviceDetector()
-        self.report_generator = ReportGenerator()
-        self.email_sender = EmailSender()
-        self.firmware_flasher = FirmwareFlasher()
-        self.onedrive_manager = OneDriveManager()
+        # Defer heavy service initialization to speed up first paint
+        QTimer.singleShot(100, self._init_services)
         
         # Update UI text with current language
         self.update_ui_text()
@@ -114,29 +115,36 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.warning(f"Failed to initialize improved footer UI: {e}")
         
-        # Add language selector to status bar (right-most)
-        self.language_combo = QComboBox()
-        self.language_combo.addItem("English", "en")
-        self.language_combo.addItem("Français", "fr")
-        current_lang = self.translation_manager.get_current_language()
-        try:
-            codes = [self.language_combo.itemData(i) for i in range(self.language_combo.count())]
-            index = codes.index(current_lang) if current_lang in codes else 0
-        except Exception:
-            index = 0
-        self.language_combo.setCurrentIndex(index)
-        self.language_combo.currentIndexChanged.connect(self.on_language_combo_changed)
-        self.statusBar().addPermanentWidget(self.language_combo)
+        # Language selector removed from status bar per request
+
+        self.onedrive_status_label = QLabel()
+        self.statusBar().addPermanentWidget(self.onedrive_status_label)
+        self._update_onedrive_status_indicator()
         
-        # Auto-detect devices on startup
-        QTimer.singleShot(500, self.refresh_devices)
-        
-        # Start real-time monitoring with Qt signal handling
-        self.device_detector.start_real_time_monitoring(self._device_change_callback)
+        # Auto-detect devices on startup (after services ready)
+        QTimer.singleShot(600, self.refresh_devices)
         
         # Check for first run
         if Config.is_first_run():
             self.show_first_run_dialog()
+
+    def _init_services(self):
+        try:
+            self.device_detector = DeviceDetector()
+            self.report_generator = ReportGenerator()
+            self.email_sender = EmailSender()
+            self.firmware_flasher = FirmwareFlasher()
+            self.onedrive_manager = OneDriveManager()
+            try:
+                self.device_detector.start_real_time_monitoring(self._device_change_callback)
+            except Exception:
+                pass
+            try:
+                self._update_onedrive_status_indicator()
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning(f"Service initialization deferred error: {e}")
     
     def setup_ui(self):
         """Set up the user interface."""
@@ -169,6 +177,16 @@ class MainWindow(QMainWindow):
         splitter.setSizes([500, 700])
         splitter.setStyleSheet("QSplitter::handle { width: 8px; }")
         
+        # Keyboard shortcuts (no toolbar)
+        try:
+            QShortcut(QKeySequence.Refresh, self, activated=self.refresh_devices)
+            QShortcut(QKeySequence("Ctrl+R"), self, activated=self.generate_report)
+            QShortcut(QKeySequence("Ctrl+E"), self, activated=self.send_email)
+            QShortcut(QKeySequence("Ctrl+F"), self, activated=self.flash_firmware_dialog)
+            QShortcut(QKeySequence("Ctrl+K"), self, activated=self.show_device_search_dialog)
+        except Exception:
+            pass
+
         # Status bar
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Ready"))
     
@@ -182,6 +200,18 @@ class MainWindow(QMainWindow):
         title.setFont(QFont("Arial", 12, QFont.Bold))
         layout.addWidget(title)
         
+        # Filters
+        filter_layout = QHBoxLayout()
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText(QCoreApplication.translate("MainWindow", "Filter devices"))
+        self.filter_input.textChanged.connect(self.apply_device_filter)
+        filter_layout.addWidget(self.filter_input)
+        self.filter_type_combo = QComboBox()
+        self.filter_type_combo.addItem(QCoreApplication.translate("MainWindow", "All"))
+        self.filter_type_combo.currentTextChanged.connect(self.apply_device_filter)
+        filter_layout.addWidget(self.filter_type_combo)
+        layout.addLayout(filter_layout)
+
         # Device table
         self.device_table = QTableWidget()
         self.device_table.setColumnCount(8)
@@ -197,40 +227,76 @@ class MainWindow(QMainWindow):
             QCoreApplication.translate("MainWindow", "Action")
         ])
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.device_table.setAlternatingRowColors(True)
+        try:
+            self.device_table.verticalHeader().setDefaultSectionSize(28)
+        except Exception:
+            pass
+        self.device_table.setSortingEnabled(True)
+        try:
+            from PySide6.QtWidgets import QStyledItemDelegate
+            self.device_table.setItemDelegateForColumn(3, ChipDelegate(self.device_table))
+            self.device_table.setItemDelegateForColumn(4, ChipDelegate(self.device_table))
+        except Exception:
+            pass
         # Enable context menu for device customization
         self.device_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.device_table.customContextMenuRequested.connect(self.show_device_context_menu)
         layout.addWidget(self.device_table)
         
         # Refresh button
-        refresh_btn = QPushButton(f"🔄 {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
+        refresh_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Refresh Devices'))
         refresh_btn.clicked.connect(self.refresh_devices)
         refresh_btn.setStyleSheet(primary_button_style())
         refresh_btn.setMinimumHeight(44)
+        try:
+            refresh_btn.setIcon(self._icon("rotation.png"))
+            refresh_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        refresh_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         layout.addWidget(refresh_btn)
         self.refresh_btn = refresh_btn  # Store as instance variable for translation
         
         # Enhanced device management buttons
         device_mgmt_layout = QHBoxLayout()
         
-        history_btn = QPushButton(f"🕘 {QCoreApplication.translate('MainWindow', 'Device History')}")
+        history_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Device History'))
         history_btn.clicked.connect(self.show_device_history_dialog)
         history_btn.setStyleSheet(primary_button_style())
         history_btn.setMinimumHeight(44)
+        try:
+            history_btn.setIcon(self._icon("history.png"))
+            history_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        history_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         device_mgmt_layout.addWidget(history_btn)
         self.history_btn = history_btn  # Store as instance variable for translation
         
-        templates_btn = QPushButton(f"📦 {QCoreApplication.translate('MainWindow', 'Templates')}")
+        templates_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Templates'))
         templates_btn.clicked.connect(self.show_device_templates_dialog)
         templates_btn.setStyleSheet(primary_button_style())
         templates_btn.setMinimumHeight(44)
+        try:
+            templates_btn.setIcon(self._icon("marketing-automation.png"))
+            templates_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        templates_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         device_mgmt_layout.addWidget(templates_btn)
         self.templates_btn = templates_btn  # Store as instance variable for translation
         
-        search_btn = QPushButton(f"🔎 {QCoreApplication.translate('MainWindow', 'Search')}")
+        search_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Search'))
         search_btn.clicked.connect(self.show_device_search_dialog)
         search_btn.setStyleSheet(primary_button_style())
         search_btn.setMinimumHeight(44)
+        try:
+            search_btn.setIcon(self._icon("search.png"))
+            search_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        search_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         device_mgmt_layout.addWidget(search_btn)
         self.search_btn = search_btn  # Store as instance variable for translation
         
@@ -310,39 +376,69 @@ class MainWindow(QMainWindow):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        export_btn = QPushButton(f"📊 {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
+        export_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Excel Report'))
         export_btn.clicked.connect(self.generate_report)
         export_btn.setStyleSheet(primary_button_style())
         export_btn.setMinimumHeight(44)
+        try:
+            export_btn.setIcon(self._icon("spreadsheet.png"))
+            export_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        export_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         button_layout.addWidget(export_btn)
         self.report_btn = export_btn  # Store as instance variable for translation
         
-        email_btn = QPushButton(f"✉️ {QCoreApplication.translate('MainWindow', 'Send Email')}")
+        email_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Send Email'))
         email_btn.clicked.connect(self.send_email)
         email_btn.setStyleSheet(primary_button_style())
         email_btn.setMinimumHeight(44)
+        try:
+            email_btn.setIcon(self._icon("mail.png"))
+            email_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        email_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         button_layout.addWidget(email_btn)
         self.email_btn = email_btn  # Store as instance variable for translation
         
-        flash_btn = QPushButton(f"⚡ {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
+        flash_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Flash Firmware'))
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         flash_btn.setStyleSheet(primary_button_style())
         flash_btn.setMinimumHeight(44)
+        try:
+            flash_btn.setIcon(self._icon("flash.png"))
+            flash_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        flash_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         button_layout.addWidget(flash_btn)
         self.flash_btn = flash_btn  # Store as instance variable for translation
 
         # Open STM32 Project
-        open_stm32_btn = QPushButton(f"🧰 {QCoreApplication.translate('MainWindow', 'Open STM32 Project')}")
+        open_stm32_btn = QPushButton(QCoreApplication.translate('MainWindow', 'OpenProj'))
         open_stm32_btn.clicked.connect(self.open_stm32_project_dialog)
         open_stm32_btn.setStyleSheet(primary_button_style())
         open_stm32_btn.setMinimumHeight(44)
+        try:
+            open_stm32_btn.setIcon(self._icon("source-code.png"))
+            open_stm32_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        open_stm32_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         button_layout.addWidget(open_stm32_btn)
         self.open_stm32_btn = open_stm32_btn  # Store for translation
 
-        theme_lang_btn = QPushButton(f"🎨 {QCoreApplication.translate('MainWindow', 'Theme & Language')}")
+        theme_lang_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Themes'))
         theme_lang_btn.clicked.connect(self.show_theme_language_dialog)
         theme_lang_btn.setStyleSheet(primary_button_style())
         theme_lang_btn.setMinimumHeight(44)
+        try:
+            theme_lang_btn.setIcon(self._icon("theme.png"))
+            theme_lang_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        theme_lang_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         button_layout.addWidget(theme_lang_btn)
         self.theme_lang_btn = theme_lang_btn  # Store as instance variable for translation
 
@@ -351,38 +447,68 @@ class MainWindow(QMainWindow):
         # Settings buttons
         settings_layout = QHBoxLayout()
         
-        email_settings_btn = QPushButton(f"⚙️ {QCoreApplication.translate('Settings', 'Configure Email')}")
+        email_settings_btn = QPushButton(QCoreApplication.translate('Settings', 'EmailConfig'))
         email_settings_btn.clicked.connect(self.configure_email_dialog)
         email_settings_btn.setStyleSheet(primary_button_style())
         email_settings_btn.setMinimumHeight(44)
+        try:
+            email_settings_btn.setIcon(self._icon("marketing-automation.png"))
+            email_settings_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        email_settings_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         settings_layout.addWidget(email_settings_btn)
         self.email_settings_btn = email_settings_btn  # Store as instance variable for translation
         
-        machine_settings_btn = QPushButton(f"🛠️ {QCoreApplication.translate('Settings', 'Machine Types')}")
+        machine_settings_btn = QPushButton(QCoreApplication.translate('Settings', 'MachineConf'))
         machine_settings_btn.clicked.connect(self.configure_machine_types_dialog)
         machine_settings_btn.setStyleSheet(primary_button_style())
         machine_settings_btn.setMinimumHeight(44)
+        try:
+            machine_settings_btn.setIcon(self._icon("washing-machine.png"))
+            machine_settings_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        machine_settings_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         settings_layout.addWidget(machine_settings_btn)
         self.machine_settings_btn = machine_settings_btn  # Store as instance variable for translation
         
-        onedrive_settings_btn = QPushButton(f"☁️ {QCoreApplication.translate('Settings', 'OneDrive')}")
+        onedrive_settings_btn = QPushButton(QCoreApplication.translate('Settings', 'OneDrive'))
         onedrive_settings_btn.clicked.connect(self.configure_onedrive_dialog)
         onedrive_settings_btn.setStyleSheet(primary_button_style())
         onedrive_settings_btn.setMinimumHeight(44)
+        try:
+            onedrive_settings_btn.setIcon(self._icon("onedrive.png"))
+            onedrive_settings_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        onedrive_settings_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         settings_layout.addWidget(onedrive_settings_btn)
         self.onedrive_settings_btn = onedrive_settings_btn  # Store as instance variable for translation
 
-        help_btn = QPushButton(f"📖 {QCoreApplication.translate('Settings', 'User Manual')}")
+        help_btn = QPushButton(QCoreApplication.translate('Settings', 'UserManual'))
         help_btn.clicked.connect(self.open_user_manual_current_lang)
         help_btn.setStyleSheet(primary_button_style())
         help_btn.setMinimumHeight(44)
+        try:
+            help_btn.setIcon(self._icon("user-guide.png"))
+            help_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        help_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         settings_layout.addWidget(help_btn)
         self.help_btn = help_btn
 
-        support_btn = QPushButton(f"🆘 {QCoreApplication.translate('Settings', 'Contact Support')}")
+        support_btn = QPushButton(QCoreApplication.translate('Settings', 'Support'))
         support_btn.clicked.connect(self.show_contact_support_dialog)
         support_btn.setStyleSheet(primary_button_style())
         support_btn.setMinimumHeight(44)
+        try:
+            support_btn.setIcon(self._icon("customer-service.png"))
+            support_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        support_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         settings_layout.addWidget(support_btn)
         self.support_btn = support_btn
         
@@ -403,11 +529,26 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.log_area)
         
         return panel
+
+    def _icon(self, filename: str) -> QIcon:
+        p = Path(__file__).resolve().parent.parent / "assets" / filename
+        return QIcon(str(p))
     
     def refresh_devices(self):
         """Refresh the device list."""
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Scanning for devices..."))
         self.devices = self.device_detector.detect_devices()
+        self.filtered_devices = list(self.devices)
+        try:
+            types = sorted({d.board_type.value for d in self.devices})
+            self.filter_type_combo.blockSignals(True)
+            self.filter_type_combo.clear()
+            self.filter_type_combo.addItem(QCoreApplication.translate("MainWindow", "All"))
+            for t in types:
+                self.filter_type_combo.addItem(t)
+            self.filter_type_combo.blockSignals(False)
+        except Exception:
+            pass
         self.update_device_table()
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Found {count} device(s)").format(count=len(self.devices)))
         try:
@@ -417,9 +558,10 @@ class MainWindow(QMainWindow):
     
     def update_device_table(self):
         """Update the device table with current devices."""
-        self.device_table.setRowCount(len(self.devices))
+        devices = getattr(self, 'filtered_devices', self.devices)
+        self.device_table.setRowCount(len(devices))
         
-        for row, device in enumerate(self.devices):
+        for row, device in enumerate(devices):
             # Port
             self.device_table.setItem(row, 0, QTableWidgetItem(device.port))
             
@@ -432,23 +574,11 @@ class MainWindow(QMainWindow):
             
             # Status
             status_item = QTableWidgetItem(device.status)
-            if device.status == "Connected":
-                status_item.setBackground(Qt.green)
-            elif device.status == "Disconnected":
-                status_item.setBackground(Qt.red)
-            else:
-                status_item.setBackground(Qt.yellow)
             self.device_table.setItem(row, 3, status_item)
             
             # Health Score
             health_score = self.device_detector.get_device_health_score(device)
             health_item = QTableWidgetItem(f"{health_score}%")
-            if health_score >= 80:
-                health_item.setBackground(Qt.green)
-            elif health_score >= 60:
-                health_item.setBackground(Qt.yellow)
-            else:
-                health_item.setBackground(Qt.red)
             self.device_table.setItem(row, 4, health_item)
             
             # Custom Name
@@ -456,11 +586,26 @@ class MainWindow(QMainWindow):
             self.device_table.setItem(row, 5, QTableWidgetItem(display_name))
             
             # Last Seen
-            last_seen = device.last_seen.split('T')[0] if device.last_seen else "Never"
-            self.device_table.setItem(row, 6, QTableWidgetItem(last_seen))
+            if device.last_seen:
+                dt = QDateTime.fromString(device.last_seen, Qt.ISODate)
+                if dt.isValid():
+                    secs = dt.secsTo(QDateTime.currentDateTime())
+                    if secs < 60:
+                        ls = QCoreApplication.translate("MainWindow", "Just now")
+                    elif secs < 3600:
+                        ls = f"{secs//60} min ago"
+                    elif secs < 86400:
+                        ls = f"{secs//3600} h ago"
+                    else:
+                        ls = dt.date().toString(QLocale().dateFormat(QLocale.ShortFormat))
+                else:
+                    ls = device.last_seen.split('T')[0]
+            else:
+                ls = "Never"
+            self.device_table.setItem(row, 6, QTableWidgetItem(ls))
             
             # Action button
-            btn = QPushButton("✅ Select")
+            btn = QPushButton(QCoreApplication.translate("MainWindow", "Select"))
             btn.clicked.connect(lambda checked, d=device: self.select_device(d))
             btn.setStyleSheet(primary_button_style())
             btn.setMinimumHeight(36)
@@ -858,66 +1003,60 @@ Please find the attached Excel report with complete device information including
         
         # Email Provider Selection
         provider_group = QGroupBox("Email Provider")
-        provider_layout = QVBoxLayout()
+        provider_layout = QFormLayout()
         
         # Provider selection
-        provider_layout.addWidget(QLabel("Choose your email provider:"))
         provider_combo = QComboBox()
         provider_combo.addItems(["Auto-detect from email", "Gmail", "Outlook/Hotmail", "Office 365", "Custom"])
-        provider_layout.addWidget(provider_combo)
+        provider_layout.addRow(QLabel("Provider:"), provider_combo)
         
         # Email Username (for auto-detection)
-        layout.addWidget(QLabel("Email Address:"))
         smtp_user = QLineEdit()
         smtp_user.setText(self.config.get('smtp', {}).get('username', ''))
         smtp_user.setPlaceholderText("your.email@gmail.com")
-        layout.addWidget(smtp_user)
+        provider_layout.addRow(QLabel("Email Address:"), smtp_user)
         
         # Auto-detect button
-        auto_detect_btn = QPushButton("[AUTO-DETECT] Auto-detect Settings")
-        auto_detect_btn.setMaximumWidth(150)
-        layout.addWidget(auto_detect_btn)
+        auto_detect_btn = QPushButton("Auto-detect Settings")
+        auto_detect_btn.setMaximumWidth(180)
+        provider_layout.addRow(QLabel(""), auto_detect_btn)
         
         provider_group.setLayout(provider_layout)
         layout.addWidget(provider_group)
         
         # SMTP Configuration Group
         smtp_group = QGroupBox("SMTP Configuration")
-        smtp_layout = QVBoxLayout()
+        smtp_layout = QFormLayout()
         
         # SMTP Server
-        smtp_layout.addWidget(QLabel("SMTP Server:"))
         smtp_host = QLineEdit()
         smtp_host.setText(self.config.get('smtp', {}).get('host', ''))
         smtp_host.setPlaceholderText("e.g., smtp.gmail.com")
-        smtp_layout.addWidget(smtp_host)
+        smtp_layout.addRow(QLabel("SMTP Server:"), smtp_host)
         
         # Port
-        smtp_layout.addWidget(QLabel("Port:"))
         smtp_port = QLineEdit()
         smtp_port.setText(str(self.config.get('smtp', {}).get('port', 587)))
-        smtp_layout.addWidget(smtp_port)
+        smtp_layout.addRow(QLabel("Port:"), smtp_port)
         
         # TLS checkbox
         tls_checkbox = QCheckBox("Use TLS/STARTTLS")
         tls_checkbox.setChecked(self.config.get('smtp', {}).get('tls', True))
-        smtp_layout.addWidget(tls_checkbox)
+        smtp_layout.addRow(QLabel("Security:"), tls_checkbox)
         
         smtp_group.setLayout(smtp_layout)
         layout.addWidget(smtp_group)
         
         # Password
-        layout.addWidget(QLabel("Password (stored securely):"))
         smtp_pass = QLineEdit()
         smtp_pass.setEchoMode(QLineEdit.Password)
-        layout.addWidget(smtp_pass)
+        smtp_layout.addRow(QLabel("Password:"), smtp_pass)
         
         # Recipients
-        layout.addWidget(QLabel("Recipients (one per line):"))
         recipients_text = QTextEdit()
         recipients_text.setMaximumHeight(100)
         recipients_text.setPlainText("\n".join(self.config.get('recipients', [])))
-        layout.addWidget(recipients_text)
+        smtp_layout.addRow(QLabel("Recipients:"), recipients_text)
         
         # Dynamic Configuration Guide
         guide_group = QGroupBox("[GUIDE] Email Configuration Guide")
@@ -1173,13 +1312,13 @@ Please find the attached Excel report with complete device information including
         file_path.setPlaceholderText("Select firmware file or enter URL...")
         file_layout.addWidget(file_path)
         
-        browse_btn = QPushButton("[BROWSE] Browse")
+        browse_btn = QPushButton("Browse")
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(file_path))
         file_layout.addWidget(browse_btn)
         firmware_layout.addLayout(file_layout)
         
         # Firmware Configuration Guide
-        firmware_guide_group = QGroupBox("[GUIDE] Firmware Flashing Guide")
+        firmware_guide_group = QGroupBox("Firmware Flashing Guide")
         firmware_guide_layout = QVBoxLayout()
         
         # Supported Formats Guide
@@ -1267,7 +1406,7 @@ Please find the attached Excel report with complete device information including
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         flash_btn = buttons.button(QDialogButtonBox.Ok)
-        flash_btn.setText("[FLASH] Flash Firmware")
+        flash_btn.setText("Flash Firmware")
         flash_btn.clicked.connect(lambda: self._start_flashing(
             dialog, device_list.currentItem().data(Qt.UserRole),
             file_path.text(), erase_checkbox.isChecked(),
@@ -1304,7 +1443,7 @@ Please find the attached Excel report with complete device information including
         firmware_path.setPlaceholderText("Enter file path...")
         file_layout.addWidget(firmware_path)
         
-        browse_btn = QPushButton("[BROWSE] Browse")
+        browse_btn = QPushButton("Browse")
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(firmware_path))
         file_layout.addWidget(browse_btn)
         local_layout.addLayout(file_layout)
@@ -1870,15 +2009,15 @@ Please find the attached Excel report with complete device information including
         # Machine type buttons
         machine_buttons_layout = QHBoxLayout()
         
-        add_btn = QPushButton("[ADD] Add New")
+        add_btn = QPushButton("Add New")
         add_btn.clicked.connect(lambda: self.add_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(add_btn)
         
-        edit_btn = QPushButton("[EDIT] Edit")
+        edit_btn = QPushButton("Edit")
         edit_btn.clicked.connect(lambda: self.edit_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(edit_btn)
         
-        delete_btn = QPushButton("[DELETE] Delete")
+        delete_btn = QPushButton("Delete")
         delete_btn.clicked.connect(lambda: self.delete_machine_type_dialog(dialog))
         machine_buttons_layout.addWidget(delete_btn)
         
@@ -1954,7 +2093,7 @@ Please find the attached Excel report with complete device information including
         test_id_layout.addWidget(self.test_machine_id)
         test_layout.addLayout(test_id_layout)
         
-        test_btn = QPushButton("[TEST] Test Validation")
+        test_btn = QPushButton("Test Validation")
         test_btn.clicked.connect(self.test_machine_id_validation)
         test_layout.addWidget(test_btn)
         
@@ -2261,7 +2400,7 @@ Please find the attached Excel report with complete device information including
         detect_btn.clicked.connect(self._detect_onedrive_folder)
         folder_layout.addWidget(detect_btn)
 
-        browse_folder_btn = QPushButton("[BROWSE] Browse")
+        browse_folder_btn = QPushButton("Browse")
         browse_folder_btn.clicked.connect(self._browse_onedrive_folder)
         folder_layout.addWidget(browse_folder_btn)
 
@@ -2423,7 +2562,7 @@ Please find the attached Excel report with complete device information including
         self.populate_machine_history()
         history_list_layout.addWidget(self.machine_history_list)
         
-        refresh_history_btn = QPushButton("[REFRESH] Refresh History")
+        refresh_history_btn = QPushButton("Refresh History")
         refresh_history_btn.clicked.connect(self.populate_machine_history)
         history_list_layout.addWidget(refresh_history_btn)
         
@@ -2530,10 +2669,12 @@ Please find the attached Excel report with complete device information including
             self.onedrive_test_result.setText(f"[SUCCESS] {message}")
             self.onedrive_test_result.setStyleSheet("color:#0f5132;font-size:12px;padding:10px;border:1px solid #badbcc;border-radius:6px;background:#d1e7dd;")
             self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=True, text="OneDrive connected")
+            self._update_onedrive_status_indicator()
         else:
             self.onedrive_test_result.setText(f"[ERROR] {message}")
             self.onedrive_test_result.setStyleSheet("color:#842029;font-size:12px;padding:10px;border:1px solid #f5c2c7;border-radius:6px;background:#f8d7da;")
             self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=False, text="Connection failed")
+            self._update_onedrive_status_indicator()
     
     def save_onedrive_settings(self, dialog):
         """Save OneDrive settings."""
@@ -2552,6 +2693,7 @@ Please find the attached Excel report with complete device information including
         
         QMessageBox.information(dialog, "Settings Saved", "OneDrive configuration saved successfully!")
         self._update_onedrive_status_banner(enabled=self.onedrive_enabled.isChecked(), ok=None, text="Settings updated")
+        self._update_onedrive_status_indicator()
     
     def populate_machine_history(self):
         """Populate machine history list."""
@@ -2642,6 +2784,37 @@ Please find the attached Excel report with complete device information including
         else:
             self.onedrive_status_banner.setText(text or "OneDrive enabled: please test and save settings")
             self.onedrive_status_banner.setStyleSheet("background:#cff4fc;color:#055160;padding:10px;border:1px solid #b6effb;border-radius:6px;")
+
+    def _update_onedrive_status_indicator(self):
+        try:
+            enabled = self.onedrive_manager.is_enabled()
+            txt = QCoreApplication.translate("MainWindow", "OneDrive: On") if enabled else QCoreApplication.translate("MainWindow", "OneDrive: Off")
+            self.onedrive_status_label.setText(txt)
+        except Exception:
+            pass
+
+    def apply_device_filter(self):
+        try:
+            query = (self.filter_input.text() or "").lower().strip()
+            type_sel = self.filter_type_combo.currentText()
+            src = list(self.devices)
+            def match(d):
+                if type_sel and type_sel != QCoreApplication.translate("MainWindow", "All"):
+                    if d.board_type.value != type_sel:
+                        return False
+                if not query:
+                    return True
+                hay = " ".join([
+                    d.get_display_name() or "",
+                    d.port or "",
+                    d.board_type.value or "",
+                ]).lower()
+                return query in hay
+            self.filtered_devices = [d for d in src if match(d)]
+            self.update_device_table()
+        except Exception:
+            self.filtered_devices = list(self.devices)
+            self.update_device_table()
     
     def save_operator_info(self):
         """Save operator information to config."""
@@ -2867,41 +3040,41 @@ Please find the attached Excel report with complete device information including
         
         # Update main buttons
         if hasattr(self, 'refresh_btn'):
-            self.refresh_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'REFRESH')}] {QCoreApplication.translate('MainWindow', 'Refresh Devices')}")
+            self.refresh_btn.setText(QCoreApplication.translate('MainWindow', 'Refresh Devices'))
         
         if hasattr(self, 'history_btn'):
-            self.history_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'HISTORY')}] {QCoreApplication.translate('MainWindow', 'Device History')}")
+            self.history_btn.setText(QCoreApplication.translate('MainWindow', 'Device History'))
         
         if hasattr(self, 'templates_btn'):
-            self.templates_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'TEMPLATES')}] {QCoreApplication.translate('MainWindow', 'Templates')}")
+            self.templates_btn.setText(QCoreApplication.translate('MainWindow', 'Templates'))
         
         if hasattr(self, 'search_btn'):
-            self.search_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'SEARCH')}] {QCoreApplication.translate('MainWindow', 'Search')}")
+            self.search_btn.setText(QCoreApplication.translate('MainWindow', 'Search'))
         
         if hasattr(self, 'flash_btn'):
-            self.flash_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'FLASH')}] {QCoreApplication.translate('MainWindow', 'Flash Firmware')}")
+            self.flash_btn.setText(QCoreApplication.translate('MainWindow', 'Flash Firmware'))
         
         if hasattr(self, 'report_btn'):
-            self.report_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'REPORT')}] {QCoreApplication.translate('MainWindow', 'Generate Excel Report')}")
+            self.report_btn.setText(QCoreApplication.translate('MainWindow', 'Excel Report'))
         
         if hasattr(self, 'email_btn'):
-            self.email_btn.setText(f"[{QCoreApplication.translate('MainWindow', 'EMAIL')}] {QCoreApplication.translate('MainWindow', 'Send Email')}")
+            self.email_btn.setText(QCoreApplication.translate('MainWindow', 'Send Email'))
         
         if hasattr(self, 'theme_lang_btn'):
-            self.theme_lang_btn.setText(f"🎨 {QCoreApplication.translate('MainWindow', 'Theme & Language')}")
+            self.theme_lang_btn.setText(QCoreApplication.translate('MainWindow', 'Themes'))
 
         if hasattr(self, 'open_stm32_btn'):
-            self.open_stm32_btn.setText(QCoreApplication.translate('MainWindow', 'Open STM32 Project'))
+            self.open_stm32_btn.setText(QCoreApplication.translate('MainWindow', 'Open Project'))
         
         # Update settings buttons
         if hasattr(self, 'email_settings_btn'):
-            self.email_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'CONFIG')}] {QCoreApplication.translate('Settings', 'Configure Email')}")
+            self.email_settings_btn.setText(QCoreApplication.translate('Settings', 'Configure Email'))
         
         if hasattr(self, 'machine_settings_btn'):
-            self.machine_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'MACHINE')}] {QCoreApplication.translate('Settings', 'Machine Types')}")
+            self.machine_settings_btn.setText(QCoreApplication.translate('Settings', 'Machine Types'))
         
         if hasattr(self, 'onedrive_settings_btn'):
-            self.onedrive_settings_btn.setText(f"[{QCoreApplication.translate('Settings', 'ONEDRIVE')}] {QCoreApplication.translate('Settings', 'OneDrive')}")
+            self.onedrive_settings_btn.setText(QCoreApplication.translate('Settings', 'OneDrive'))
         
         # Update device table headers
         if hasattr(self, 'device_table'):
@@ -2924,12 +3097,7 @@ Please find the attached Excel report with complete device information including
         # Update status bar message
         self.statusBar().showMessage(QCoreApplication.translate("MainWindow", "Ready"))
 
-        # Update language combo labels (keep native script labels)
-        if hasattr(self, 'language_combo'):
-            labels = ["English", "Français"]
-            for i, label in enumerate(labels):
-                if i < self.language_combo.count():
-                    self.language_combo.setItemText(i, label)
+        # Language selector removed from status bar
         
         # Update status messages
         self.log(f"[{QCoreApplication.translate('Messages', 'Language Applied')}] {QCoreApplication.translate('Messages', 'Language Applied')}")
@@ -3111,7 +3279,7 @@ Please find the attached Excel report with complete device information including
         from src.core.ide_launcher import launch_stm32cubeide, stm32cubeide_install_status
 
         dialog = QDialog(self)
-        dialog.setWindowTitle(QCoreApplication.translate('MainWindow', 'Open STM32 Project'))
+        dialog.setWindowTitle(QCoreApplication.translate('MainWindow', 'Open Project'))
         dialog.setMinimumWidth(560)
 
         layout = QVBoxLayout()
@@ -3359,7 +3527,7 @@ Please find the attached Excel report with complete device information including
                     ws_text = workspace_input.text().strip()
                     ws_path = Path(ws_text) if ws_text else None
                     ok, msg = launch_stm32cubeide(chosen_dir, ws_path)
-                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
+                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open Project')}] {msg}")
                     if not ok:
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
                     dialog.accept()
@@ -3456,7 +3624,7 @@ Please find the attached Excel report with complete device information including
                     ws_text = workspace_input.text().strip()
                     ws_path = Path(ws_text) if ws_text else None
                     ok, msg = launch_stm32cubeide(chosen_dir, ws_path)
-                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open STM32 Project')}] {msg}")
+                    self.log(f"[{QCoreApplication.translate('MainWindow', 'Open Project')}] {msg}")
                     if not ok:
                         QMessageBox.warning(dialog, QCoreApplication.translate('Dialogs', 'Error'), msg)
                     dialog.accept()
@@ -3499,15 +3667,15 @@ Please find the attached Excel report with complete device information including
         # Template buttons
         template_buttons = QHBoxLayout()
         
-        create_btn = QPushButton("[CREATE] Create from Current")
+        create_btn = QPushButton("Create from Current")
         create_btn.clicked.connect(lambda: self.create_template_from_current(dialog))
         template_buttons.addWidget(create_btn)
         
-        apply_btn = QPushButton("[APPLY] Apply Template")
+        apply_btn = QPushButton("Apply Template")
         apply_btn.clicked.connect(lambda: self.apply_template(dialog, templates_list))
         template_buttons.addWidget(apply_btn)
         
-        delete_btn = QPushButton("[DELETE] Delete")
+        delete_btn = QPushButton("Delete")
         delete_btn.clicked.connect(lambda: self.delete_template(dialog, templates_list))
         template_buttons.addWidget(delete_btn)
         
@@ -3536,7 +3704,7 @@ Please find the attached Excel report with complete device information including
         search_input.setPlaceholderText("Enter search query...")
         search_layout.addWidget(search_input)
         
-        search_btn = QPushButton("[SEARCH] Search")
+        search_btn = QPushButton("Search")
         search_layout.addWidget(search_btn)
         layout.addLayout(search_layout)
         
@@ -3877,4 +4045,43 @@ Please find the attached Excel report with complete device information including
             self.device_detector.delete_device_template(template_name)
             QMessageBox.information(dialog, "Success", f"Template '{template_name}' deleted successfully!")
             dialog.accept()  # Close and reopen to refresh
-
+class ChipDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        col = index.column()
+        text = str(index.data()) if index.data() is not None else ""
+        if col in (3, 4) and text:
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            rect = option.rect.adjusted(6, 6, -6, -6)
+            pal = option.palette
+            bg = pal.alternateBase().color()
+            fg = pal.windowText().color()
+            if col == 3:
+                t = text.lower()
+                if "connected" in t:
+                    bg = pal.highlight().color().lighter(160)
+                elif "disconnected" in t:
+                    bg = pal.brightText().color()
+                    bg = QColor(bg.red(), max(0, bg.green()-120), max(0, bg.blue()-120)).lighter(140)
+                else:
+                    bg = pal.highlight().color().lighter(200)
+            else:
+                try:
+                    val = int(text.replace('%', '').strip())
+                except Exception:
+                    val = -1
+                if val >= 80:
+                    bg = pal.highlight().color().lighter(160)
+                elif val >= 60:
+                    bg = pal.highlight().color().lighter(190)
+                else:
+                    bg = pal.brightText().color()
+                    bg = QColor(bg.red(), max(0, bg.green()-120), max(0, bg.blue()-120)).lighter(140)
+            painter.setBrush(bg)
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(rect, 10, 10)
+            painter.setPen(fg)
+            painter.drawText(rect, Qt.AlignCenter, text)
+            painter.restore()
+        else:
+            super().paint(painter, option, index)
