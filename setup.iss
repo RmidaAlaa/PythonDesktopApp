@@ -30,6 +30,10 @@ WizardStyle=modern
 ; Ensure admin rights for driver/prereq installation
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64
+; Custom Icons and Images
+SetupIconFile=resources\app_icon.ico
+WizardImageFile=resources\logo.bmp
+WizardSmallImageFile=resources\logo.bmp
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -144,7 +148,7 @@ var
 begin
   if CurPageID = DependencyPage.ID then
   begin
-    CheckListBox.Clear;
+    CheckListBox.Items.Clear;
     
     // Check status
     VCRedistNeeded := IsVCRedistNeeded();

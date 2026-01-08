@@ -7,8 +7,8 @@ Cross-platform Python desktop application for managing embedded boards.
 import sys
 import os
 from pathlib import Path
-from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtCore import Qt
 
 from src.core.config import Config
@@ -16,13 +16,32 @@ from src.core.bootstrap import BootstrapManager
 from src.core.version import format_version_banner
 from src.gui.main_window import MainWindow
 
-
 def main():
     """Entry point for the application."""
     # Ensure application name is set
     QApplication.setApplicationName("AWG Kumulus Device Manager")
     QApplication.setOrganizationName("AWG")
     
+    # High-DPI: use Qt6 rounding policy instead of deprecated attributes
+    try:
+        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    except Exception:
+        pass
+
+    # Create Qt application first (needed for Splash Screen)
+    app = QApplication(sys.argv)
+
+    # Show Splash Screen
+    splash_pix = QPixmap(str(Path(__file__).parent / "src" / "assets" / "washing-machine.png"))
+    # Scale if too big
+    if splash_pix.width() > 600:
+        splash_pix = splash_pix.scaledToWidth(600, Qt.SmoothTransformation)
+    
+    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+    splash.show()
+    splash.showMessage("Initializing...", Qt.AlignBottom | Qt.AlignCenter, Qt.black)
+    app.processEvents()
+
     # Load environment from .env if present (IDE path, workspace overrides, version)
     try:
         root = Path(__file__).resolve().parent
@@ -46,14 +65,8 @@ def main():
     # Initialize config
     Config.ensure_directories()
     
-    # High-DPI: use Qt6 rounding policy instead of deprecated attributes
-    try:
-        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-    except Exception:
-        pass
-
     # Create Qt application
-    app = QApplication(sys.argv)
+    # app = QApplication(sys.argv) # Already created above
     
     # Create and show main window
     window = MainWindow()
@@ -64,7 +77,9 @@ def main():
         mw_logger.info(format_version_banner())
     except Exception:
         pass
+    
     window.show()
+    splash.finish(window) # Close splash screen
     window.raise_()  # Bring window to front
     window.activateWindow()  # Activate the window
     
