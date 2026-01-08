@@ -6,3 +6,16 @@ prerequisites/stlink/
 prerequisites/cp210x/
 prerequisites/cp210x_temp/
 prerequisites/stlink_temp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Inno Setup
+Output/
