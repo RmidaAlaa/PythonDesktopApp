@@ -88,7 +88,8 @@ class OneDriveManager:
             return None
     
     def save_machine_data(self, operator_name: str, machine_type: str, machine_id: str, 
-                         devices: List[Device], firmware_info: Optional[Dict] = None) -> bool:
+                         devices: List[Device], firmware_info: Optional[Dict] = None,
+                         operator_email: Optional[str] = None, client_name: Optional[str] = None) -> bool:
         """Save machine data to OneDrive."""
         try:
             if not self.is_enabled():
@@ -106,6 +107,8 @@ class OneDriveManager:
                     "machine_type": machine_type,
                     "machine_id": machine_id,
                     "operator_name": operator_name,
+                    "operator_email": operator_email or "",
+                    "client_name": client_name or "",
                     "timestamp": datetime.now().isoformat(),
                     "created_by": "AWG Kumulus Device Manager"
                 },

@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant User
+    participant App as Application
+    participant MW as MainWindow
+    participant Cfg as Config
+    participant TM as TourManager
+
+    User->>App: Launch Application
+    App->>MW: Initialize
+    MW->>Cfg: Load Configuration
+    Cfg-->>MW: Return Config (tour_seen=False)
+    
+    MW->>MW: init_ui()
+    MW->>MW: check_first_run_tour()
+    
+    alt Tour Not Seen
+        MW->>MW: Timer(1000ms) -> show_quick_tour_dialog()
+        MW->>TM: new TourManager(self)
+        MW->>TM: start_tour()
+        TM->>MW: Highlight UI Elements
+        TM-->>User: Show Tooltip Popups
+        User->>TM: Click Next/Close
+        TM->>TM: Complete Tour
+        MW->>Cfg: set('tour_seen', True)
+        MW->>Cfg: save()
+    else Tour Already Seen
+        MW->>MW: Do nothing
+    end

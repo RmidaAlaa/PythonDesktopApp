@@ -2,6 +2,7 @@
 
 import json
 import platform
+import shutil
 from pathlib import Path
 
 
@@ -26,15 +27,6 @@ class Config:
     
     # Helper binaries metadata
     HELPER_TOOLS = {
-        "esptool": {
-            "url": "https://github.com/espressif/esptool/archive/refs/heads/master.zip",
-            "platform": "all",
-            "checksums": {
-                "windows": None,
-                "linux": None,
-                "darwin": None
-            }
-        },
         "dfu-util": {
             "url": "https://sourceforge.net/projects/dfu-util/files/latest/download",
             "platform": "all",
@@ -60,6 +52,14 @@ class Config:
     
     DEFAULT_CONFIG = {
         "version": "1.0.0",
+        "admin_password": "AWG",
+        "auto_flash": {
+            "enabled": False,
+            "firmware_path": "",
+            "board_types": ["STM32"],
+            "erase": True,
+            "verify": True
+        },
         "smtp": {
             "host": "",
             "port": 587,
@@ -67,13 +67,24 @@ class Config:
             "username": "",
             "password": ""
         },
+        "azure": {
+            "enabled": True,
+            "client_id": "5cc56638-0cbd-4157-8048-a45be46796e6",
+            "client_secret": "",
+            "tenant_id": "0ec61e2c-d103-4eba-9c26-0f87efc69a51",
+            "sender_email": "aabengandia@kumuluswater.com"
+        },
         "recipients": [],
         "machine_types": MACHINE_TYPES.copy(),  # Include default machine types
         "machine_type": "Amphore",
+        "machine_id": "",
+        "machine_id_suffix": "",
+        "client_name": "",
         "operator": {
             "name": "",
             "email": ""
         },
+        "tour_seen": False,
         "onedrive": {
             "enabled": False,
             "folder_path": "",
@@ -93,15 +104,37 @@ class Config:
     @classmethod
     def load_config(cls):
         """Load configuration from file."""
-        if cls.CONFIG_FILE.exists():
-            with open(cls.CONFIG_FILE, 'r') as f:
-                config = json.load(f)
-                # Merge with defaults
-                for key, value in cls.DEFAULT_CONFIG.items():
-                    if key not in config:
-                        config[key] = value
-                return config
-        return cls.DEFAULT_CONFIG.copy()
+        try:
+            if cls.CONFIG_FILE.exists():
+                text = cls.CONFIG_FILE.read_text(encoding="utf-8")
+                if not text.strip():
+                    # Empty file; initialize with defaults
+                    default_cfg = cls.DEFAULT_CONFIG.copy()
+                    cls.save_config(default_cfg)
+                    return default_cfg
+                with open(cls.CONFIG_FILE, 'r', encoding="utf-8") as f:
+                    config = json.load(f)
+                    # Merge with defaults
+                    for key, value in cls.DEFAULT_CONFIG.items():
+                        if key not in config:
+                            config[key] = value
+                    return config
+            # No config file; return defaults and create file
+            cfg = cls.DEFAULT_CONFIG.copy()
+            try:
+                cls.ensure_directories()
+                cls.save_config(cfg)
+            except Exception:
+                pass
+            return cfg
+        except Exception:
+            # Fallback: corrupted or unreadable config; reset to defaults
+            cfg = cls.DEFAULT_CONFIG.copy()
+            try:
+                cls.save_config(cfg)
+            except Exception:
+                pass
+            return cfg
     
     @classmethod
     def save_config(cls, config):
@@ -111,8 +144,44 @@ class Config:
     
     @classmethod
     def get_tool_path(cls, tool_name):
-        """Get the path to a helper tool."""
+        """Get the path to a helper tool directory."""
         return cls.TOOLS_DIR / tool_name
+
+    @classmethod
+    def get_tool_executable(cls, tool_name, exe_name):
+        """Get the path to a helper tool executable, searching in tools dir, system path, and common install locations."""
+        # 1. Check in TOOLS_DIR
+        tool_dir = cls.get_tool_path(tool_name)
+        exe_path = tool_dir / exe_name
+        if exe_path.exists():
+            return str(exe_path)
+            
+        # 2. Check in system PATH
+        system_path = shutil.which(exe_name)
+        if system_path:
+            return system_path
+            
+        # 3. Check specific tool name without extension
+        base_name = Path(exe_name).stem
+        system_path_base = shutil.which(base_name)
+        if system_path_base:
+            return system_path_base
+
+        # 4. Check common installation paths (Windows)
+        if platform.system() == "Windows":
+            common_paths = [
+                Path(r"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin") / exe_name,
+                Path(r"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin") / exe_name,
+                Path(r"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe"),
+                Path(r"C:\ST\STM32CubeProgrammer\bin") / exe_name
+            ]
+            for p in common_paths:
+                if p.exists():
+                    return str(p)
+            
+        # 5. Fallback to expected path
+        return str(exe_path)
+
     
     @classmethod
     def is_first_run(cls):

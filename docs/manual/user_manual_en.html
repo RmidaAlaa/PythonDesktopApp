@@ -62,6 +62,7 @@
       <a href="#requirements">System Requirements</a>
       <a href="#installation">Installation & Setup</a>
       <a href="#first-run">First Run & Bootstrap</a>
+      <a href="#quick-tour">Interactive Quick Tour</a>
       <a href="#interface">User Interface Overview</a>
       <a href="#device-detection">Device Detection</a>
       <a href="#device-management">Device Management</a>
@@ -158,6 +159,7 @@
           <li><strong>User Manual</strong> - This comprehensive manual</li>
         </ul>
       </li>
+      <li>Automatically launch the <strong>Interactive Quick Tour</strong> to guide you through the interface</li>
       <li>Check for required helper tools and Python packages</li>
       <li>Create necessary directories:
         <ul>
@@ -210,28 +212,44 @@
       </tr>
     </table>
 
+    <h2 id="quick-tour">Interactive Quick Tour</h2>
+    <p>The application features an interactive Quick Tour to help you get familiar with the interface immediately.</p>
+    <div class="feature-box">
+      <h4>Tour Features</h4>
+      <ul>
+        <li><strong>Automatic Launch:</strong> The tour activates automatically upon your first use of the application, ensuring you don't miss any important features.</li>
+        <li><strong>Comprehensive Coverage:</strong> It guides you through all visual components, including the Device List, Control Panel, Action Buttons, and Status Bar.</li>
+        <li><strong>Interactive Popups:</strong> Tooltips appear directly on the screen pointing to specific elements (like the "Refresh Devices" button or "OneDrive Status") with explanations.</li>
+        <li><strong>Restart Anytime:</strong> Missed something? Click the <strong>Quick Tour</strong> button in the Control Panel to restart the tour.</li>
+      </ul>
+    </div>
+
     <h2 id="interface">User Interface Overview</h2>
     
     <h3>Main Window Layout</h3>
     <p>The main window consists of:</p>
     <ul>
       <li><strong>Left Panel:</strong> Device list table showing all connected devices</li>
-      <li><strong>Right Panel:</strong> Control panel with tabs for:
+      <li><strong>Right Panel:</strong> Control panel containing:
         <ul>
-          <li>Device Information</li>
-          <li>Report Generation</li>
-          <li>Firmware Management</li>
-          <li>Settings</li>
+          <li><strong>Quick Actions:</strong> Buttons for <strong>Quick Tour</strong>, <strong>User Manual</strong>, and <strong>Contact Support</strong>.</li>
+          <li><strong>Tabs:</strong> Device Information, Report Generation, Firmware Management, and Settings.</li>
         </ul>
       </li>
       <li><strong>Status Bar (Footer):</strong>
         <ul>
-          <li>Left: Device count</li>
+          <li>Left: Device count and <strong>OneDrive Status</strong></li>
           <li>Center: Date/time, timezone, and location</li>
           <li>Right: Language selector</li>
         </ul>
       </li>
     </ul>
+    <div class="info">
+      <strong>Window Size:</strong> On startup, the application opens sized to your current screen’s available area.
+    </div>
+    <div class="info">
+      <strong>Operator Information:</strong> The form uses the label “Full name” and no longer includes a separate “Family Name” field.
+    </div>
 
     <h3>Menu Bar</h3>
     <ul>
@@ -270,6 +288,14 @@
         <td>VID:PID matching, serial communication</td>
       </tr>
     </table>
+    
+    <h3>Reading Device UID</h3>
+    <p>To read the microcontroller UID:</p>
+    <ol>
+      <li>In the <strong>Connected Devices</strong> table, either <strong>check</strong> the device’s checkbox or <strong>select</strong> its row. Checked items show a blue indicator and light-blue cell background for clarity.</li>
+      <li>Click <strong>Read UID</strong> in the Control Panel.</li>
+      <li>The <strong>Device UID &amp; Info</strong> popup appears with UID and device details. The popup does not include a separate “Read UID” button; reading is triggered only from the Control Panel.</li>
+    </ol>
 
     <h3>Manual Device Detection</h3>
     <div class="step">
@@ -761,6 +787,29 @@
     </div>
     <div class="step">
       <span class="step-number">Step 5:</span> Check the log area for send status
+    </div>
+    
+    <h3>Azure (Microsoft Graph) Configuration</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Open Settings → <strong>Configure Email</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Select <strong>Azure</strong> as the provider and enter:
+      <ul>
+        <li><strong>Client ID</strong></li>
+        <li><strong>Tenant ID</strong></li>
+        <li><strong>Client Secret</strong></li>
+        <li><strong>Sender Email</strong> (must be a valid user mailbox)</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Add recipient email addresses.
+    </div>
+    <div class="info">
+      <strong>Important:</strong> The Microsoft Graph <code>sendMail</code> endpoint requires a valid <em>user email</em>. Using an application name or non-mailbox ID will result in <strong>404 Not Found</strong>.
+    </div>
+    <div class="info">
+      <strong>Validation:</strong> The configuration test checks required fields (Client ID, Tenant ID, Client Secret, Sender Email) before sending.
     </div>
 
     <h3>Contact Support Feature</h3>

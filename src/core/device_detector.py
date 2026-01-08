@@ -7,11 +7,13 @@ import serial
 import time
 import json
 import threading
+import sys
 from datetime import datetime
 from typing import List, Dict, Optional, Callable
 from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
+import re
 
 from .logger import setup_logger
 from .config import Config
@@ -22,9 +24,6 @@ logger = setup_logger("DeviceDetector")
 class BoardType(Enum):
     """Supported board types."""
     STM32 = "STM32"
-    ESP32 = "ESP32"
-    ESP8266 = "ESP8266"
-    ARDUINO = "Arduino"
     UNKNOWN = "Unknown"
 
 
@@ -54,10 +53,13 @@ class Device:
     custom_name: Optional[str] = None
     tags: List[str] = None
     notes: Optional[str] = None
+    extra_info: Dict[str, str] = None
     
     def __post_init__(self):
         if self.tags is None:
             self.tags = []
+        if self.extra_info is None:
+            self.extra_info = {}
         if self.first_detected is None:
             self.first_detected = datetime.now().isoformat()
         if self.last_seen is None:
@@ -65,11 +67,34 @@ class Device:
     
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
+        def _format_hex(value: Optional[object]) -> Optional[str]:
+            """Format value as 0xXXXX safely for int or str inputs."""
+            if value is None:
+                return None
+            try:
+                if isinstance(value, int):
+                    return f"0x{value:04X}"
+                if isinstance(value, str):
+                    s = value.strip()
+                    if s.startswith("0x") or s.startswith("0X"):
+                        v = int(s, 16)
+                        return f"0x{v:04X}"
+                    # Try decimal then hex fallback
+                    try:
+                        v = int(s)
+                        return f"0x{v:04X}"
+                    except ValueError:
+                        v = int(s, 16)
+                        return f"0x{v:04X}"
+            except Exception:
+                return str(value)
+            return str(value)
+
         return {
             "port": self.port,
             "board_type": self.board_type.value,
-            "vid": f"0x{self.vid:04X}" if self.vid else None,
-            "pid": f"0x{self.pid:04X}" if self.pid else None,
+            "vid": _format_hex(self.vid),
+            "pid": _format_hex(self.pid),
             "serial_number": self.serial_number or "N/A",
             "manufacturer": self.manufacturer or "N/A",
             "description": self.description or "N/A",
@@ -87,7 +112,8 @@ class Device:
             "health_score": self.health_score,
             "custom_name": self.custom_name,
             "tags": self.tags,
-            "notes": self.notes
+            "notes": self.notes,
+            "extra_info": self.extra_info
         }
     
     def update_connection_info(self):
@@ -103,15 +129,38 @@ class Device:
         return f"{self.board_type.value} - {self.port}"
     
     def get_unique_id(self) -> str:
-        """Get unique identifier for the device."""
         if self.uid:
             return self.uid
-        elif self.serial_number:
+        if self.serial_number:
             return self.serial_number
-        elif self.vid and self.pid:
-            return f"{self.vid:04X}:{self.pid:04X}"
-        else:
-            return f"{self.port}_{self.board_type.value}"
+        try:
+            if self.vid is not None and self.pid is not None:
+                vid_str = f"{int(self.vid):04X}" if not isinstance(self.vid, str) else (
+                    f"{int(self.vid, 16):04X}" if str(self.vid).lower().startswith("0x") else f"{int(self.vid):04X}"
+                )
+                pid_str = f"{int(self.pid):04X}" if not isinstance(self.pid, str) else (
+                    f"{int(self.pid, 16):04X}" if str(self.pid).lower().startswith("0x") else f"{int(self.pid):04X}"
+                )
+                return f"{vid_str}:{pid_str}"
+        except Exception:
+            pass
+        return f"{self.port}_{self.board_type.value}"
+
+def get_unique_id(self) -> str:
+    """Get unique identifier for the STM32 microcontroller."""
+    try:
+        # Adresse UID STM32 (exemple STM32F4)
+        UID_BASE = 0x1FFF7A10
+        UID_LENGTH = 12  # 96 bits
+        
+        # Lire la mémoire du MCU via l'interface debug
+        uid_bytes = self.read_memory(UID_BASE, UID_LENGTH)  # Méthode à implémenter selon ton API
+        uid_hex = ''.join(f'{b:02X}' for b in uid_bytes)
+        
+        return uid_hex
+    except Exception as e:
+        # Fallback si lecture impossible
+        return f"UID_Read_Error: {e}"
 
 
 class DeviceDetector:
@@ -137,19 +186,8 @@ class DeviceDetector:
         # STM32 boards
         (0x0483, 0x5740): BoardType.STM32,  # STM32 Virtual COM Port
         (0x0483, 0x3748): BoardType.STM32,  # STM32 in DFU mode
-        
-        # ESP32
-        (0x10C4, 0xEA60): BoardType.ESP32,  # CP210x UART Bridge
-        (0x303A, 0x0001): BoardType.ESP32,  # ESP32-DevKitC
-        (0x303A, 0x1001): BoardType.ESP32,  # ESP32-WROOM-DA Module
-        
-        # ESP8266
-        (0x10C4, 0xEA60): BoardType.ESP8266,  # NodeMCU
-        
-        # Arduino
-        (0x2341, 0x0043): BoardType.ARDUINO,  # Arduino Uno
-        (0x2341, 0x0010): BoardType.ARDUINO,  # Arduino Mega
-        (0x2A03, 0x0043): BoardType.ARDUINO,  # Arduino Uno (clone)
+        (0x0483, 0x374B): BoardType.STM32,  # ST-LINK/V2.1 (Nucleo/Discovery)
+        (0x0483, 0x3752): BoardType.STM32,  # ST-LINK/V2.1
     }
     
     def _get_devices_silent(self) -> List[Device]:
@@ -201,8 +239,19 @@ class DeviceDetector:
     
     def _identify_device(self, port) -> Optional[Device]:
         """Identify a single device."""
+        # Normalize VID/PID to integers when possible to avoid formatting errors
         vid = port.vid
         pid = port.pid
+        try:
+            if isinstance(vid, str):
+                vid = int(vid, 16) if vid.lower().startswith("0x") else int(vid)
+        except Exception:
+            pass
+        try:
+            if isinstance(pid, str):
+                pid = int(pid, 16) if pid.lower().startswith("0x") else int(pid)
+        except Exception:
+            pass
         
         # Try to determine board type from VID:PID
         board_type = self.BOARD_VIDPIDS.get((vid, pid), BoardType.UNKNOWN)
@@ -226,25 +275,31 @@ class DeviceDetector:
     def _read_device_info(self, device: Device):
         """Read additional information from the device."""
         logger.debug(f"Reading info from {device.port}")
-        
+
         try:
             if device.board_type == BoardType.STM32:
                 self._read_stm32_info(device)
-            elif device.board_type in [BoardType.ESP32, BoardType.ESP8266]:
-                self._read_esp_info(device)
-            elif device.board_type == BoardType.ARDUINO:
-                self._read_arduino_info(device)
             else:
                 # Try to read basic info via serial communication
                 self._read_generic_info(device)
         except Exception as e:
             logger.warning(f"Failed to read device info from {device.port}: {e}")
+        finally:
+            try:
+                metadata = self._read_serial_metadata(device.port)
+                if metadata:
+                    self._apply_metadata_to_device(device, metadata)
+            except Exception as e:
+                logger.debug(f"Metadata enrichment failed for {device.port}: {e}")
     
     def _read_stm32_info(self, device: Device):
         """Read STM32 specific information."""
         try:
-            # Try to read STM32 UID via esptool or direct serial communication
             device.uid = self._read_stm32_uid(device.port)
+            if not device.uid:
+                logger.debug("Firmware UID read failed, trying bootloader method")
+                device.uid = self._read_stm32_uid_bootloader(device.port)
+
             device.firmware_version = self._read_stm32_firmware_version(device.port)
             device.hardware_version = self._read_stm32_hardware_version(device.port)
             device.cpu_frequency = self._read_stm32_cpu_frequency(device.port)
@@ -252,49 +307,322 @@ class DeviceDetector:
         except Exception as e:
             logger.debug(f"STM32 info reading failed: {e}")
     
-    def _read_esp_info(self, device: Device):
-        """Read ESP32/ESP8266 specific information."""
-        try:
-            # Use esptool to get chip information
-            device.chip_id = self._read_esp_chip_id(device.port)
-            device.mac_address = self._read_esp_mac_address(device.port)
-            device.flash_size = self._read_esp_flash_size(device.port)
-            device.cpu_frequency = self._read_esp_cpu_frequency(device.port)
-            device.firmware_version = self._read_esp_firmware_version(device.port)
-            
-            # Use chip ID as UID if available
-            if device.chip_id:
-                device.uid = device.chip_id
-        except Exception as e:
-            logger.debug(f"ESP info reading failed: {e}")
-    
-    def _read_arduino_info(self, device: Device):
-        """Read Arduino specific information."""
-        try:
-            # Arduino boards typically don't have unique UIDs, use serial number
-            device.uid = device.serial_number or f"ARDUINO-{device.vid:04X}-{device.pid:04X}"
-            device.firmware_version = self._read_arduino_firmware_version(device.port)
-            device.cpu_frequency = self._read_arduino_cpu_frequency(device.port)
-        except Exception as e:
-            logger.debug(f"Arduino info reading failed: {e}")
     
     def _read_generic_info(self, device: Device):
         """Read generic device information."""
         try:
             # Try to establish serial connection and send AT commands
-            device.uid = device.serial_number or f"UNKNOWN-{device.vid:04X}-{device.pid:04X}"
+            try:
+                vid_str = f"{int(device.vid):04X}" if not isinstance(device.vid, str) else (
+                    f"{int(device.vid, 16):04X}" if device.vid and device.vid.lower().startswith("0x") else f"{int(device.vid):04X}"
+                )
+                pid_str = f"{int(device.pid):04X}" if not isinstance(device.pid, str) else (
+                    f"{int(device.pid, 16):04X}" if device.pid and device.pid.lower().startswith("0x") else f"{int(device.pid):04X}"
+                )
+                fallback_uid = f"UNKNOWN-{vid_str}-{pid_str}"
+            except Exception:
+                fallback_uid = f"UNKNOWN-{device.vid}-{device.pid}"
+            device.uid = device.serial_number or fallback_uid
             device.firmware_version = self._read_generic_firmware_version(device.port)
         except Exception as e:
             logger.debug(f"Generic info reading failed: {e}")
     
     def _read_stm32_uid(self, port: str) -> Optional[str]:
-        """Read STM32 unique ID."""
+        """
+        Read STM32 unique ID by sending a GET_UID command to the running application.
+        The device must be running firmware that implements the GET_UID command.
+
+        Returns:
+            str: 24-character hex string (96-bit UID) or None if reading fails
+        """
         try:
-            # Try to use esptool or direct serial communication
-            # For now, return a placeholder
-            return f"STM32-UID-{port.replace('/', '-')}"
-        except:
+            with serial.Serial(port=port, baudrate=115200, timeout=1.0) as ser:
+                ser.reset_input_buffer()
+                ser.reset_output_buffer()
+                ser.write(b'GET_UID\r\n')
+                response = ser.read_until(b'\n', 32).decode('ascii', 'ignore').strip()
+                if response.startswith('UID:') and len(response) == 28:
+                    uid = response[4:].upper()
+                    if all(c in '0123456789ABCDEF' for c in uid):
+                        return uid
+                logger.debug(f"Invalid UID response: {response}")
+                return None
+        except serial.SerialException as e:
+            logger.debug(f"Serial error reading UID from {port}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error reading UID: {e}")
+        return None
+
+    def _read_stm32_uid_bootloader(self, port: str) -> Optional[str]:
+        """Fallback method to read UID using bootloader (for devices without custom firmware)."""
+        try:
+            with serial.Serial(port=port, baudrate=115200, timeout=2.0) as ser:
+                ser.write(b'\x7F')
+                if ser.read(1) != b'\x79':
+                    return None
+                ser.write(b'\x11\xEE')
+                if ser.read(1) != b'\x79':
+                    return None
+                addr = 0x1FFF7A10
+                addr_bytes = addr.to_bytes(4, 'big')
+                checksum = 0
+                for b in addr_bytes:
+                    checksum ^= b
+                ser.write(addr_bytes + bytes([checksum]))
+                if ser.read(1) != b'\x79':
+                    return None
+                ser.write(b'\xBC')
+                if ser.read(1) != b'\x79':
+                    return None
+                response = ser.read(13)
+                if len(response) != 13:
+                    return None
+                checksum = 0
+                for b in response[:-1]:
+                    checksum ^= b
+                if checksum != response[-1]:
+                    return None
+                return response[:-1].hex().upper()
+        except Exception as e:
+            logger.debug(f"Bootloader UID read failed: {e}")
             return None
+
+    def _read_stm32_uid_via_cubeprogrammer(self) -> Optional[str]:
+        """Read STM32 UID using STM32CubeProgrammer CLI."""
+        try:
+            candidates = [
+                r"C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+                r"C:\\Program Files (x86)\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+                "/opt/st/stm32cubeprogrammer/bin/STM32_Programmer_CLI",
+                "STM32_Programmer_CLI"
+            ]
+            cli = None
+            for p in candidates:
+                try:
+                    r = subprocess.run([p, "--version"], capture_output=True, text=True, timeout=4)
+                    if r.returncode == 0 or r.stdout or r.stderr:
+                        cli = p
+                        break
+                except Exception:
+                    continue
+
+            if cli:
+                # Try different connection methods
+                connection_args = [
+                    ["-c", "port=SWD"],
+                    ["-c", "port=JTAG"],
+                    ["-c", "port=SWD", "mode=UR"],
+                    ["-c", "port=SWD", "mode=HotPlug"]
+                ]
+
+                for conn_args in connection_args:
+                    try:
+                        # First connect
+                        connect_cmd = [cli] + conn_args
+                        connect_result = subprocess.run(connect_cmd, capture_output=True, text=True, timeout=10)
+                        if connect_result.returncode == 0:
+                            # Now read UID
+                            uid_cmd = connect_cmd + ["-rduid"]
+                            uid_result = subprocess.run(uid_cmd, capture_output=True, text=True, timeout=15)
+                            if uid_result.returncode == 0:
+                                for line in (uid_result.stdout + "\n" + uid_result.stderr).splitlines():
+                                    s = line.strip().lower()
+                                    if "unique device id" in s or "uid" in s:
+                                        uid_part = line.split(":")[-1].strip()
+                                        return self._normalize_uid_string(uid_part)
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.debug(f"STM32CubeProgrammer UID reading failed: {e}")
+        return None
+
+    def _read_stm32_uid_via_stlink(self) -> Optional[str]:
+        """Read STM32 UID using ST-LINK Utility."""
+        try:
+            candidates = [
+                r"C:\\Program Files (x86)\\STMicroelectronics\\STM32 ST-LINK Utility\\ST-LINK Utility\\ST-LINK_CLI.exe",
+                "ST-LINK_CLI"
+            ]
+            cli = None
+            for p in candidates:
+                try:
+                    r = subprocess.run([p, "-Version"], capture_output=True, text=True, timeout=4)
+                    if r.returncode == 0 or "ST-LINK" in (r.stdout + r.stderr):
+                        cli = p
+                        break
+                except Exception:
+                    continue
+
+            if cli:
+                # ST-LINK CLI command to read UID
+                cmd = [cli, "-c", "SWD", "-r32", "0x1FFF7A10", "3"]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                if result.returncode == 0:
+                    output = result.stdout + result.stderr
+                    # Parse memory read output
+                    lines = output.split('\n')
+                    uid_values = []
+                    for line in lines:
+                        if '0x1FFF7A1' in line and ':' in line:
+                            parts = line.split(':')
+                            if len(parts) >= 2:
+                                value = parts[1].strip().split()[0]
+                                uid_values.append(value)
+
+                    if len(uid_values) >= 3:
+                        uid_hex = ''.join(v.lstrip('0x').zfill(8) for v in uid_values[:3])
+                        return self._normalize_uid_string(uid_hex)
+
+        except Exception as e:
+            logger.debug(f"ST-LINK Utility UID reading failed: {e}")
+        return None
+
+    def _read_stm32_uid_via_debug_probe(self) -> Optional[str]:
+        """Read STM32 UID via generic debug probe."""
+        # This would implement direct JTAG/SWD memory access
+        # For now, return None as it requires specific probe libraries
+        return None
+
+    def _read_stm32_uid_via_serial(self, port: str) -> Optional[str]:
+        """Read STM32 UID via serial communication (after flashing UID firmware)."""
+        try:
+            # Try different baud rates
+            baud_rates = [115200, 9600, 57600, 38400]
+            for baud in baud_rates:
+                try:
+                    with serial.Serial(port, baud, timeout=5) as ser:
+                        time.sleep(2)  # Wait for device to boot
+
+                        # Send UID request command
+                        ser.write(b'GET_UID\r\n')
+                        time.sleep(1)
+                        data = ser.read(512).decode('utf-8', errors='ignore').strip()
+
+                        if data:
+                            uid = self._parse_uid_from_serial_data(data)
+                            if uid:
+                                return uid
+
+                        # Alternative: just read any available data
+                        ser.write(b'\r\n')  # Send enter to trigger output
+                        time.sleep(1)
+                        data = ser.read(512).decode('utf-8', errors='ignore').strip()
+
+                        if data:
+                            uid = self._parse_uid_from_serial_data(data)
+                            if uid:
+                                return uid
+
+                except Exception:
+                    continue
+
+        except Exception as e:
+            logger.debug(f"Serial UID reading failed: {e}")
+        return None
+
+    def _parse_uid_from_serial_data(self, data: str) -> Optional[str]:
+        """Parse UID from serial data."""
+        if not data:
+            return None
+
+        # Clean the data
+        parts = data.replace('-', '').replace(':', '').replace(' ', '').replace('\r', '').replace('\n', '')
+
+        # Look for UID patterns in the output
+        # STM32 UID is typically 96 bits (24 hex chars) or 3x32-bit values
+        for token in [data] + data.split():
+            t = token.strip()
+            if t.lower().startswith('0x'):
+                t = t[2:]
+
+            # Check for 24+ hex characters (96+ bits)
+            if len(t) >= 24 and all(c in '0123456789abcdefABCDEF' for c in t[:min(len(t), 32)]):
+                return self._normalize_uid_string(t[:24])
+
+        # Look for "UID:" or similar patterns
+        if 'uid' in data.lower():
+            try:
+                uid_match = re.search(r'uid[:\s]*([0-9a-fA-Fx\s\-:]+)', data, re.IGNORECASE)
+                if uid_match:
+                    uid_str = uid_match.group(1).strip()
+                    uid_str = re.sub(r'[^0-9a-fA-F]', '', uid_str)
+                    if len(uid_str) >= 24:
+                        return self._normalize_uid_string(uid_str[:24])
+            except Exception:
+                pass
+
+        # Look for multiple hex values that could be UID parts
+        hex_values = re.findall(r'0x([0-9a-fA-F]{8})', data, re.IGNORECASE)
+        if len(hex_values) >= 3:
+            uid_hex = ''.join(hex_values[:3])
+            if len(uid_hex) >= 24:
+                return self._normalize_uid_string(uid_hex[:24])
+
+        # Fallback: any long hex string
+        hex_match = re.search(r'([0-9a-fA-F]{24,})', parts)
+        if hex_match:
+            return self._normalize_uid_string(hex_match.group(1)[:24])
+
+        return None
+
+    def _read_stm32_uid_via_jlink(self) -> Optional[str]:
+        """Read STM32 UID using J-Link Commander."""
+        try:
+            candidates = [
+                r"C:\\Program Files (x86)\\SEGGER\\JLink\\JLink.exe",
+                r"C:\\Program Files\\SEGGER\\JLink\\JLink.exe",
+                "JLink.exe",
+                "JLinkExe"
+            ]
+            jlink = None
+            for p in candidates:
+                try:
+                    r = subprocess.run([p, "-version"], capture_output=True, text=True, timeout=4)
+                    if r.returncode == 0 or "SEGGER" in (r.stdout + r.stderr):
+                        jlink = p
+                        break
+                except Exception:
+                    continue
+
+            if jlink:
+                # Create J-Link script
+                script_content = """
+Connect
+r
+mem32 0x1FFF7A10, 3
+q
+"""
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.jlink', delete=False) as f:
+                    f.write(script_content)
+                    script_path = f.name
+
+                try:
+                    cmd = [jlink, "-device", "STM32F407VG", "-if", "SWD", "-speed", "4000", "-CommanderScript", script_path]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+
+                    output = result.stdout + result.stderr
+                    # Parse memory read output
+                    lines = output.split('\n')
+                    uid_values = []
+                    for line in lines:
+                        if '1FFF7A1' in line and ':' in line:
+                            parts = line.split(':')
+                            if len(parts) >= 2:
+                                value = parts[1].strip().split()[0]
+                                uid_values.append(value)
+
+                    if len(uid_values) >= 3:
+                        uid_hex = ''.join(v.lstrip('0x').zfill(8) for v in uid_values[:3])
+                        return self._normalize_uid_string(uid_hex)
+
+                finally:
+                    import os
+                    os.unlink(script_path)
+
+        except Exception as e:
+            logger.debug(f"J-Link UID reading failed: {e}")
+        return None
     
     def _read_stm32_firmware_version(self, port: str) -> Optional[str]:
         """Read STM32 firmware version."""
@@ -325,115 +653,6 @@ class DeviceDetector:
         except:
             return None
     
-    def _read_esp_chip_id(self, port: str) -> Optional[str]:
-        """Read ESP32/ESP8266 chip ID using esptool."""
-        try:
-            # Try to use esptool if available
-            result = subprocess.run([
-                'python', '-m', 'esptool', '--port', port, 'chip_id'
-            ], capture_output=True, text=True, timeout=10)
-            
-            if result.returncode == 0:
-                # Parse chip ID from output
-                for line in result.stdout.split('\n'):
-                    if 'Chip ID:' in line:
-                        return line.split('Chip ID:')[1].strip()
-            
-            # Fallback: try direct serial communication
-            return self._read_esp_chip_id_serial(port)
-        except Exception as e:
-            logger.debug(f"ESP chip ID reading failed: {e}")
-            return None
-    
-    def _read_esp_chip_id_serial(self, port: str) -> Optional[str]:
-        """Read ESP chip ID via serial communication."""
-        try:
-            with serial.Serial(port, 115200, timeout=5) as ser:
-                time.sleep(2)  # Wait for boot
-                ser.write(b'AT+GMR\r\n')  # Get version info
-                time.sleep(1)
-                response = ser.read(100).decode('utf-8', errors='ignore')
-                if 'ESP' in response:
-                    return f"ESP-CHIP-{port.replace('/', '-')}"
-        except:
-            pass
-        return None
-    
-    def _read_esp_mac_address(self, port: str) -> Optional[str]:
-        """Read ESP MAC address."""
-        try:
-            result = subprocess.run([
-                'python', '-m', 'esptool', '--port', port, 'read_mac'
-            ], capture_output=True, text=True, timeout=10)
-            
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'MAC:' in line:
-                        return line.split('MAC:')[1].strip()
-        except:
-            pass
-        return None
-    
-    def _read_esp_flash_size(self, port: str) -> Optional[str]:
-        """Read ESP flash size."""
-        try:
-            result = subprocess.run([
-                'python', '-m', 'esptool', '--port', port, 'flash_id'
-            ], capture_output=True, text=True, timeout=10)
-            
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'Flash size:' in line:
-                        return line.split('Flash size:')[1].strip()
-        except:
-            pass
-        return "4 MB"  # Default ESP32 flash size
-    
-    def _read_esp_cpu_frequency(self, port: str) -> Optional[str]:
-        """Read ESP CPU frequency."""
-        try:
-            with serial.Serial(port, 115200, timeout=5) as ser:
-                time.sleep(2)
-                ser.write(b'AT+CPU\r\n')
-                time.sleep(1)
-                response = ser.read(50).decode('utf-8', errors='ignore')
-                if 'MHz' in response:
-                    return response.strip()
-        except:
-            pass
-        return "240 MHz"  # Default ESP32 frequency
-    
-    def _read_esp_firmware_version(self, port: str) -> Optional[str]:
-        """Read ESP firmware version."""
-        try:
-            with serial.Serial(port, 115200, timeout=5) as ser:
-                time.sleep(2)
-                ser.write(b'AT+GMR\r\n')
-                time.sleep(1)
-                response = ser.read(200).decode('utf-8', errors='ignore')
-                if 'AT version:' in response:
-                    return response.split('AT version:')[1].split('\n')[0].strip()
-        except:
-            pass
-        return "ESP-FW-v1.0"
-    
-    def _read_arduino_firmware_version(self, port: str) -> Optional[str]:
-        """Read Arduino firmware version."""
-        try:
-            with serial.Serial(port, 9600, timeout=5) as ser:
-                time.sleep(2)
-                ser.write(b'VERSION\r\n')
-                time.sleep(1)
-                response = ser.read(50).decode('utf-8', errors='ignore')
-                if response.strip():
-                    return response.strip()
-        except:
-            pass
-        return "Arduino-FW-v1.0"
-    
-    def _read_arduino_cpu_frequency(self, port: str) -> Optional[str]:
-        """Read Arduino CPU frequency."""
-        return "16 MHz"  # Default Arduino frequency
     
     def _read_generic_firmware_version(self, port: str) -> Optional[str]:
         """Read generic firmware version."""
@@ -450,8 +669,43 @@ class DeviceDetector:
         return "Generic-FW-v1.0"
     
     def get_device_uid(self, device: Device) -> Optional[str]:
-        """Get the unique ID of a device."""
-        return device.uid or device.serial_number or f"UNKNOWN-{device.vid:04X}-{device.pid:04X}"
+        """Get the unique ID of a device with safe fallbacks."""
+        if device.uid:
+            return device.uid
+
+        # For STM32 devices, try to read UID if not already done
+        if device.board_type == BoardType.STM32 and not device.uid:
+            logger.debug(f"Attempting to read UID for STM32 device on {device.port}")
+            device.uid = self._read_stm32_uid(device.port)
+            if device.uid:
+                logger.info(f"Successfully read UID {device.uid} for STM32 device on {device.port}")
+                return device.uid
+
+        if device.serial_number:
+            return device.serial_number
+
+        def _fmt(val):
+            try:
+                if val is None:
+                    return None
+                if isinstance(val, int):
+                    return f"{val:04X}"
+                s = str(val).strip()
+                if s.lower().startswith("0x"):
+                    return f"{int(s,16):04X}"
+                return f"{int(s):04X}"
+            except Exception:
+                return str(val) if val is not None else None
+        vid = _fmt(device.vid)
+        pid = _fmt(device.pid)
+        if vid and pid:
+            return f"UNKNOWN-{vid}-{pid}"
+        return f"{device.port}_{device.board_type.value}"
+
+    def read_stm32_uid_direct(self, port: str) -> Optional[str]:
+        """Direct method to read STM32 UID from a specific port."""
+        logger.info(f"Reading STM32 UID from port {port}")
+        return self._read_stm32_uid(port)
     
     # Enhanced Device Management Methods
     
@@ -471,6 +725,19 @@ class DeviceDetector:
                             # Convert board_type string back to BoardType enum
                             if 'board_type' in device_data and isinstance(device_data['board_type'], str):
                                 device_data['board_type'] = BoardType(device_data['board_type'])
+                            # Convert VID/PID strings like "0x0483" back to integers
+                            if 'vid' in device_data and isinstance(device_data['vid'], str):
+                                s = device_data['vid'].strip()
+                                try:
+                                    device_data['vid'] = int(s, 16) if s.lower().startswith('0x') else int(s)
+                                except Exception:
+                                    device_data['vid'] = None
+                            if 'pid' in device_data and isinstance(device_data['pid'], str):
+                                s = device_data['pid'].strip()
+                                try:
+                                    device_data['pid'] = int(s, 16) if s.lower().startswith('0x') else int(s)
+                                except Exception:
+                                    device_data['pid'] = None
                             
                             # Convert dict back to Device object
                             device = Device(**device_data)
@@ -795,4 +1062,108 @@ class DeviceDetector:
             "manufacturers": manufacturers,
             "templates_count": len(self.device_templates)
         }
+
+    def _read_serial_metadata(self, port: Optional[str]) -> Dict[str, str]:
+        """Read metadata emitted via serial after flashing helper firmware."""
+        if not port:
+            return {}
+        baud_candidates = [115200, 9600]
+        for baud in baud_candidates:
+            try:
+                with serial.Serial(port, baud, timeout=3) as ser:
+                    time.sleep(1)
+                    raw = ser.read(768).decode("utf-8", errors="ignore").strip()
+                    if not raw:
+                        continue
+                    metadata = self._parse_metadata_blob(raw)
+                    if metadata:
+                        metadata.setdefault("raw_output", raw)
+                        return metadata
+            except Exception as e:
+                logger.debug(f"Serial metadata read failed on {port} @ {baud}: {e}")
+        return {}
+
+    def _parse_metadata_blob(self, raw: str) -> Dict[str, str]:
+        """Parse JSON or key-value style metadata from raw serial output."""
+        if not raw:
+            return {}
+        cleaned = raw.replace("\r", "\n")
+        # Try JSON payload first
+        try:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                json_blob = cleaned[start:end + 1]
+                data = json.loads(json_blob)
+                return {
+                    str(k).strip().lower(): json.dumps(v) if isinstance(v, (list, dict)) else str(v).strip()
+                    for k, v in data.items()
+                }
+        except json.JSONDecodeError:
+            pass
+        metadata = {}
+        for line in cleaned.split("\n"):
+            if not line.strip():
+                continue
+            if ":" in line:
+                key, value = line.split(":", 1)
+            elif "=" in line:
+                key, value = line.split("=", 1)
+            else:
+                continue
+            key = key.strip().lower().replace(" ", "_")
+            value = value.strip()
+            if key:
+                metadata[key] = value
+        if not metadata:
+            match = re.search(r'([0-9a-fA-F]{24,})', raw.replace(" ", ""))
+            if match:
+                metadata["uid"] = match.group(1)
+        return metadata
+
+    def _normalize_uid_string(self, value: str) -> str:
+        """Normalize UID string to 0x-prefixed uppercase hex."""
+        if not value:
+            return value
+        stripped = value.strip().lower()
+        if stripped.startswith("0x"):
+            stripped = stripped[2:]
+        stripped = re.sub(r'[^0-9a-f]', '', stripped)
+        if not stripped:
+            return value.strip()
+        return "0x" + stripped.upper()
+
+    def _apply_metadata_to_device(self, device: Device, metadata: Dict[str, str]):
+        """Update device fields using parsed metadata."""
+        if not metadata:
+            return
+        normalized = {k.lower(): v for k, v in metadata.items()}
+        uid_val = normalized.get("uid")
+        if uid_val:
+            device.uid = self._normalize_uid_string(uid_val)
+        if normalized.get("serial_number"):
+            device.serial_number = normalized["serial_number"]
+        if normalized.get("chip_id"):
+            device.chip_id = normalized["chip_id"]
+        if normalized.get("mac") or normalized.get("mac_address"):
+            device.mac_address = normalized.get("mac_address", normalized.get("mac"))
+        if normalized.get("firmware") or normalized.get("firmware_version"):
+            device.firmware_version = normalized.get("firmware_version", normalized.get("firmware"))
+        if normalized.get("hardware_version"):
+            device.hardware_version = normalized["hardware_version"]
+        if normalized.get("flash_size"):
+            device.flash_size = normalized["flash_size"]
+        if normalized.get("cpu_frequency") or normalized.get("cpu_freq"):
+            device.cpu_frequency = normalized.get("cpu_frequency", normalized.get("cpu_freq"))
+        if normalized.get("manufacturer"):
+            device.manufacturer = normalized["manufacturer"]
+        if normalized.get("description"):
+            device.description = normalized["description"]
+        extra = {k: v for k, v in metadata.items() if k not in {
+            "uid", "serial_number", "chip_id", "mac", "mac_address", "firmware",
+            "firmware_version", "hardware_version", "flash_size", "cpu_frequency",
+            "cpu_freq", "manufacturer", "description"
+        }}
+        if extra:
+            device.extra_info.update(extra)
 

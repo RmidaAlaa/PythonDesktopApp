@@ -232,6 +232,12 @@
         </ul>
       </li>
     </ul>
+    <div class="info">
+      <strong>Taille de la fenêtre :</strong> Au démarrage, l’application s’ouvre en utilisant la zone disponible de votre écran.
+    </div>
+    <div class="info">
+      <strong>Informations opérateur :</strong> Le formulaire utilise l’étiquette « Nom complet » et n’inclut plus de champ « Nom de famille » séparé.
+    </div>
 
     <h3>Barre de menu</h3>
     <ul>
@@ -270,6 +276,14 @@
         <td>Courespondance VID:PID, communication série</td>
       </tr>
     </table>
+    
+    <h3>Lecture de l’UID du microcontrôleur</h3>
+    <p>Pour lire l’UID :</p>
+    <ol>
+      <li>Dans le tableau <strong>Appareils connectés</strong>, <strong>cochez</strong> la case de l’appareil ou <strong>sélectionnez</strong> sa ligne. Les cases cochées affichent un indicateur bleu et un fond bleu clair pour plus de clarté.</li>
+      <li>Cliquez sur <strong>Lire l’UID</strong> dans le panneau de contrôle.</li>
+      <li>La fenêtre <strong>UID &amp; Informations de l’appareil</strong> s’affiche avec l’UID et les détails. Cette fenêtre n’inclut pas de bouton « Lire l’UID » ; la lecture se déclenche uniquement depuis le panneau de contrôle.</li>
+    </ol>
 
     <h3>Manual Détection des appareils</h3>
     <div class="step">
@@ -777,7 +791,30 @@
       <span class="step-number">Étape 4 :</span> Cliquez sur <strong>"Envoyer"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 5 :</span> L'e-mail est envoyé au suppout avec votre message et les journaux optionnels
+      <span class="step-number">Étape 5 :</span> Email est envoyé au support avec votre message et les journaux optionnels
+    </div>
+    
+    <h3>Configuration Azure (Microsoft Graph)</h3>
+    <div class="step">
+      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>Configurer l’e-mail</strong>
+    </div>
+    <div class="step">
+      <span class="step-number">Étape 2 :</span> Sélectionnez <strong>Azure</strong> comme fournisseur et saisissez :
+      <ul>
+        <li><strong>Client ID</strong></li>
+        <li><strong>Tenant ID</strong></li>
+        <li><strong>Client Secret</strong></li>
+        <li><strong>Email de l’expéditeur</strong> (doit être une boîte aux lettres utilisateur valide)</li>
+      </ul>
+    </div>
+    <div class="step">
+      <span class="step-number">Étape 3 :</span> Ajoutez les adresses e‑mail des destinataires.
+    </div>
+    <div class="info">
+      <strong>Important :</strong> L’endpoint Microsoft Graph <code>sendMail</code> requiert un <em>email utilisateur</em> valide. Utiliser un nom d’application ou un ID non associé à une boîte aux lettres entraîne une erreur <strong>404 Not Found</strong>.
+    </div>
+    <div class="info">
+      <strong>Validation :</strong> Le test de configuration vérifie les champs requis (Client ID, Tenant ID, Client Secret, Email de l’expéditeur) avant envoi.
     </div>
 
     <h2 id="onedrive-config">Intégration OneDrive</h2>

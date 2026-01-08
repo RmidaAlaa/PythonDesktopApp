@@ -1,0 +1,58 @@
+classDiagram
+    class MainWindow {
+        +TourManager tour_manager
+        +Config config
+        +DeviceDetector detector
+        +FirmwareFlasher flasher
+        +OneDriveManager onedrive
+        +init_ui()
+        +check_first_run_tour()
+        +refresh_devices()
+    }
+
+    class TourManager {
+        +MainWindow window
+        +list steps
+        +start_tour()
+        +show_step()
+        +next_step()
+    }
+
+    class Config {
+        +dict config_data
+        +load()
+        +save()
+        +get(key)
+        +set(key, value)
+    }
+
+    class DeviceDetector {
+        +list connected_devices
+        +scan_devices()
+        +get_device_info(port)
+    }
+
+    class FirmwareFlasher {
+        +flash(device, firmware)
+        +verify_firmware()
+    }
+
+    class OneDriveManager {
+        +authenticate()
+        +sync_files()
+        +upload_report()
+    }
+
+    class Bootstrap {
+        +check_dependencies()
+        +download_tools()
+        +setup_environment()
+    }
+
+    MainWindow *-- TourManager : manages
+    MainWindow *-- Config : uses
+    MainWindow *-- DeviceDetector : uses
+    MainWindow *-- FirmwareFlasher : uses
+    MainWindow *-- OneDriveManager : uses
+    MainWindow ..> Bootstrap : initializes
+    TourManager o-- MainWindow : controls UI

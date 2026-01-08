@@ -81,3 +81,6 @@ $RECYCLE.BIN/
 *.bak
 *.swp
 
+# Releases
+release/**/*.exe
+
