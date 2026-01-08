@@ -41,20 +41,25 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Main Application
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
-; Prerequisites (User must provide these files in a 'prerequisites' folder)
+; Prerequisites
 ; Visual C++ Redistributable
 Source: "prerequisites\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: IsVCRedistNeeded
 
-; Drivers (Example: ST-Link and CP210x)
-; NOTE: You must download these installers and place them in the prerequisites folder
-Source: "prerequisites\stlink_driver.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: IsSTLinkNeeded
-Source: "prerequisites\cp210x_driver.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: IsCP210xNeeded
+; Drivers
+Source: "prerequisites\stlink\*"; DestDir: "{tmp}\stlink"; Flags: deleteafterinstall recursesubdirs createallsubdirs; Check: IsSTLinkNeeded
+Source: "prerequisites\cp210x\*"; DestDir: "{tmp}\cp210x"; Flags: deleteafterinstall recursesubdirs createallsubdirs; Check: IsCP210xNeeded
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+; Install Prerequisites
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; Flags: waituntilterminated; Check: IsVCRedistNeeded; StatusMsg: "Installing Visual C++ Redistributable..."
+Filename: "{tmp}\stlink\dpinst_amd64.exe"; Parameters: "/s"; Flags: waituntilterminated; Check: IsSTLinkNeeded; StatusMsg: "Installing ST-Link Drivers..."
+Filename: "pnputil.exe"; Parameters: "/add-driver ""{tmp}\cp210x\silabser.inf"" /install"; Flags: waituntilterminated runhidden; Check: IsCP210xNeeded; StatusMsg: "Installing CP210x Drivers..."
+
+; Launch Application
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
@@ -164,70 +169,7 @@ begin
   end;
 end;
 
-function InstallPrerequisite(FileName: String; Name: String; Parameters: String): Boolean;
-var
-  ResultCode: Integer;
-  StatusLabel: TNewStaticText;
-begin
-  Result := True;
-  if FileExists(ExpandConstant('{tmp}\') + FileName) then
-  begin
-    WizardForm.StatusLabel.Caption := 'Installing ' + Name + '...';
-    if not Exec(ExpandConstant('{tmp}\') + FileName, Parameters, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
-    begin
-      MsgBox('Failed to install ' + Name + '. Error code: ' + IntToStr(ResultCode), mbError, MB_OK);
-      Result := False;
-    end;
-  end;
-end;
-
 function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  Success: Boolean;
 begin
   Result := True;
-  if CurPageID = DependencyPage.ID then
-  begin
-    Success := True;
-    
-    // Install VC++ Redist
-    if VCRedistNeeded then
-    begin
-      // Extract file first (Files section handles this with "Check" but we need it now for custom logic if not using [Run])
-      // Actually, [Run] is post-install. We want pre-install.
-      // We will use ExtractTemporaryFile to get them now.
-      try
-        ExtractTemporaryFile('vc_redist.x64.exe');
-        if not InstallPrerequisite('vc_redist.x64.exe', VCRedistName, '/install /quiet /norestart') then Success := False;
-      except
-        MsgBox('Could not extract ' + VCRedistName + ' installer.', mbError, MB_OK);
-        Success := False;
-      end;
-    end;
-
-    // Install ST-Link
-    if Success and STLinkNeeded then
-    begin
-      try
-        ExtractTemporaryFile('stlink_driver.exe');
-        // NOTE: Adjust parameters for your specific driver installer (e.g., /q /s)
-        if not InstallPrerequisite('stlink_driver.exe', STLinkName, '/install /quiet /norestart') then Success := False;
-      except
-         // Ignore if file missing (dev mode) or warn
-      end;
-    end;
-
-    // Install CP210x
-    if Success and CP210xNeeded then
-    begin
-      try
-        ExtractTemporaryFile('cp210x_driver.exe');
-        if not InstallPrerequisite('cp210x_driver.exe', CP210xName, '/quiet') then Success := False;
-      except
-        // Ignore
-      end;
-    end;
-
-    Result := Success;
-  end;
 end;
