@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Callable, Dict, Any, List
 import tempfile
 import hashlib
+import shutil
 
 from .config import Config
 from .logger import setup_logger
@@ -34,19 +35,47 @@ class FirmwareFlasher:
                 return False
             
             # Flash based on board type
-            if device.board_type == BoardType.ESP32 or device.board_type == BoardType.ESP8266:
-                return self._flash_esp32(device, firmware_path, progress_callback)
-            elif device.board_type == BoardType.STM32:
+            if device.board_type == BoardType.STM32:
                 return self._flash_stm32(device, firmware_path, progress_callback)
-            elif device.board_type == BoardType.ARDUINO:
-                return self._flash_arduino(device, firmware_path, progress_callback)
             else:
+                guess = self._guess_board_type(device, firmware_path)
+                if guess == BoardType.STM32:
+                    return self._flash_stm32(device, firmware_path, progress_callback)
+                if firmware_path.suffix.lower() in ('.bin', '.elf'):
+                    return self._flash_stm32(device, firmware_path, progress_callback)
                 logger.error(f"Unsupported board type: {device.board_type}")
                 return False
                 
         except Exception as e:
             logger.error(f"Flashing failed: {e}")
             return False
+
+    def _guess_board_type(self, device: Device, firmware_path: Path) -> Optional[BoardType]:
+        try:
+            name = firmware_path.name.lower()
+            desc = (getattr(device, 'description', '') or '').lower()
+            manu = (getattr(device, 'manufacturer', '') or '').lower()
+            vid = getattr(device, 'vid', None)
+            pid = getattr(device, 'pid', None)
+            if isinstance(vid, str):
+                try:
+                    vid = int(vid, 16) if vid.lower().startswith('0x') else int(vid)
+                except Exception:
+                    vid = None
+            if isinstance(pid, str):
+                try:
+                    pid = int(pid, 16) if pid.lower().startswith('0x') else int(pid)
+                except Exception:
+                    pid = None
+            if vid == 0x0483:
+                return BoardType.STM32
+            if 'stm32' in name or 'stm' in name or 'cube' in name or 'uid' in name:
+                return BoardType.STM32
+            if 'stmicro' in manu or 'stmicroelectronics' in manu or 'st' in manu:
+                return BoardType.STM32
+        except Exception:
+            pass
+        return None
     
     def _get_firmware_file(self, source: str, progress_callback: Optional[Callable]) -> Optional[Path]:
         """Download or get firmware file from source."""
@@ -100,76 +129,6 @@ class FirmwareFlasher:
             logger.error(f"Failed to download firmware: {e}")
             return None
     
-    def _flash_esp32(self, device: Device, firmware_path: Path, 
-                    progress_callback: Optional[Callable]) -> bool:
-        """Flash firmware to ESP32/ESP8266."""
-        try:
-            # Try to use esptool if available
-            if progress_callback:
-                progress_callback("Checking for esptool...")
-            
-            # Check if esptool is available as Python module
-            try:
-                import esptool
-                esptool_available = True
-            except ImportError:
-                esptool_available = False
-            
-            if not esptool_available:
-                logger.error("esptool not found")
-                if progress_callback:
-                    progress_callback("Error: esptool not found. Please install: pip install esptool")
-                return False
-            
-            if progress_callback:
-                progress_callback("Flashing ESP32/ESP8266...")
-            
-            # Determine flash address based on file type
-            if firmware_path.suffix.lower() == '.bin':
-                flash_address = "0x1000"  # Standard bootloader address
-            elif firmware_path.suffix.lower() == '.elf':
-                flash_address = "0x1000"  # ELF files also start at 0x1000
-            else:
-                flash_address = "0x1000"  # Default
-            
-            # Build esptool command
-            cmd = [
-                "python", "-m", "esptool", 
-                "--port", device.port,
-                "--baud", "460800",  # Higher baud rate for faster flashing
-                "write_flash",
-                "--flash_mode", "dio",  # Flash mode
-                "--flash_freq", "80m",  # Flash frequency
-                "--flash_size", "4MB",  # Flash size
-                flash_address,
-                str(firmware_path)
-            ]
-            
-            logger.info(f"Running esptool command: {' '.join(cmd)}")
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
-            if result.returncode == 0:
-                logger.info("Firmware flashed successfully")
-                if progress_callback:
-                    progress_callback("Firmware flashed successfully!")
-                return True
-            else:
-                logger.error(f"Flashing failed: {result.stderr}")
-                if progress_callback:
-                    progress_callback(f"Error: {result.stderr}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            logger.error("Flashing timed out")
-            if progress_callback:
-                progress_callback("Error: Flashing timed out")
-            return False
-        except Exception as e:
-            logger.error(f"ESP32 flashing error: {e}")
-            if progress_callback:
-                progress_callback(f"Error: {str(e)}")
-            return False
     
     def _flash_stm32(self, device: Device, firmware_path: Path,
                     progress_callback: Optional[Callable]) -> bool:
@@ -200,22 +159,16 @@ class FirmwareFlasher:
         """Flash STM32 binary file."""
         try:
             # Try STM32CubeProgrammer first
-            cube_programmer = Config.get_tool_path("STM32CubeProgrammer")
-            
-            if cube_programmer.exists():
+            # We check if we can resolve the executable
+            cube_exe = Config.get_tool_executable("STM32CubeProgrammer", "STM32_Programmer_CLI.exe")
+            # Simple check if it looks like a valid path or command
+            if shutil.which(cube_exe) or Path(cube_exe).exists():
                 return self._flash_with_cubeprog(device, firmware_path, progress_callback)
             
             # Fall back to dfu-util
-            dfu_util = Config.get_tool_path("dfu-util")
-            if dfu_util.exists():
+            dfu_exe = Config.get_tool_executable("dfu-util", "dfu-util.exe")
+            if shutil.which(dfu_exe) or Path(dfu_exe).exists():
                 return self._flash_with_dfuutil(device, firmware_path, progress_callback)
-            
-            # Try openocd if available
-            try:
-                import openocd
-                return self._flash_with_openocd(device, firmware_path, progress_callback)
-            except ImportError:
-                pass
             
             logger.error("No STM32 flashing tool found")
             if progress_callback:
@@ -236,12 +189,8 @@ class FirmwareFlasher:
             # Convert ELF to binary first
             bin_path = firmware_path.with_suffix('.bin')
             
-            # Use objcopy to convert ELF to binary
-            cmd = [
-                "objcopy", "-O", "binary", 
-                str(firmware_path), 
-                str(bin_path)
-            ]
+            obj = shutil.which("arm-none-eabi-objcopy") or shutil.which("objcopy") or "objcopy"
+            cmd = [obj, "-O", "binary", str(firmware_path), str(bin_path)]
             
             result = subprocess.run(cmd, capture_output=True, text=True)
             
@@ -260,65 +209,54 @@ class FirmwareFlasher:
                 progress_callback(f"Error: {str(e)}")
             return False
     
-    def _flash_with_openocd(self, device: Device, firmware_path: Path, 
-                           progress_callback: Optional[Callable]) -> bool:
-        """Flash using OpenOCD."""
-        try:
-            if progress_callback:
-                progress_callback("Flashing STM32 with OpenOCD...")
-            
-            # This would use OpenOCD configuration files
-            # For now, return success as placeholder
-            logger.info("OpenOCD flashing completed")
-            return True
-            
-        except Exception as e:
-            logger.error(f"OpenOCD flashing error: {e}")
-            return False
-    
     def _flash_with_cubeprog(self, device: Device, firmware_path: Path,
                             progress_callback: Optional[Callable]) -> bool:
-        """Flash using STM32CubeProgrammer CLI."""
         logger.info("Using STM32CubeProgrammer")
         if progress_callback:
             progress_callback("Flashing STM32 with STM32CubeProgrammer...")
-        
-        # This would call the actual STM32CubeProgrammer CLI
-        # For now, just return success
-        return True
-    
-    def _flash_with_dfuutil(self, device: Device, firmware_path: Path,
-                           progress_callback: Optional[Callable]) -> bool:
-        """Flash using dfu-util."""
-        logger.info("Using dfu-util")
-        if progress_callback:
-            progress_callback("Flashing STM32 with dfu-util...")
-        
-        # This would call dfu-util
-        # For now, just return success
-        return True
-    
-    def _flash_arduino(self, device: Device, firmware_path: Path,
-                      progress_callback: Optional[Callable]) -> bool:
-        """Flash firmware to Arduino."""
         try:
-            avrdude_path = Config.get_tool_path("avrdude")
+            exe = Config.get_tool_executable("STM32CubeProgrammer", "STM32_Programmer_CLI.exe")
             
-            if not avrdude_path.exists():
-                logger.error("avrdude not found")
-                if progress_callback:
-                    progress_callback("Error: avrdude not found")
-                return False
+            # Determine connection mode
+            # If it's an ST-Link (debugger/programmer), we use SWD
+            # If it's a direct DFU/Bootloader connection, we might use USB or UART
+            # ST-Link usually has specific PIDs (0x3748, 0x374B, etc.) or "ST-Link" in description
+            is_stlink = False
             
+            # Check description or VID/PID if available
+            desc = (getattr(device, 'description', '') or '').lower()
+            if "st-link" in desc or "stlink" in desc:
+                is_stlink = True
+            
+            # Check known ST-Link VIDs/PIDs
+            stlink_pids = [0x3748, 0x374B, 0x3752]
+            try:
+                pid = getattr(device, 'pid', None)
+                if pid:
+                    pid_int = int(pid) if isinstance(pid, int) else (int(pid, 16) if str(pid).startswith('0x') else int(pid))
+                    if pid_int in stlink_pids:
+                        is_stlink = True
+            except:
+                pass
+
+            if is_stlink:
+                # Force SWD connection for ST-Link
+                conn = "port=SWD"
+            else:
+                # Use COM port for UART bootloader or generic
+                port = getattr(device, "port", "").upper()
+                conn = f"port={port}" if port.startswith("COM") else "port=SWD"
+            
+            cmd = [exe, "-c", conn, "-w", str(firmware_path), "0x08000000", "-v", "-rst"]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
             if progress_callback:
-                progress_callback("Flashing Arduino...")
-            
-            # Arduino flashing logic here
-            logger.info("Arduino firmware flashed")
-            return True
-            
+                progress_callback("Error: STM32CubeProgrammer failed")
+            logger.error(f"STM32CubeProgrammer error: {result.stderr}")
+            return False
         except Exception as e:
-            logger.error(f"Arduino flashing error: {e}")
+            logger.error(f"CubeProgrammer flashing error: {e}")
             return False
     
     def verify_firmware(self, device: Device) -> bool:

@@ -5,7 +5,7 @@ Cross-platform Python desktop application for managing embedded boards (STM32, E
 ## Features
 
 - **Cross-Platform**: Works on Windows, Linux, and macOS (MacBook)
-- **Device Detection**: Automatically detects STM32, ESP32/ESP8266, and Arduino boards connected via USB
+- **Device Detection**: Automatically detects STM32 boards connected via USB
 - **Board Information**: Reads chip UIDs, manufacturer info, firmware versions
 - **Excel Reports**: Generates professional `.xlsx` reports with metadata and device information
 - **Email Integration**: Securely sends reports via SMTP (credentials stored in OS keychain)
@@ -160,10 +160,8 @@ You can customize these in `machineTypes.json`.
 
 The application uses the following helper binaries (downloaded automatically):
 
-- **esptool.py**: For flashing ESP32/ESP8266
 - **dfu-util**: For STM32 DFU mode flashing
 - **STM32CubeProgrammer**: For STM32 flashing
-- **avrdude**: For Arduino flashing
 
 These are stored in platform-specific directories:
 - Windows: `%APPDATA%/AWG-Kumulus/tools`
@@ -234,10 +232,10 @@ For issues and questions, please open an issue on the repository.
 ### Version 1.0.0
 - Initial release
 - Support for Windows, Linux, and macOS
-- Device detection for STM32, ESP32, ESP8266, and Arduino
+- Device detection for STM32 boards
 - Excel report generation
 - Email integration with SMTP
-- Firmware flashing for supported boards
+- Firmware flashing for STM32 boards
 - First-run bootstrap for helper binaries
 - Secure credential storage with keyring
 

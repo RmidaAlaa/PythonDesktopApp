@@ -1,0 +1,39 @@
+graph TB
+    subgraph Frontend [User Interface]
+        MW[Main Window]
+        TG[Tour Guide]
+        Styles[UI Styles]
+        Dialogs[Settings/Dialogs]
+    end
+
+    subgraph Core [Core Logic]
+        Cfg[Configuration]
+        DD[Device Detector]
+        FF[Firmware Flasher]
+        OD[OneDrive Manager]
+        EM[Email Sender]
+        Boot[Bootstrap/Init]
+    end
+
+    subgraph External [External Tools & Hardware]
+        STM[STM32CubeProgrammer]
+        ESP[esptool]
+        DFU[dfu-util]
+        USB[USB Devices]
+    end
+
+    MW --> Cfg
+    MW --> DD
+    MW --> FF
+    MW --> OD
+    MW --> TG
+    TG --> MW
+    
+    DD --> USB
+    FF --> STM
+    FF --> ESP
+    FF --> DFU
+    
+    Boot --> Cfg
+    Boot --> STM
+    Boot --> ESP
