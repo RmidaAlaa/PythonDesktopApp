@@ -105,13 +105,17 @@ def generate_translation_files():
         
         try:
             # Run pylupdate
+            # Use --no-obsolete to keep file clean
             cmd = [
                 pylupdate_path,
                 "--ts", str(ts_file),
-                "--verbose"
+                "--no-obsolete"
             ] + python_files
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, encoding='utf-8', env=env)
             
             if result.returncode == 0:
                 print(f"[OK] Successfully generated {ts_file}")
@@ -179,6 +183,7 @@ def compile_translations():
         for root in site_packages:
             candidates += glob.glob(os.path.join(root, "Lib", "site-packages", "PyQt6*", "Qt*", "bin", "lrelease.exe"))
             candidates += glob.glob(os.path.join(root, "Lib", "site-packages", "PySide6*", "Qt*", "bin", "lrelease.exe"))
+            candidates += glob.glob(os.path.join(root, "Lib", "site-packages", "PySide6*", "lrelease.exe"))
             candidates += glob.glob(os.path.join(root, "Lib", "site-packages", "pyqt6_tools*", "Qt*", "bin", "lrelease.exe"))
             candidates += glob.glob(os.path.join(root, "Lib", "site-packages", "qt6_applications*", "Qt", "bin", "lrelease.exe"))
         for p in candidates:

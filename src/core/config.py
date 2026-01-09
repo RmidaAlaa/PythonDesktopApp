@@ -14,31 +14,41 @@ class Config:
     # Platform-specific paths
     if platform.system() == "Windows":
         APPDATA_DIR = Path.home() / "AppData" / "Roaming" / APP_NAME
+        WORKSPACE_DIR = Path.home() / "Documents" / "AWG-Kumulus-Workspace"
         TOOLS_DIR = APPDATA_DIR / "tools"
     elif platform.system() == "Darwin":  # macOS
         APPDATA_DIR = Path.home() / "Library" / "Application Support" / APP_NAME
+        WORKSPACE_DIR = Path.home() / "Documents" / "AWG-Kumulus-Workspace"
         TOOLS_DIR = APPDATA_DIR / "tools"
     else:  # Linux
         APPDATA_DIR = Path.home() / ".local" / "share" / APP_NAME
+        WORKSPACE_DIR = Path.home() / "Documents" / "AWG-Kumulus-Workspace"
         TOOLS_DIR = APPDATA_DIR / "tools"
     
     CONFIG_FILE = APPDATA_DIR / "config.json"
-    LOGS_DIR = APPDATA_DIR / "logs"
+    LOGS_DIR = WORKSPACE_DIR / "logs"
     
+    # Firmware URLs
+    GET_MACHINE_UID_URL = "https://raw.githubusercontent.com/RmidaAlaa/PythonDesktopApp/main/BinaryFiles/GetMachineID/GetMachineUid.bin"
+
     # Helper binaries metadata
     HELPER_TOOLS = {
         "dfu-util": {
-            "url": "https://sourceforge.net/projects/dfu-util/files/latest/download",
+            # Windows release from official releases
+            "url": "http://dfu-util.sourceforge.net/releases/dfu-util-0.11-binaries.tar.xz",
             "platform": "all",
             "checksums": {}
         },
         "STM32CubeProgrammer": {
+            # Note: Requires login/acceptance of license. Using landing page.
+            # Users should install this manually if not found.
             "url": "https://www.st.com/en/development-tools/stm32cubeprog.html",
             "platform": "all",
             "checksums": {}
         },
         "avrdude": {
-            "url": "https://sourceforge.net/projects/winavr/files/latest/download",
+            # Windows binary release
+            "url": "https://github.com/avrdudes/avrdude/releases/download/v7.2/avrdude-v7.2-windows-x64.zip",
             "platform": "all",
             "checksums": {}
         }
@@ -99,6 +109,7 @@ class Config:
         """Create necessary directories if they don't exist."""
         cls.APPDATA_DIR.mkdir(parents=True, exist_ok=True)
         cls.TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+        cls.WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
         cls.LOGS_DIR.mkdir(parents=True, exist_ok=True)
     
     @classmethod

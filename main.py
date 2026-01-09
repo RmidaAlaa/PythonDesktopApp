@@ -14,10 +14,14 @@ from PySide6.QtCore import Qt
 from src.core.config import Config
 from src.core.bootstrap import BootstrapManager
 from src.core.version import format_version_banner
+from src.core.crash_handler import install_exception_handler
 from src.gui.main_window import MainWindow
 
 def main():
     """Entry point for the application."""
+    # Install crash handler
+    install_exception_handler()
+
     # Ensure application name is set
     QApplication.setApplicationName("AWG Kumulus Device Manager")
     QApplication.setOrganizationName("AWG")
@@ -64,6 +68,19 @@ def main():
 
     # Initialize config
     Config.ensure_directories()
+    
+    # Check and download firmware
+    try:
+        success = BootstrapManager().check_firmware_files()
+        if not success:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(None, "Firmware Warning", 
+                              "Failed to download required firmware (GetMachineUid.bin).\n"
+                              "Some features may not work correctly.\n"
+                              "Please check your internet connection.")
+    except Exception as e:
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.warning(None, "Startup Error", f"Error during firmware check: {str(e)}")
     
     # Create Qt application
     # app = QApplication(sys.argv) # Already created above

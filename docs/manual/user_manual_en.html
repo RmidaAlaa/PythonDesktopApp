@@ -80,7 +80,7 @@
     </nav>
 
     <h2 id="getting-started">Getting Started</h2>
-    <p>AWG Kumulus Device Manager is a cross-platform desktop application for managing embedded boards (STM32, ESP32, ESP8266, Arduino). This manual provides detailed instructions for all features and configurations.</p>
+    <p>AWG Kumulus Device Manager is a desktop application focused on managing STM32 devices: detecting boards, loading/reading UIDs, flashing firmware, generating reports, and exporting/sending results (Email/OneDrive). This manual provides detailed instructions for all features and configurations.</p>
 
     <h2 id="requirements">System Requirements</h2>
     <div class="feature-box">
@@ -168,7 +168,7 @@
           <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/</code></li>
         </ul>
       </li>
-      <li>Download helper binaries if needed (esptool, dfu-util, STM32CubeProgrammer, avrdude)</li>
+      <li>Download helper binaries if needed (dfu-util, STM32CubeProgrammer)</li>
     </ol>
 
     <h3>Bootstrap Process</h3>
@@ -191,11 +191,6 @@
         <th>Platform</th>
       </tr>
       <tr>
-        <td>esptool</td>
-        <td>ESP32/ESP8266 flashing</td>
-        <td>All</td>
-      </tr>
-      <tr>
         <td>dfu-util</td>
         <td>STM32 DFU mode flashing</td>
         <td>All</td>
@@ -203,11 +198,6 @@
       <tr>
         <td>STM32CubeProgrammer</td>
         <td>STM32 flashing and programming</td>
-        <td>All</td>
-      </tr>
-      <tr>
-        <td>avrdude</td>
-        <td>Arduino flashing</td>
         <td>All</td>
       </tr>
     </table>
@@ -238,9 +228,9 @@
       </li>
       <li><strong>Status Bar (Footer):</strong>
         <ul>
-          <li>Left: Device count and <strong>OneDrive Status</strong></li>
+          <li>Left: Connected/disconnected/total device counts</li>
           <li>Center: Date/time, timezone, and location</li>
-          <li>Right: Language selector</li>
+          <li>Right: OneDrive sync status indicator</li>
         </ul>
       </li>
     </ul>
@@ -273,29 +263,22 @@
         <td>VID:PID matching, serial communication</td>
       </tr>
       <tr>
-        <td>ESP32</td>
-        <td>0x10C4:0xEA60, 0x303A:0x0001</td>
-        <td>VID:PID matching, esptool</td>
-      </tr>
-      <tr>
-        <td>ESP8266</td>
-        <td>0x10C4:0xEA60</td>
-        <td>VID:PID matching, esptool</td>
-      </tr>
-      <tr>
-        <td>Arduino</td>
-        <td>0x2341:0x0043, 0x2341:0x0010</td>
-        <td>VID:PID matching, serial communication</td>
+        <td>Unknown</td>
+        <td>N/A</td>
+        <td>Shown when the device does not match known STM32 VID:PID patterns</td>
       </tr>
     </table>
     
     <h3>Reading Device UID</h3>
     <p>To read the microcontroller UID:</p>
     <ol>
-      <li>In the <strong>Connected Devices</strong> table, either <strong>check</strong> the device’s checkbox or <strong>select</strong> its row. Checked items show a blue indicator and light-blue cell background for clarity.</li>
-      <li>Click <strong>Read UID</strong> in the Control Panel.</li>
-      <li>The <strong>Device UID &amp; Info</strong> popup appears with UID and device details. The popup does not include a separate “Read UID” button; reading is triggered only from the Control Panel.</li>
+      <li>Select the device row to view its details in the right panel.</li>
+      <li>To load the UID onto the board (when required), check the left checkbox “Check to load UID from board”. This flashes the UID helper firmware (GetMachineUid.bin) and refreshes device information.</li>
+      <li>Click <strong>Read UID</strong> to open <strong>Device UID &amp; Info</strong>. For STM32 devices, this dialog can also include a <strong>Read UID</strong> button.</li>
     </ol>
+    <div class="info">
+      <strong>Auto-flash:</strong> When enabled, the app can automatically flash the UID helper firmware when a supported device connects.
+    </div>
 
     <h3>Manual Device Detection</h3>
     <div class="step">
@@ -328,7 +311,7 @@
     <p>For each detected device, the following information is displayed:</p>
     <ul>
       <li><strong>Port:</strong> Serial port identifier (e.g., COM3, /dev/ttyUSB0)</li>
-      <li><strong>Type:</strong> Board type (STM32, ESP32, ESP8266, Arduino)</li>
+      <li><strong>Type:</strong> Board type (STM32 or Unknown)</li>
       <li><strong>VID:PID:</strong> Vendor ID and Product ID in hexadecimal</li>
       <li><strong>Status:</strong> Connection status (Connected/Disconnected)</li>
       <li><strong>Health:</strong> Health score (0-100) based on connection stability and information completeness</li>
@@ -340,8 +323,8 @@
     <p>When you select a device, detailed information is shown:</p>
     <ul>
       <li><strong>UID:</strong> Unique device identifier</li>
-      <li><strong>Chip ID:</strong> Chip identifier (for ESP devices)</li>
-      <li><strong>MAC Address:</strong> Network MAC address (for ESP devices)</li>
+      <li><strong>Chip ID:</strong> Chip identifier (may be N/A)</li>
+      <li><strong>MAC Address:</strong> MAC address (may be N/A)</li>
       <li><strong>Manufacturer:</strong> Device manufacturer</li>
       <li><strong>Serial Number:</strong> Device serial number</li>
       <li><strong>Firmware Version:</strong> Current firmware version</li>
@@ -367,24 +350,6 @@
       </li>
       <li>History persists across application restarts</li>
     </ul>
-
-    <h3>Device Templates</h3>
-    <p>Device templates allow you to save and reuse device configurations:</p>
-    <div class="step">
-      <span class="step-number">Step 1:</span> Select a device with the desired configuration
-    </div>
-    <div class="step">
-      <span class="step-number">Step 2:</span> Right-click and select "Create Template" (or use Settings menu)
-    </div>
-    <div class="step">
-      <span class="step-number">Step 3:</span> Enter a template name and description
-    </div>
-    <div class="step">
-      <span class="step-number">Step 4:</span> Save the template
-    </div>
-    <div class="step">
-      <span class="step-number">Step 5:</span> Apply templates to new devices from the Templates menu
-    </div>
 
     <h3>Device Search</h3>
     <p>Search functionality allows you to find devices by:</p>
@@ -413,13 +378,13 @@
       <li><strong>Notes:</strong> Add notes with additional information</li>
     </ul>
 
-    <h3>Batch Operations</h3>
-    <p>Perform operations on multiple devices:</p>
+    <h3>Device Actions</h3>
+    <p>Use the device table context menu (right-click) for:</p>
     <ul>
-      <li>Update device information</li>
-      <li>Add/remove tags</li>
-      <li>Set custom names</li>
-      <li>Add notes</li>
+      <li>Copy Cell Value</li>
+      <li>Copy Row (CSV)</li>
+      <li>Customize Device</li>
+      <li>View Firmware Backups</li>
     </ul>
 
     <h2 id="firmware-management">Firmware Management</h2>
@@ -619,33 +584,16 @@
 
     <h3>Board-Specific Flashing</h3>
     
-    <h4>ESP32/ESP8266 Flashing</h4>
-    <ul>
-      <li>Uses esptool for flashing</li>
-      <li>Default flash address: 0x1000</li>
-      <li>Flash mode: DIO</li>
-      <li>Flash frequency: 80MHz</li>
-      <li>Baud rate: 460800 (for faster flashing)</li>
-    </ul>
-
     <h4>STM32 Flashing</h4>
     <ul>
       <li>Supports multiple methods:
         <ul>
           <li>STM32CubeProgrammer (preferred)</li>
           <li>dfu-util (DFU mode)</li>
-          <li>OpenOCD (if available)</li>
         </ul>
       </li>
       <li>Supports .bin and .elf file formats</li>
       <li>ELF files are automatically converted to binary</li>
-    </ul>
-
-    <h4>Arduino Flashing</h4>
-    <ul>
-      <li>Uses avrdude for flashing</li>
-      <li>Requires avrdude configuration files</li>
-      <li>Supports standard Arduino bootloaders</li>
     </ul>
 
     <h2 id="report-generation">Report Generation</h2>
@@ -1164,7 +1112,7 @@ OneDrive/
     <h3>Footer Information</h3>
     <p>The status bar footer displays:</p>
     <ul>
-      <li><strong>Left:</strong> Device count (e.g., "Devices: 3")</li>
+      <li><strong>Left:</strong> Connected/disconnected/total device counts</li>
       <li><strong>Center:</strong> Date/time with timezone and location:
         <ul>
           <li>Localized date and time format</li>
@@ -1173,7 +1121,7 @@ OneDrive/
           <li>Approximate location (city, country)</li>
         </ul>
       </li>
-      <li><strong>Right:</strong> Language selector dropdown</li>
+      <li><strong>Right:</strong> OneDrive sync status indicator</li>
     </ul>
 
     <h3>Timezone Detection</h3>
@@ -1284,8 +1232,6 @@ OneDrive/
       <li>Ensure appropriate drivers are installed:
         <ul>
           <li>STM32: STM32 Virtual COM Port drivers</li>
-          <li>ESP32/ESP8266: CP210x or CH340 drivers</li>
-          <li>Arduino: Arduino drivers</li>
         </ul>
       </li>
       <li>On Linux, add user to dialout group: <code>sudo usermod -a -G dialout $USER</code></li>
@@ -1301,7 +1247,6 @@ OneDrive/
     <ol>
       <li>Ensure device is in bootloader mode (if required):
         <ul>
-          <li>ESP32/ESP8266: Hold BOOT button while pressing RESET</li>
           <li>STM32: Enter DFU mode (varies by board)</li>
         </ul>
       </li>

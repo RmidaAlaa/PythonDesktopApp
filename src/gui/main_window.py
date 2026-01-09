@@ -36,6 +36,7 @@ from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
 from ..core.onedrive_manager import OneDriveManager
 from ..core.system_info import get_timezone, get_location
 from .tour_guide import TourManager
+from .toast import ToastOverlay
 from datetime import datetime, timedelta
 from .ui_styles import primary_button_style
 
@@ -174,6 +175,9 @@ class MainWindow(QMainWindow):
         if Config.is_first_run():
             self.show_first_run_dialog()
 
+        # Initialize Toast Overlay
+        self.toast = ToastOverlay(self)
+
     def _init_services(self):
         try:
             self.device_detector = DeviceDetector()
@@ -264,7 +268,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(panel)
         
         # Title
-        title = QLabel("Connected Devices")
+        title = QLabel(QCoreApplication.translate("MainWindow", "Connected Devices"))
         title.setFont(QFont("Arial", 12, QFont.Bold))
         layout.addWidget(title)
         
@@ -917,15 +921,15 @@ class MainWindow(QMainWindow):
                     if secs < 60:
                         ls = QCoreApplication.translate("MainWindow", "Just now")
                     elif secs < 3600:
-                        ls = f"{secs//60} min ago"
+                        ls = QCoreApplication.translate("MainWindow", "{} min ago").format(secs//60)
                     elif secs < 86400:
-                        ls = f"{secs//3600} h ago"
+                        ls = QCoreApplication.translate("MainWindow", "{} h ago").format(secs//3600)
                     else:
                         ls = dt.date().toString(QLocale().dateFormat(QLocale.ShortFormat))
                 else:
                     ls = device.last_seen.split('T')[0]
             else:
-                ls = "Never"
+                ls = QCoreApplication.translate("MainWindow", "Never")
             # Last Seen (column 6)
             it = QTableWidgetItem(ls)
             it.setToolTip(QCoreApplication.translate("MainWindow", "Click to copy. Right-click for options."))
@@ -1016,15 +1020,15 @@ class MainWindow(QMainWindow):
             except Exception:
                 return str(val)
         lines = [
-            f"UID: {device.uid or 'N/A'}",
-            f"Chip ID: {device.chip_id or 'N/A'}",
-            f"MAC: {device.mac_address or 'N/A'}",
-            f"Firmware: {device.firmware_version or 'N/A'}",
-            f"Hardware: {device.hardware_version or 'N/A'}",
-            f"Flash: {device.flash_size or 'N/A'}",
-            f"CPU: {device.cpu_frequency or 'N/A'}",
-            f"Serial: {device.serial_number or 'N/A'}",
-            f"Manufacturer: {device.manufacturer or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'UID')}: {device.uid or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Chip ID')}: {device.chip_id or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'MAC')}: {device.mac_address or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Firmware')}: {device.firmware_version or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Hardware')}: {device.hardware_version or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Flash')}: {device.flash_size or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'CPU')}: {device.cpu_frequency or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Serial')}: {device.serial_number or 'N/A'}",
+            f"{QCoreApplication.translate('MainWindow', 'Manufacturer')}: {device.manufacturer or 'N/A'}",
             f"VID:PID: {_fmt_hex(device.vid)}:{_fmt_hex(device.pid)}" if device.vid and device.pid else "VID:PID: N/A",
         ]
         return "\n".join(lines)
@@ -1204,18 +1208,18 @@ class MainWindow(QMainWindow):
             # Find UID firmware path
             p = self._find_uid_firmware_path()
             if not p:
-                progress("GetMachineUid.bin not found in BinaryFiles")
+                progress(QCoreApplication.translate("MainWindow", "GetMachineUid.bin not found in BinaryFiles"))
                 if loading_dialog:
                     loading_dialog.close()
-                QMessageBox.warning(self, "Firmware Not Found", "GetMachineUid.bin not found in BinaryFiles folder")
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Firmware Not Found"), QCoreApplication.translate("MainWindow", "GetMachineUid.bin not found in BinaryFiles folder"))
                 return
 
-            progress("Flashing UID firmware...")
+            progress(QCoreApplication.translate("MainWindow", "Flashing UID firmware..."))
 
             # Flash the firmware
             ok = self.firmware_flasher.flash_firmware(device, str(p), progress)
             if ok:
-                progress("Reading device information...")
+                progress(QCoreApplication.translate("MainWindow", "Reading device information..."))
 
                 # Read device info
                 self.device_detector._read_device_info(device)
@@ -1230,8 +1234,8 @@ class MainWindow(QMainWindow):
                 self._update_device_table_row(device, row)
                 self._update_device_details(device)
 
-                progress("UID loaded successfully!")
-                self._show_status("UID loaded successfully!")
+                progress(QCoreApplication.translate("MainWindow", "UID loaded successfully!"))
+                self._show_status(QCoreApplication.translate("MainWindow", "UID loaded successfully!"))
 
                 # Show UID info dialog
                 try:
@@ -1240,12 +1244,12 @@ class MainWindow(QMainWindow):
                     pass
 
             else:
-                progress("Firmware flashing failed")
-                QMessageBox.warning(self, "Flash Failed", "Failed to flash UID firmware")
+                progress(QCoreApplication.translate("MainWindow", "Firmware flashing failed"))
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Flash Failed"), QCoreApplication.translate("MainWindow", "Failed to flash UID firmware"))
 
         except Exception as e:
             logger.warning(f"UID loading error: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to load UID: {str(e)}")
+            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), f"{QCoreApplication.translate('MainWindow', 'Failed to load UID:')} {str(e)}")
         finally:
             # Close loading dialog
             if loading_dialog:
@@ -1310,9 +1314,9 @@ class MainWindow(QMainWindow):
     
     def show_protected_config_dialog(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Admin Login")
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Admin Login"))
         v = QVBoxLayout()
-        v.addWidget(QLabel("Enter admin password"))
+        v.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Enter admin password")))
         pwd = QLineEdit()
         pwd.setEchoMode(QLineEdit.Password)
         v.addWidget(pwd)
@@ -1324,23 +1328,23 @@ class MainWindow(QMainWindow):
             if pwd.text() == expected:
                 dialog.accept()
             else:
-                QMessageBox.warning(dialog, "Access Denied", "Wrong password")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Access Denied"), QCoreApplication.translate("MainWindow", "Wrong password"))
         btns.accepted.connect(on_accept)
         btns.rejected.connect(dialog.reject)
         if dialog.exec() == QDialog.Accepted:
             hub = QDialog(self)
-            hub.setWindowTitle("Settings")
+            hub.setWindowTitle(QCoreApplication.translate("MainWindow", "Settings"))
             layout = QVBoxLayout()
-            btn_email = QPushButton("Email Settings")
+            btn_email = QPushButton(QCoreApplication.translate("MainWindow", "Email Settings"))
             btn_email.clicked.connect(self.configure_email_dialog)
             layout.addWidget(btn_email)
-            btn_onedrive = QPushButton("OneDrive Settings")
+            btn_onedrive = QPushButton(QCoreApplication.translate("MainWindow", "OneDrive Settings"))
             btn_onedrive.clicked.connect(self.configure_onedrive_dialog)
             layout.addWidget(btn_onedrive)
-            btn_machine = QPushButton("Machine Types")
+            btn_machine = QPushButton(QCoreApplication.translate("MainWindow", "Machine Types"))
             btn_machine.clicked.connect(self.configure_machine_types_dialog)
             layout.addWidget(btn_machine)
-            btn_theme = QPushButton("Theme & Language")
+            btn_theme = QPushButton(QCoreApplication.translate("MainWindow", "Theme & Language"))
             btn_theme.clicked.connect(self.show_theme_language_dialog)
             layout.addWidget(btn_theme)
             buttons = QDialogButtonBox(QDialogButtonBox.Close)
@@ -1357,16 +1361,16 @@ class MainWindow(QMainWindow):
     def show_contact_support_dialog(self):
         """Open a dialog to send logs and error description to support."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Contact Support")
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Contact Support"))
         dialog.setMinimumWidth(600)
 
         v = QVBoxLayout()
-        v.addWidget(QLabel("Describe the issue you're experiencing:"))
+        v.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Describe the issue you're experiencing:")))
         desc = QTextEdit()
-        desc.setPlaceholderText("What happened? Steps to reproduce, expected vs actual behavior...")
+        desc.setPlaceholderText(QCoreApplication.translate("MainWindow", "What happened? Steps to reproduce, expected vs actual behavior..."))
         v.addWidget(desc)
 
-        include_logs_chk = QCheckBox("Include application logs")
+        include_logs_chk = QCheckBox(QCoreApplication.translate("MainWindow", "Include application logs"))
         include_logs_chk.setChecked(True)
         v.addWidget(include_logs_chk)
 
@@ -1377,11 +1381,11 @@ class MainWindow(QMainWindow):
         def on_accept():
             description = desc.toPlainText().strip()
             if not description:
-                QMessageBox.warning(dialog, "Missing Description", "Please provide a brief description of the issue.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Description"), QCoreApplication.translate("MainWindow", "Please provide a brief description of the issue."))
                 return
             client_name = (self.client_name.text() if hasattr(self, 'client_name') else self.config.get('client_name', '')).strip()
             if not client_name:
-                QMessageBox.warning(dialog, "Missing Client Name", "Please fill in Client Name in Machine Information before sending support request.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Client Name"), QCoreApplication.translate("MainWindow", "Please fill in Client Name in Machine Information before sending support request."))
                 return
 
             smtp_config = self.config.get('smtp', {})
@@ -1391,7 +1395,7 @@ class MainWindow(QMainWindow):
             is_azure_valid = azure_config.get('enabled') and azure_config.get('client_id')
             
             if not is_smtp_valid and not is_azure_valid:
-                QMessageBox.warning(dialog, "Email Not Configured", "Please configure Email settings first in Settings > Configure Email.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Email Not Configured"), QCoreApplication.translate("MainWindow", "Please configure Email settings first in Settings > Configure Email."))
                 return
 
             # Prepare optional logs zip
@@ -1418,13 +1422,13 @@ class MainWindow(QMainWindow):
 
             client_name = (self.client_name.text() if hasattr(self, 'client_name') else self.config.get('client_name', '')).strip()
             body = (
-                f"Support request from {operator_name} ({operator_email})\n\n"
-                f"Machine Type: {machine_type}\n"
-                f"Machine ID: {machine_id}\n"
-                f"Client Name: {client_name or '-'}\n"
-                f"Devices Detected: {len(self.devices)}\n\n"
-                f"User Description:\n{description}\n\n"
-                f"Device Details:\n{device_summary}\n"
+                f"{QCoreApplication.translate('MainWindow', 'Support request from')} {operator_name} ({operator_email})\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'Machine Type')}: {machine_type}\n"
+                f"{QCoreApplication.translate('MainWindow', 'Machine ID')}: {machine_id}\n"
+                f"{QCoreApplication.translate('MainWindow', 'Client Name')}: {client_name or '-'}\n"
+                f"{QCoreApplication.translate('MainWindow', 'Devices Detected')}: {len(self.devices)}\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'User Description')}:\n{description}\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'Device Details')}:\n{device_summary}\n"
             )
 
             self.progress_bar.setVisible(True)
@@ -1448,15 +1452,15 @@ class MainWindow(QMainWindow):
                 )
             except Exception as e:
                 self.log(f"Error sending support email: {e}")
-                QMessageBox.critical(dialog, "Error", f"Failed to send support email:\n{e}")
+                QMessageBox.critical(dialog, QCoreApplication.translate("MainWindow", "Error"), f"{QCoreApplication.translate('MainWindow', 'Failed to send support email:')}\n{e}")
             finally:
                 self.progress_bar.setVisible(False)
 
             if success:
-                QMessageBox.information(dialog, "Support Request Sent", "Your request has been sent to support. We'll get back to you soon.")
+                QMessageBox.information(dialog, QCoreApplication.translate("MainWindow", "Support Request Sent"), QCoreApplication.translate("MainWindow", "Your request has been sent to support. We'll get back to you soon."))
                 dialog.accept()
             else:
-                QMessageBox.warning(dialog, "Failed", "Could not send support request. Please check SMTP settings and try again.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Failed"), QCoreApplication.translate("MainWindow", "Could not send support request. Please check SMTP settings and try again."))
 
         btns.accepted.connect(on_accept)
         btns.rejected.connect(dialog.reject)
@@ -1542,8 +1546,8 @@ class MainWindow(QMainWindow):
             machine_id = self.machine_id.text()
             
             if not operator_name or not operator_email or not machine_id or not client_name:
-                QMessageBox.warning(self, "Validation Error", 
-                                  "Please fill in Client Name, Operator Name, Operator Email, and Machine ID")
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Validation Error"), 
+                                  QCoreApplication.translate("MainWindow", "Please fill in Client Name, Operator Name, Operator Email, and Machine ID"))
                 return
             
             # Validate machine ID format
@@ -1553,7 +1557,7 @@ class MainWindow(QMainWindow):
             
             is_valid, error_message = Config.validate_machine_id(machine_id, type_config)
             if not is_valid:
-                QMessageBox.warning(self, "Validation Error", error_message)
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Validation Error"), error_message)
                 return
             
             # Show progress
@@ -1579,7 +1583,7 @@ class MainWindow(QMainWindow):
             
             # Save to OneDrive if enabled
             if self.onedrive_manager.is_enabled():
-                self.log("Syncing data to OneDrive...")
+                self.log(QCoreApplication.translate("MainWindow", "Syncing data to OneDrive..."))
                 success = self.onedrive_manager.save_machine_data(
                     operator_name=operator_name,
                     operator_email=operator_email,
@@ -1589,24 +1593,24 @@ class MainWindow(QMainWindow):
                     devices=self.devices
                 )
                 if success:
-                    self.log("[SUCCESS] Data synced to OneDrive successfully")
+                    self.log(QCoreApplication.translate("MainWindow", "[SUCCESS] Data synced to OneDrive successfully"))
                 else:
-                    self.log("[WARNING] OneDrive sync failed - check logs")
+                    self.log(QCoreApplication.translate("MainWindow", "[WARNING] OneDrive sync failed - check logs"))
             
             # Ask user to confirm data and send email
             reply = QMessageBox.question(
                 self,
-                "Confirm Report & Send",
-                f"Report generated:\n{report_path}\n\n"
-                f"Data Summary:\n"
-                f"- Operator: {operator_name}\n"
-                f"- Machine Type: {machine_type}\n"
-                f"- Machine ID: {machine_id}\n"
-                f"- Client Name: {client_name or '-'}\n"
-                f"- Devices: {len(self.devices)}\n\n"
-                "Please check the report details above.\n\n"
-                "Click 'Yes' to send this report via email now,\n"
-                "or 'No' to save it locally without sending.",
+                QCoreApplication.translate("MainWindow", "Confirm Report & Send"),
+                f"{QCoreApplication.translate('MainWindow', 'Report generated:')}\n{report_path}\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'Data Summary:')}\n"
+                f"- {QCoreApplication.translate('MainWindow', 'Operator:')} {operator_name}\n"
+                f"- {QCoreApplication.translate('MainWindow', 'Machine Type:')} {machine_type}\n"
+                f"- {QCoreApplication.translate('MainWindow', 'Machine ID:')} {machine_id}\n"
+                f"- {QCoreApplication.translate('MainWindow', 'Client Name:')} {client_name or '-'}\n"
+                f"- {QCoreApplication.translate('MainWindow', 'Devices:')} {len(self.devices)}\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'Please check the report details above.')}\n\n"
+                f"{QCoreApplication.translate('MainWindow', 'Click \'Yes\' to send this report via email now,')}\n"
+                f"{QCoreApplication.translate('MainWindow', 'or \'No\' to save it locally without sending.')}",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes
             )
@@ -1616,15 +1620,15 @@ class MainWindow(QMainWindow):
                 self.send_email_automatically()
             else:
                 # User chose not to send
-                QMessageBox.information(self, "Report Saved",
-                                      "Report saved locally.")
+                QMessageBox.information(self, QCoreApplication.translate("MainWindow", "Report Saved"),
+                                      QCoreApplication.translate("MainWindow", "Report saved locally."))
             
             # Update config
             self.save_operator_info()
             
         except Exception as e:
             self.log(f"Error generating report: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to generate report: {e}")
+            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), f"{QCoreApplication.translate('MainWindow', 'Failed to generate report:')} {e}")
         finally:
             self.progress_bar.setVisible(False)
 
@@ -1679,8 +1683,8 @@ class MainWindow(QMainWindow):
     def send_email_automatically(self):
         """Automatically send email with the last generated report."""
         if not self.last_report_path or not self.last_report_path.exists():
-            QMessageBox.warning(self, "No Report", 
-                              "No report available to send.")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Report"), 
+                              QCoreApplication.translate("MainWindow", "No report available to send."))
             return
         
         smtp_config = self.config.get('smtp', {})
@@ -1694,8 +1698,8 @@ class MainWindow(QMainWindow):
         if not is_azure and not smtp_config.get('host'):
             reply = QMessageBox.question(
                 self,
-                "Email Not Configured",
-                "Email is not configured. Would you like to configure it now?",
+                QCoreApplication.translate("MainWindow", "Email Not Configured"),
+                QCoreApplication.translate("MainWindow", "Email is not configured. Would you like to configure it now?"),
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:
@@ -1703,13 +1707,13 @@ class MainWindow(QMainWindow):
             return
         
         if not recipients:
-            QMessageBox.warning(self, "No Recipients",
-                              "Please add email recipients in settings.")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Recipients"),
+                              QCoreApplication.translate("MainWindow", "Please add email recipients in settings."))
             return
         
         if not is_azure and not smtp_config.get('username'):
-            QMessageBox.warning(self, "Email Not Configured",
-                              "SMTP username not configured.")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Email Not Configured"),
+                              QCoreApplication.translate("MainWindow", "SMTP username not configured."))
             return
         
         try:
@@ -1722,7 +1726,7 @@ class MainWindow(QMainWindow):
                 self.log(msg)
                 self.progress_bar.setValue(self.progress_bar.value() + 25)
             
-            update_progress("Connecting to email server...")
+            update_progress(QCoreApplication.translate("MainWindow", "Connecting to email server..."))
             
             # Get operator info for email body
             operator_name = self.operator_name.text()
@@ -1732,7 +1736,7 @@ class MainWindow(QMainWindow):
             machine_id = self.machine_id.text()
             
             if not client_name:
-                QMessageBox.warning(self, "Validation Error", "Please fill in Client Name before sending email.")
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Validation Error"), QCoreApplication.translate("MainWindow", "Please fill in Client Name before sending email."))
                 self.progress_bar.setVisible(False)
                 return
             
@@ -1740,26 +1744,35 @@ class MainWindow(QMainWindow):
             device_summary = self._create_device_summary()
             
             client_name = (self.client_name.text() if hasattr(self, 'client_name') else self.config.get('client_name', '')).strip()
-            email_body = f"""AWG Kumulus Device Manager Report
+            
+            email_body = QCoreApplication.translate("MainWindow", """AWG Kumulus Device Manager Report
 
 Operator: {operator_name} ({operator_email})
-Client Name: {client_name or '-'}
+Client Name: {client_name}
 Machine Type: {machine_type}
 Machine ID: {machine_id}
-Devices Detected: {len(self.devices)}
+Devices Detected: {device_count}
 
 DEVICE DETAILS:
 {device_summary}
 
-Please find the attached Excel report with complete device information including UIDs, hardware characteristics, and technical specifications."""
+Please find the attached Excel report with complete device information including UIDs, hardware characteristics, and technical specifications.""").format(
+                operator_name=operator_name,
+                operator_email=operator_email,
+                client_name=client_name or '-',
+                machine_type=machine_type,
+                machine_id=machine_id,
+                device_count=len(self.devices),
+                device_summary=device_summary
+            )
             
-            update_progress("Sending email...")
+            update_progress(QCoreApplication.translate("MainWindow", "Sending email..."))
             
             # Send email
             success = self.email_sender.send_email(
                 smtp_config=smtp_config,
                 recipients=recipients,
-                subject=f"AWG Kumulus Report - {client_name or 'Client'} - {machine_type} - {machine_id}",
+                subject=QCoreApplication.translate("MainWindow", "AWG Kumulus Report - {} - {} - {}").format(client_name or 'Client', machine_type, machine_id),
                 body=email_body,
                 attachment_path=self.last_report_path,
                 progress_callback=update_progress,
@@ -1770,18 +1783,18 @@ Please find the attached Excel report with complete device information including
             self.progress_bar.setValue(100)
             
             if success:
-                update_progress("Email sent successfully!")
-                QMessageBox.information(self, "Email Sent",
-                                      f"Report sent successfully to:\n" +
+                update_progress(QCoreApplication.translate("MainWindow", "Email sent successfully!"))
+                QMessageBox.information(self, QCoreApplication.translate("MainWindow", "Email Sent"),
+                                      QCoreApplication.translate("MainWindow", "Report sent successfully to:\n") +
                                       "\n".join(recipients))
             else:
-                QMessageBox.warning(self, "Email Failed",
-                                  "Failed to send email. Check logs for details.")
+                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Email Failed"),
+                                  QCoreApplication.translate("MainWindow", "Failed to send email. Check logs for details."))
             
         except Exception as e:
             self.log(f"Error sending email: {e}")
-            QMessageBox.critical(self, "Error", 
-                               f"Failed to send email:\n{str(e)}")
+            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), 
+                               f"{QCoreApplication.translate('MainWindow', 'Failed to send email:')}\n{str(e)}")
         finally:
             self.progress_bar.setVisible(False)
     
@@ -1827,7 +1840,7 @@ Please find the attached Excel report with complete device information including
     def configure_email_dialog(self):
         """Open email configuration dialog with preset configurations and auto-detection."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Email Configuration")
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Email Configuration"))
         dialog.setWindowState(Qt.WindowMaximized)
         
         main_layout = QVBoxLayout(dialog)
@@ -1838,18 +1851,18 @@ Please find the attached Excel report with complete device information including
         content_widget = QWidget()
         layout = QVBoxLayout(content_widget)
         # Status banner
-        self.onedrive_status_banner = QLabel("OneDrive is currently disabled")
+        self.onedrive_status_banner = QLabel(QCoreApplication.translate("MainWindow", "OneDrive is currently disabled"))
         self.onedrive_status_banner.setStyleSheet("background:#fff3cd;color:#664d03;padding:10px;border:1px solid #ffe69c;border-radius:6px;")
         layout.addWidget(self.onedrive_status_banner)
         
         # Email Provider Selection
-        provider_group = QGroupBox("Email Provider")
+        provider_group = QGroupBox(QCoreApplication.translate("MainWindow", "Email Provider"))
         provider_layout = QFormLayout()
         
         # Provider selection
         provider_combo = QComboBox()
         provider_combo.addItems(["Auto-detect from email", "Gmail", "Outlook/Hotmail", "Office 365", "Custom", "Azure (Graph API)"])
-        provider_layout.addRow(QLabel("Provider:"), provider_combo)
+        provider_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Provider:")), provider_combo)
         
         # Select current provider
         if self.config.get('azure', {}).get('enabled'):
@@ -1870,35 +1883,35 @@ Please find the attached Excel report with complete device information including
         smtp_user = QLineEdit()
         smtp_user.setText(self.config.get('smtp', {}).get('username', ''))
         smtp_user.setPlaceholderText("your.email@gmail.com")
-        provider_layout.addRow(QLabel("Email Address:"), smtp_user)
+        provider_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Email Address:")), smtp_user)
         
         # Azure Configuration Group (initially hidden unless Azure is selected)
-        azure_group = QGroupBox("Azure Configuration")
+        azure_group = QGroupBox(QCoreApplication.translate("MainWindow", "Azure Configuration"))
         azure_layout = QFormLayout()
         
         azure_client_id = QLineEdit()
         azure_client_id.setText(self.config.get('azure', {}).get('client_id', ''))
-        azure_layout.addRow(QLabel("Client ID:"), azure_client_id)
+        azure_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Client ID:")), azure_client_id)
         
         azure_tenant_id = QLineEdit()
         azure_tenant_id.setText(self.config.get('azure', {}).get('tenant_id', ''))
-        azure_layout.addRow(QLabel("Tenant ID:"), azure_tenant_id)
+        azure_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Tenant ID:")), azure_tenant_id)
         
         azure_client_secret = QLineEdit()
         azure_client_secret.setText(self.config.get('azure', {}).get('client_secret', ''))
         azure_client_secret.setEchoMode(QLineEdit.Password)
-        azure_layout.addRow(QLabel("Client Secret:"), azure_client_secret)
+        azure_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Client Secret:")), azure_client_secret)
         
         azure_sender_email = QLineEdit()
         azure_sender_email.setText(self.config.get('azure', {}).get('sender_email', ''))
-        azure_layout.addRow(QLabel("Sender Email:"), azure_sender_email)
+        azure_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Sender Email:")), azure_sender_email)
         
         azure_group.setLayout(azure_layout)
         # Add to main layout but keep reference to toggle visibility
         layout.addWidget(azure_group)
         
         # Auto-detect button
-        auto_detect_btn = QPushButton("Auto-detect Settings")
+        auto_detect_btn = QPushButton(QCoreApplication.translate("MainWindow", "Auto-detect Settings"))
         auto_detect_btn.setMaximumWidth(180)
         provider_layout.addRow(QLabel(""), auto_detect_btn)
         
@@ -1906,50 +1919,50 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(provider_group)
         
         # SMTP Configuration Group
-        smtp_group = QGroupBox("SMTP Configuration")
+        smtp_group = QGroupBox(QCoreApplication.translate("MainWindow", "SMTP Configuration"))
         smtp_layout = QFormLayout()
         
         # SMTP Server
         smtp_host = QLineEdit()
         smtp_host.setText(self.config.get('smtp', {}).get('host', ''))
         smtp_host.setPlaceholderText("e.g., smtp.gmail.com")
-        smtp_layout.addRow(QLabel("SMTP Server:"), smtp_host)
+        smtp_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "SMTP Server:")), smtp_host)
         
         # Port
         smtp_port = QLineEdit()
         smtp_port.setText(str(self.config.get('smtp', {}).get('port', 587)))
-        smtp_layout.addRow(QLabel("Port:"), smtp_port)
+        smtp_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Port:")), smtp_port)
         
         # TLS checkbox
-        tls_checkbox = QCheckBox("Use TLS/STARTTLS")
+        tls_checkbox = QCheckBox(QCoreApplication.translate("MainWindow", "Use TLS/STARTTLS"))
         tls_checkbox.setChecked(self.config.get('smtp', {}).get('tls', True))
-        smtp_layout.addRow(QLabel("Security:"), tls_checkbox)
+        smtp_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Security:")), tls_checkbox)
         
         # Password
         smtp_pass = QLineEdit()
         smtp_pass.setEchoMode(QLineEdit.Password)
-        smtp_layout.addRow(QLabel("Password:"), smtp_pass)
+        smtp_layout.addRow(QLabel(QCoreApplication.translate("MainWindow", "Password:")), smtp_pass)
         
         smtp_group.setLayout(smtp_layout)
         layout.addWidget(smtp_group)
         
         # Recipients (Common for all providers)
-        recipients_group = QGroupBox("Recipients")
+        recipients_group = QGroupBox(QCoreApplication.translate("MainWindow", "Recipients"))
         recipients_layout = QVBoxLayout()
         recipients_text = QTextEdit()
         recipients_text.setMaximumHeight(100)
-        recipients_text.setPlaceholderText("Enter email addresses, one per line")
+        recipients_text.setPlaceholderText(QCoreApplication.translate("MainWindow", "Enter email addresses, one per line"))
         recipients_text.setPlainText("\n".join(self.config.get('recipients', [])))
         recipients_layout.addWidget(recipients_text)
         recipients_group.setLayout(recipients_layout)
         layout.addWidget(recipients_group)
         
         # Dynamic Configuration Guide
-        guide_group = QGroupBox("[GUIDE] Email Configuration Guide")
+        guide_group = QGroupBox(QCoreApplication.translate("MainWindow", "[GUIDE] Email Configuration Guide"))
         guide_layout = QVBoxLayout()
         
         # Dynamic guide label that changes based on provider selection
-        self.dynamic_guide = QLabel("Select an email provider to see specific configuration instructions")
+        self.dynamic_guide = QLabel(QCoreApplication.translate("MainWindow", "Select an email provider to see specific configuration instructions"))
         self.dynamic_guide.setOpenExternalLinks(True)
         self.dynamic_guide.setStyleSheet("color: #333; font-size: 10px; background: #f0f8ff; padding: 8px; border-radius: 4px; border: 1px solid #b0d4f1;")
         guide_layout.addWidget(self.dynamic_guide)
@@ -1958,7 +1971,7 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(guide_group)
         
         # Test Button
-        test_btn = QPushButton("Test Configuration")
+        test_btn = QPushButton(QCoreApplication.translate("MainWindow", "Test Configuration"))
         test_btn.clicked.connect(lambda: test_configuration())
         layout.addWidget(test_btn)
         
@@ -1991,19 +2004,19 @@ Please find the attached Excel report with complete device information including
                 recips = [r.strip() for r in recips_str.split('\n') if r.strip()]
                 
                 if not recips:
-                     QMessageBox.warning(dialog, "Missing Info", "Please add at least one recipient.")
+                     QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Info"), QCoreApplication.translate("MainWindow", "Please add at least one recipient."))
                      return
                      
                 if not azure_cfg['client_id'] or not azure_cfg['tenant_id'] or not azure_cfg['client_secret']:
-                    QMessageBox.warning(dialog, "Missing Info", "Please fill in all Azure configuration fields.")
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Info"), QCoreApplication.translate("MainWindow", "Please fill in all Azure configuration fields."))
                     return
                 
                 if not azure_cfg['sender_email']:
-                    QMessageBox.warning(dialog, "Missing Info", "Please enter a Sender Email.")
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Info"), QCoreApplication.translate("MainWindow", "Please enter a Sender Email."))
                     return
                 
                 # Show progress
-                progress = QProgressDialog("Sending test email via Azure...", None, 0, 0, dialog)
+                progress = QProgressDialog(QCoreApplication.translate("MainWindow", "Sending test email via Azure..."), None, 0, 0, dialog)
                 progress.setWindowModality(Qt.WindowModal)
                 progress.setMinimumDuration(0)
                 progress.show()
@@ -2020,20 +2033,20 @@ Please find the attached Excel report with complete device information including
                 success = self.email_sender.send_email_azure(
                     azure_config=azure_cfg,
                     recipients=recips,
-                    subject="Test Email from AWG Kumulus (Azure)",
-                    body="This is a test email to verify your Azure Graph API configuration.",
+                    subject=QCoreApplication.translate("MainWindow", "Test Email from AWG Kumulus (Azure)"),
+                    body=QCoreApplication.translate("MainWindow", "This is a test email to verify your Azure Graph API configuration."),
                     progress_callback=cb,
                     sender_override=test_sender
                 )
                 
                 progress.close()
                 if success:
-                    QMessageBox.information(dialog, "Success", "Test email sent successfully via Azure!")
+                    QMessageBox.information(dialog, QCoreApplication.translate("MainWindow", "Success"), QCoreApplication.translate("MainWindow", "Test email sent successfully via Azure!"))
                 else:
-                    QMessageBox.warning(dialog, "Failed", 
-                                      "Failed to send test email.\n\n"
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Failed"), 
+                                      QCoreApplication.translate("MainWindow", "Failed to send test email.\n\n"
                                       "Note: Ensure 'Sender Email' is a valid user email address in your Azure tenant, "
-                                      "not an application name.")
+                                      "not an application name."))
                 return
 
             # Get current values
@@ -2045,17 +2058,17 @@ Please find the attached Excel report with complete device information including
             recips = [r.strip() for r in recips_str.split('\n') if r.strip()]
 
             if not host or not port_str or not user:
-                QMessageBox.warning(dialog, "Missing Info", "Please fill in Host, Port, and Email Address.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Info"), QCoreApplication.translate("MainWindow", "Please fill in Host, Port, and Email Address."))
                 return
             
             if not recips:
-                 QMessageBox.warning(dialog, "Missing Info", "Please add at least one recipient.")
+                 QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Info"), QCoreApplication.translate("MainWindow", "Please add at least one recipient."))
                  return
 
             try:
                 port = int(port_str)
             except ValueError:
-                QMessageBox.warning(dialog, "Invalid Port", "Port must be a number.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Invalid Port"), QCoreApplication.translate("MainWindow", "Port must be a number."))
                 return
 
             cfg = {
@@ -2066,7 +2079,7 @@ Please find the attached Excel report with complete device information including
             }
 
             # Show progress
-            progress = QProgressDialog("Sending test email...", None, 0, 0, dialog)
+            progress = QProgressDialog(QCoreApplication.translate("MainWindow", "Sending test email..."), None, 0, 0, dialog)
             progress.setWindowModality(Qt.WindowModal)
             progress.setMinimumDuration(0)
             progress.show()
@@ -2079,8 +2092,8 @@ Please find the attached Excel report with complete device information including
             success = self.email_sender.send_email(
                 smtp_config=cfg,
                 recipients=recips,
-                subject="Test Email from AWG Kumulus",
-                body="This is a test email to verify your SMTP configuration.",
+                subject=QCoreApplication.translate("MainWindow", "Test Email from AWG Kumulus"),
+                body=QCoreApplication.translate("MainWindow", "This is a test email to verify your SMTP configuration."),
                 password=pwd if pwd else None, # Pass explicit password if provided
                 progress_callback=cb
             )
@@ -2088,20 +2101,20 @@ Please find the attached Excel report with complete device information including
             progress.close()
             
             if success:
-                QMessageBox.information(dialog, "Success", "Test email sent successfully!")
+                QMessageBox.information(dialog, QCoreApplication.translate("MainWindow", "Success"), QCoreApplication.translate("MainWindow", "Test email sent successfully!"))
             else:
-                QMessageBox.warning(dialog, "Failed", "Failed to send test email. Check logs.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Failed"), QCoreApplication.translate("MainWindow", "Failed to send test email. Check logs."))
 
         def auto_detect_settings():
             """Auto-detect SMTP settings based on email domain."""
             email = smtp_user.text().strip()
             if not email:
-                QMessageBox.warning(dialog, "No Email", "Please enter your email address first.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "No Email"), QCoreApplication.translate("MainWindow", "Please enter your email address first."))
                 return
             
             # Extract domain
             if '@' not in email:
-                QMessageBox.warning(dialog, "Invalid Email", "Please enter a valid email address.")
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Invalid Email"), QCoreApplication.translate("MainWindow", "Please enter a valid email address."))
                 return
             
             domain = email.split('@')[1].lower()
@@ -2123,8 +2136,8 @@ Please find the attached Excel report with complete device information including
                 tls_checkbox.setChecked(True)
                 provider_combo.setCurrentText('Office 365')
             else:
-                QMessageBox.information(dialog, "Custom Domain", 
-                    f"Domain '{domain}' not recognized. Please configure manually or choose 'Custom'.")
+                QMessageBox.information(dialog, QCoreApplication.translate("MainWindow", "Custom Domain"), 
+                    QCoreApplication.translate("MainWindow", "Domain '{}' not recognized. Please configure manually or choose 'Custom'.").format(domain))
                 provider_combo.setCurrentText('Custom')
             
             # Update the guide after auto-detection
@@ -2338,11 +2351,11 @@ Please find the attached Excel report with complete device information including
     def flash_firmware_dialog(self):
         """Open firmware flashing dialog."""
         if not self.devices:
-            QMessageBox.warning(self, "No Devices", "No devices detected")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Devices"), QCoreApplication.translate("MainWindow", "No devices detected"))
             return
         
         dialog = QDialog(self)
-        dialog.setWindowTitle("Flash Firmware")
+        dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Flash Firmware"))
         dialog.setWindowState(Qt.WindowMaximized)
         
         main_layout = QVBoxLayout(dialog)
@@ -2354,10 +2367,10 @@ Please find the attached Excel report with complete device information including
         layout = QVBoxLayout(content_widget)
         
         # Device Selection
-        device_group = QGroupBox("Select Device")
+        device_group = QGroupBox(QCoreApplication.translate("MainWindow", "Select Device"))
         device_layout = QVBoxLayout()
         
-        device_layout.addWidget(QLabel("Choose device to flash:"))
+        device_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Choose device to flash:")))
         device_list = QListWidget()
         device_list.setMaximumHeight(70)  # Limit height to make it smaller
         
@@ -2375,24 +2388,28 @@ Please find the attached Excel report with complete device information including
         layout.addWidget(device_group)
         
         # Firmware Source Selection
-        firmware_group = QGroupBox("Firmware Source")
+        firmware_group = QGroupBox(QCoreApplication.translate("MainWindow", "Firmware Source"))
         firmware_layout = QVBoxLayout()
         
         # Source type selection
         source_layout = QHBoxLayout()
-        source_layout.addWidget(QLabel("Source Type:"))
+        source_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Source Type:")))
         source_combo = QComboBox()
-        source_combo.addItems(["Local File (.bin/.elf)", "URL Download", "GitLab Repository"])
+        source_combo.addItems([
+            QCoreApplication.translate("MainWindow", "Local File (.bin/.elf)"),
+            QCoreApplication.translate("MainWindow", "URL Download"),
+            QCoreApplication.translate("MainWindow", "GitLab Repository")
+        ])
         source_layout.addWidget(source_combo)
         firmware_layout.addLayout(source_layout)
         
         # File selection
         file_layout = QHBoxLayout()
         file_path = QLineEdit()
-        file_path.setPlaceholderText("Select firmware file or enter URL...")
+        file_path.setPlaceholderText(QCoreApplication.translate("MainWindow", "Select firmware file or enter URL..."))
         file_layout.addWidget(file_path)
         
-        browse_btn = QPushButton("Browse")
+        browse_btn = QPushButton(QCoreApplication.translate("MainWindow", "Browse"))
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(file_path))
         file_layout.addWidget(browse_btn)
         firmware_layout.addLayout(file_layout)
@@ -2431,24 +2448,24 @@ Please find the attached Excel report with complete device information including
         firmware_guide_layout.addWidget(formats_guide)
         
         # Board-Specific Guide
-        board_guide = QLabel("""
+        board_guide = QLabel(QCoreApplication.translate("MainWindow", """
         <b>[BOARD] Board-Specific Requirements:</b><br>
         • <b>STM32:</b> Requires STM32CubeProgrammer or OpenOCD<br>
         • <b>Arduino:</b> Uses avrdude for AVR-based boards<br>
         • <b>Generic:</b> Basic serial communication support
-        """)
+        """))
         board_guide.setStyleSheet("color: #333; font-size: 10px; background: #fff0f0; padding: 8px; border-radius: 4px; border: 1px solid #f1b0b0;")
         firmware_guide_layout.addWidget(board_guide)
         
         # Troubleshooting Guide
-        firmware_troubleshooting_guide = QLabel("""
+        firmware_troubleshooting_guide = QLabel(QCoreApplication.translate("MainWindow", """
         <b>[TROUBLESHOOTING] Firmware Flashing Troubleshooting:</b><br>
         • <b>Device not found:</b> Check USB connection and drivers<br>
         • <b>Permission denied:</b> Run as administrator (Windows) or use sudo (Linux)<br>
         • <b>Flash failed:</b> Put device in bootloader mode manually<br>
         • <b>Wrong file format:</b> Ensure file matches board type<br>
         • <b>Still having issues?</b> Check: <a href="https://www.st.com/en/development-tools/stm32cubeprog.html">STM32 Docs</a>
-        """)
+        """))
         firmware_troubleshooting_guide.setOpenExternalLinks(True)
         firmware_troubleshooting_guide.setStyleSheet("color: #333; font-size: 10px; background: #fff8f0; padding: 8px; border-radius: 4px; border: 1px solid #f1d0b0;")
         firmware_guide_layout.addWidget(firmware_troubleshooting_guide)
@@ -2525,7 +2542,6 @@ Please find the attached Excel report with complete device information including
         
         if dialog.exec():
             pass  # Dialog was accepted
-    
     def read_uid_dialog(self):
         """Flash GetMachineUid.bin and read the UID from the device."""
         if getattr(self, '_is_reading_uid', False):
@@ -2559,20 +2575,53 @@ Please find the attached Excel report with complete device information including
             return
 
         self.current_uid_device = device
-        # Auto-flash without confirmation
 
+        # CRITICAL FIX: Always use GetMachineUid.bin for UID reading
+        # Not whatever firmware was previously selected
         p = self._find_uid_firmware_path()
         if not p:
             p = self._ensure_uid_bin_downloaded()
+        
         if not p:
             self._is_reading_uid = False
-            QMessageBox.critical(self, "Error", "Firmware file GetMachineUid.bin not found and download failed.")
+            QMessageBox.critical(
+                self, 
+                QCoreApplication.translate("MainWindow", "Firmware Not Found"),
+                QCoreApplication.translate("MainWindow", 
+                    "GetMachineUid.bin firmware not found.\n\n"
+                    "This special firmware is required to read the UID from the board.\n"
+                    "The application will attempt to download it automatically.\n\n"
+                    "If download fails, please check your internet connection."
+                )
+            )
             return
 
+        # Verify the file is actually the UID firmware (not a random .bin file)
+        if not p.name.lower().startswith('getmachineuid'):
+            self._is_reading_uid = False
+            QMessageBox.warning(
+                self,
+                QCoreApplication.translate("MainWindow", "Wrong Firmware"),
+                QCoreApplication.translate("MainWindow",
+                    f"Found firmware file: {p.name}\n\n"
+                    "This is not the GetMachineUid.bin firmware.\n"
+                    "UID reading requires the specific GetMachineUid.bin firmware.\n\n"
+                    "The application will attempt to download it."
+                )
+            )
+            # Try to download the correct one
+            p = self._ensure_uid_bin_downloaded()
+            if not p:
+                return
+
         # Progress Dialog
-        self.uid_loading_dialog = QProgressDialog(QCoreApplication.translate("MainWindow", "Starting process..."), 
-                                                  None, 0, 0, self)
-        self.uid_loading_dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Reading UID - DO NOT CLOSE"))
+        self.uid_loading_dialog = QProgressDialog(
+            QCoreApplication.translate("MainWindow", "Starting UID read process..."), 
+            None, 0, 0, self
+        )
+        self.uid_loading_dialog.setWindowTitle(
+            QCoreApplication.translate("MainWindow", "Reading UID - DO NOT CLOSE")
+        )
         self.uid_loading_dialog.setWindowModality(Qt.WindowModal)
         self.uid_loading_dialog.setCancelButton(None) # Make it non-cancellable
         self.uid_loading_dialog.setMinimumDuration(0)
@@ -2587,57 +2636,111 @@ Please find the attached Excel report with complete device information including
             def update_status(msg):
                 QTimer.singleShot(0, lambda: self.uid_loading_dialog.setLabelText(msg))
 
-            # 1. Flash
-            update_status("Step 1/3: Flashing firmware... (Do not unplug)")
-            success = self.firmware_flasher.flash_firmware(device_obj, str(firmware_path), 
-                                                 lambda msg: update_status(f"Step 1/3: {msg}"))
+            # 1. Flash the GetMachineUid.bin firmware
+            update_status(QCoreApplication.translate("MainWindow", 
+                "Step 1/3: Flashing GetMachineUid.bin firmware... (Do not unplug)"))
+            
+            success = self.firmware_flasher.flash_firmware(
+                device_obj, 
+                str(firmware_path), 
+                lambda msg: update_status(QCoreApplication.translate("MainWindow", "Step 1/3: {}").format(msg))
+            )
             
             if not success:
-                 raise Exception("Firmware flashing failed. Please check connection.")
+                raise Exception(QCoreApplication.translate("MainWindow", 
+                    "Firmware flashing failed. Please check:\n"
+                    "1. Device is properly connected\n"
+                    "2. Device drivers are installed\n"
+                    "3. No other program is using the device"))
 
-            # 2. Wait for reboot
-            update_status("Step 2/3: Rebooting device... (Please wait)")
-            time.sleep(4) # Wait a bit for re-enumeration
+            # 2. Wait for device reboot and re-enumeration
+            update_status(QCoreApplication.translate("MainWindow", 
+                "Step 2/3: Waiting for device to reboot..."))
+            time.sleep(6) # Wait for device to reboot and re-enumerate
             
-            # 3. Connect and read
+            # 3. Connect to serial port and read UID
             port_name = device_obj.port
             baud_rate = 115200 
             
-            update_status(f"Step 3/3: Connecting to {port_name}...")
+            update_status(QCoreApplication.translate("MainWindow", 
+                "Step 3/3: Connecting to serial port {}...").format(port_name))
             
             try:
-                # Retry connection a few times
-                for i in range(5):
+                # Retry connection a few times (device may take time to be ready)
+                max_retries = 5
+                for attempt in range(max_retries):
                     try:
                         with serial.Serial(port_name, baud_rate, timeout=1) as ser:
-                            update_status(f"Step 3/3: Reading data (Attempt {i+1})...")
-                            # Send 'i'
-                            ser.write(b'i')
-                            time.sleep(0.1)
-                            ser.write(b'i') # Send again just in case
+                            update_status(QCoreApplication.translate("MainWindow", 
+                                "Step 3/3: Reading UID data (Attempt {}/{})...").format(attempt + 1, max_retries))
                             
-                            # Read lines
+                            # Active polling loop - send 'i' command and read response
                             start_time = time.time()
                             uid = None
-                            while time.time() - start_time < 5: 
-                                line = ser.readline().decode('utf-8', errors='ignore').strip()
-                                if "Serial (UID hex):" in line:
-                                    uid = line.split(":")[-1].strip()
-                                    break
-                                if "Unique ID:" in line and "-" in line:
-                                    parts = line.split(":")[-1].strip().split("-")
-                                    if len(parts) == 3:
-                                        uid = "".join(parts)
-                                        break
+                            timeout = 5  # 5 seconds per attempt
                             
-                            if uid:
-                                self.uid_read_result = uid
-                                return
-                    except serial.SerialException:
-                        time.sleep(1)
+                            while time.time() - start_time < timeout:
+                                # Send info command
+                                ser.write(b'i')
+                                ser.flush()
+                                time.sleep(0.2)
+                                
+                                # Read all available lines
+                                while ser.in_waiting:
+                                    try:
+                                        line = ser.readline().decode('utf-8', errors='ignore').strip()
+                                        
+                                        # Look for UID in response
+                                        # Format 1: "Serial (UID hex): XXXX"
+                                        if "Serial (UID hex):" in line:
+                                            uid = line.split(":")[-1].strip()
+                                            break
+                                        
+                                        # Format 2: "Unique ID: XX-XX-XX"
+                                        if "Unique ID:" in line and "-" in line:
+                                            parts = line.split(":")[-1].strip().split("-")
+                                            if len(parts) == 3:
+                                                uid = "".join(parts)
+                                                break
+                                        
+                                        # Format 3: Just the UID hex string
+                                        if len(line) == 24 and all(c in '0123456789ABCDEFabcdef' for c in line):
+                                            uid = line
+                                            break
+                                            
+                                    except Exception as read_error:
+                                        logger.warning(f"Error reading line: {read_error}")
+                                        continue
+                                
+                                if uid:
+                                    self.uid_read_result = uid
+                                    return
+                                
+                                time.sleep(0.5)
+                        
+                        # If we get here, we connected but didn't get UID
+                        if attempt < max_retries - 1:
+                            update_status(QCoreApplication.translate("MainWindow",
+                                "No UID received, retrying... ({}/{})").format(attempt + 1, max_retries))
+                            time.sleep(1)
+                        
+                    except serial.SerialException as se:
+                        if attempt < max_retries - 1:
+                            update_status(QCoreApplication.translate("MainWindow",
+                                "Connection failed, retrying... ({}/{})").format(attempt + 1, max_retries))
+                            time.sleep(1)
+                        else:
+                            raise Exception(f"Failed to connect to serial port after {max_retries} attempts: {se}")
                 
                 if not self.uid_read_result:
-                     raise Exception("Could not retrieve UID from device response.")
+                    raise Exception(
+                        "Could not retrieve UID from device.\n\n"
+                        "Possible reasons:\n"
+                        "1. Device is not running the GetMachineUid firmware\n"
+                        "2. Serial communication is not working\n"
+                        "3. Device requires a reset\n\n"
+                        "Try unplugging and reconnecting the device."
+                    )
 
             except Exception as se:
                 raise Exception(f"Communication error: {se}")
@@ -2647,7 +2750,6 @@ Please find the attached Excel report with complete device information including
         self.uid_worker.succeeded.connect(self._on_uid_read_finished)
         self.uid_worker.error.connect(self._on_uid_read_error)
         self.uid_worker.start()
-
     def _on_uid_read_finished(self):
         self._is_reading_uid = False
         self.uid_loading_dialog.close()
@@ -2677,20 +2779,22 @@ Please find the attached Excel report with complete device information including
                 # Fallback logging only, to avoid double popups if dialog is shown elsewhere
                 logger.warning(f"UID read successfully ({uid}) but device context was lost.")
         else:
-             QMessageBox.warning(self, "UID Read", "Flash successful but failed to read UID.")
+             QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "UID Read"), 
+                               QCoreApplication.translate("MainWindow", "Flash successful but failed to read UID."))
 
     def _on_uid_read_error(self, err):
         self._is_reading_uid = False
         self.uid_loading_dialog.close()
-        QMessageBox.critical(self, "Error", f"Failed to read UID: {err}")
+        QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), 
+                           QCoreApplication.translate("MainWindow", "Failed to read UID: {}").format(err))
 
     def _browse_firmware_file(self, file_path_widget):
         """Browse for firmware file."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select Firmware File",
+            QCoreApplication.translate("MainWindow", "Select Firmware File"),
             "",
-            "Firmware Files (*.bin *.elf);;Binary Files (*.bin);;ELF Files (*.elf);;All Files (*)"
+            QCoreApplication.translate("MainWindow", "Firmware Files (*.bin *.elf);;Binary Files (*.bin);;ELF Files (*.elf);;All Files (*)")
         )
         if file_path:
             file_path_widget.setText(file_path)
@@ -2702,12 +2806,12 @@ Please find the attached Excel report with complete device information including
         # Local file input
         local_layout = QVBoxLayout()
         file_layout = QHBoxLayout()
-        file_layout.addWidget(QLabel("File Path:"))
+        file_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "File Path:")))
         firmware_path = QLineEdit()
-        firmware_path.setPlaceholderText("Enter file path...")
+        firmware_path.setPlaceholderText(QCoreApplication.translate("MainWindow", "Enter file path..."))
         file_layout.addWidget(firmware_path)
         
-        browse_btn = QPushButton("Browse")
+        browse_btn = QPushButton(QCoreApplication.translate("MainWindow", "Browse"))
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(firmware_path))
         file_layout.addWidget(browse_btn)
         local_layout.addLayout(file_layout)
@@ -2716,23 +2820,23 @@ Please find the attached Excel report with complete device information including
         # GitHub input
         github_layout = QVBoxLayout()
         github_repo_layout = QHBoxLayout()
-        github_repo_layout.addWidget(QLabel("Repository (owner/repo):"))
+        github_repo_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Repository (owner/repo):")))
         github_repo = QLineEdit()
-        github_repo.setPlaceholderText("e.g., espressif/arduino-esp32")
+        github_repo.setPlaceholderText(QCoreApplication.translate("MainWindow", "e.g., espressif/arduino-esp32"))
         github_repo_layout.addWidget(github_repo)
         github_layout.addLayout(github_repo_layout)
         
         github_release_layout = QHBoxLayout()
-        github_release_layout.addWidget(QLabel("Release Tag (optional):"))
+        github_release_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Release Tag (optional):")))
         github_release = QLineEdit()
-        github_release.setPlaceholderText("Leave empty for latest")
+        github_release.setPlaceholderText(QCoreApplication.translate("MainWindow", "Leave empty for latest"))
         github_release_layout.addWidget(github_release)
         github_layout.addLayout(github_release_layout)
         
         github_asset_layout = QHBoxLayout()
-        github_asset_layout.addWidget(QLabel("Asset Name (optional):"))
+        github_asset_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Asset Name (optional):")))
         github_asset = QLineEdit()
-        github_asset.setPlaceholderText("Leave empty for auto-detect")
+        github_asset.setPlaceholderText(QCoreApplication.translate("MainWindow", "Leave empty for auto-detect"))
         github_asset_layout.addWidget(github_asset)
         github_layout.addLayout(github_asset_layout)
         
@@ -2741,23 +2845,23 @@ Please find the attached Excel report with complete device information including
         # GitLab input
         gitlab_layout = QVBoxLayout()
         gitlab_project_layout = QHBoxLayout()
-        gitlab_project_layout.addWidget(QLabel("Project ID:"))
+        gitlab_project_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Project ID:")))
         gitlab_project = QLineEdit()
-        gitlab_project.setPlaceholderText("e.g., 12345")
+        gitlab_project.setPlaceholderText(QCoreApplication.translate("MainWindow", "e.g., 12345"))
         gitlab_project_layout.addWidget(gitlab_project)
         gitlab_layout.addLayout(gitlab_project_layout)
         
         gitlab_pipeline_layout = QHBoxLayout()
-        gitlab_pipeline_layout.addWidget(QLabel("Pipeline ID (optional):"))
+        gitlab_pipeline_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Pipeline ID (optional):")))
         gitlab_pipeline = QLineEdit()
-        gitlab_pipeline.setPlaceholderText("Leave empty for latest")
+        gitlab_pipeline.setPlaceholderText(QCoreApplication.translate("MainWindow", "Leave empty for latest"))
         gitlab_pipeline_layout.addWidget(gitlab_pipeline)
         gitlab_layout.addLayout(gitlab_pipeline_layout)
         
         gitlab_artifact_layout = QHBoxLayout()
-        gitlab_artifact_layout.addWidget(QLabel("Artifact Name (optional):"))
+        gitlab_artifact_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Artifact Name (optional):")))
         gitlab_artifact = QLineEdit()
-        gitlab_artifact.setPlaceholderText("Leave empty for auto-detect")
+        gitlab_artifact.setPlaceholderText(QCoreApplication.translate("MainWindow", "Leave empty for auto-detect"))
         gitlab_artifact_layout.addWidget(gitlab_artifact)
         gitlab_layout.addLayout(gitlab_artifact_layout)
         
@@ -2766,21 +2870,21 @@ Please find the attached Excel report with complete device information including
         # URL input
         url_layout = QVBoxLayout()
         url_input_layout = QHBoxLayout()
-        url_input_layout.addWidget(QLabel("URL:"))
+        url_input_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "URL:")))
         firmware_url = QLineEdit()
-        firmware_url.setPlaceholderText("https://example.com/firmware.bin")
+        firmware_url.setPlaceholderText(QCoreApplication.translate("MainWindow", "https://example.com/firmware.bin"))
         url_input_layout.addWidget(firmware_url)
         url_layout.addLayout(url_input_layout)
         
         url_name_layout = QHBoxLayout()
-        url_name_layout.addWidget(QLabel("Name:"))
+        url_name_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Name:")))
         firmware_name = QLineEdit()
-        firmware_name.setPlaceholderText("Firmware Name")
+        firmware_name.setPlaceholderText(QCoreApplication.translate("MainWindow", "Firmware Name"))
         url_name_layout.addWidget(firmware_name)
         url_layout.addLayout(url_name_layout)
         
         url_version_layout = QHBoxLayout()
-        url_version_layout.addWidget(QLabel("Version:"))
+        url_version_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Version:")))
         firmware_version = QLineEdit()
         firmware_version.setPlaceholderText("1.0.0")
         url_version_layout.addWidget(firmware_version)
@@ -2790,7 +2894,7 @@ Please find the attached Excel report with complete device information including
         
         # Database input
         db_layout = QHBoxLayout()
-        db_layout.addWidget(QLabel("Select Firmware:"))
+        db_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Select Firmware:")))
         firmware_combo = QComboBox()
         db_layout.addWidget(firmware_combo)
         self.source_inputs["Firmware Database"] = db_layout
@@ -2800,7 +2904,8 @@ Please find the attached Excel report with complete device information including
         """Start enhanced firmware flashing process."""
         current_item = device_list.currentItem()
         if not current_item:
-            QMessageBox.warning(dialog, "No Device", "Please select a device")
+            QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "No Device"), 
+                              QCoreApplication.translate("MainWindow", "Please select a device"))
             return
         
         device = current_item.data(Qt.UserRole)
@@ -2816,7 +2921,8 @@ Please find the attached Excel report with complete device information including
                 firmware_source = file_path_widget.text().strip()
                 
                 if not firmware_source:
-                    QMessageBox.warning(dialog, "No File", "Please select a firmware file")
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "No File"), 
+                                      QCoreApplication.translate("MainWindow", "Please select a firmware file"))
                     return
                 
                 # Flash local file
@@ -2834,7 +2940,8 @@ Please find the attached Excel report with complete device information including
                 asset_name = asset_widget.text().strip() or None
                 
                 if not repo:
-                    QMessageBox.warning(dialog, "No Repository", "Please enter GitHub repository")
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "No Repository"), 
+                                      QCoreApplication.translate("MainWindow", "Please enter GitHub repository"))
                     return
                 
                 # Flash from GitHub
@@ -2883,7 +2990,8 @@ Please find the attached Excel report with complete device information including
                 firmware_id = firmware_combo.currentData()
                 
                 if not firmware_id:
-                    QMessageBox.warning(dialog, "No Firmware", "Please select firmware from database")
+                    QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "No Firmware"), 
+                                      QCoreApplication.translate("MainWindow", "Please select firmware from database"))
                     return
                 
                 # Flash from database
@@ -2892,7 +3000,7 @@ Please find the attached Excel report with complete device information including
                                         backup_checkbox.isChecked(), progress_bar, status_label)
         
         except Exception as e:
-            status_label.setText(f"Error: {str(e)}")
+            status_label.setText(QCoreApplication.translate("MainWindow", "Error: {}").format(str(e)))
             status_label.setStyleSheet("color: red;")
             logger.error(f"Enhanced flashing error: {e}")
     
@@ -2938,11 +3046,11 @@ Please find the attached Excel report with complete device information including
                         firmware_info
                     )
             else:
-                status_label.setText("[ERROR] Firmware flashing failed!")
+                status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] Firmware flashing failed!"))
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"[ERROR] Error: {str(e)}")
+            status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] Error: {}").format(str(e)))
             status_label.setStyleSheet("color: red;")
             logger.error(f"Local file flashing error: {e}")
     
@@ -2984,7 +3092,7 @@ Please find the attached Excel report with complete device information including
         
         try:
             progress_bar.setValue(10)
-            progress_callback("Connecting to GitLab...")
+            progress_callback(QCoreApplication.translate("MainWindow", "Connecting to GitLab..."))
             
             # Flash from GitLab
             success = self.firmware_flasher.flash_from_gitlab(
@@ -2993,14 +3101,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("[SUCCESS] GitLab firmware flashed successfully!")
+                status_label.setText(QCoreApplication.translate("MainWindow", "[SUCCESS] GitLab firmware flashed successfully!"))
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("[ERROR] GitLab firmware flashing failed!")
+                status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] GitLab firmware flashing failed!"))
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"[ERROR] Error: {str(e)}")
+            status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] Error: {}").format(str(e)))
             status_label.setStyleSheet("color: red;")
             logger.error(f"GitLab flashing error: {e}")
     
@@ -3042,7 +3150,7 @@ Please find the attached Excel report with complete device information including
         
         try:
             progress_bar.setValue(10)
-            progress_callback("Loading firmware from database...")
+            progress_callback(QCoreApplication.translate("MainWindow", "Loading firmware from database..."))
             
             # Flash from database
             success = self.firmware_flasher.flash_firmware_by_id(
@@ -3051,14 +3159,14 @@ Please find the attached Excel report with complete device information including
             
             if success:
                 progress_bar.setValue(100)
-                status_label.setText("[SUCCESS] Database firmware flashed successfully!")
+                status_label.setText(QCoreApplication.translate("MainWindow", "[SUCCESS] Database firmware flashed successfully!"))
                 status_label.setStyleSheet("color: green;")
             else:
-                status_label.setText("[ERROR] Database firmware flashing failed!")
+                status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] Database firmware flashing failed!"))
                 status_label.setStyleSheet("color: red;")
         
         except Exception as e:
-            status_label.setText(f"[ERROR] Error: {str(e)}")
+            status_label.setText(QCoreApplication.translate("MainWindow", "[ERROR] Error: {}").format(str(e)))
             status_label.setStyleSheet("color: red;")
             logger.error(f"Database flashing error: {e}")
     
@@ -3113,25 +3221,28 @@ Please find the attached Excel report with complete device information including
         """Rollback firmware to selected backup."""
         current_item = device_list.currentItem()
         if not current_item:
-            QMessageBox.warning(self, "No Device", "Please select a device")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Device"), 
+                              QCoreApplication.translate("MainWindow", "Please select a device"))
             return
         
         device = current_item.data(Qt.UserRole)
         
         if not hasattr(self, 'backups_list'):
-            QMessageBox.warning(self, "No Backups", "No backups list available")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Backups"), 
+                              QCoreApplication.translate("MainWindow", "No backups list available"))
             return
         
         backup_item = self.backups_list.currentItem()
         if not backup_item:
-            QMessageBox.warning(self, "No Backup", "Please select a backup to rollback to")
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Backup"), 
+                              QCoreApplication.translate("MainWindow", "Please select a backup to rollback to"))
             return
         
         backup_data = backup_item.data(Qt.UserRole)
         
         reply = QMessageBox.question(
-            self, "Confirm Rollback",
-            f"Are you sure you want to rollback to {backup_data['firmware_info']['version']}?",
+            self, QCoreApplication.translate("MainWindow", "Confirm Rollback"),
+            QCoreApplication.translate("MainWindow", "Are you sure you want to rollback to {}?").format(backup_data['firmware_info']['version']),
             QMessageBox.Yes | QMessageBox.No
         )
         
@@ -3151,13 +3262,16 @@ Please find the attached Excel report with complete device information including
                 success = self.firmware_flasher.rollback_firmware(device, backup_index, progress_callback)
                 
                 if success:
-                    QMessageBox.information(self, "Success", "Firmware rollback completed successfully!")
+                    QMessageBox.information(self, QCoreApplication.translate("MainWindow", "Success"), 
+                                          QCoreApplication.translate("MainWindow", "Firmware rollback completed successfully!"))
                     self._update_firmware_status(device_list)
                 else:
-                    QMessageBox.warning(self, "Failed", "Firmware rollback failed!")
+                    QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Failed"), 
+                                      QCoreApplication.translate("MainWindow", "Firmware rollback failed!"))
             
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Rollback error: {str(e)}")
+                QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), 
+                                   QCoreApplication.translate("MainWindow", "Rollback error: {}").format(str(e)))
                 logger.error(f"Rollback error: {e}")
     
     def _start_flashing(self, dialog, device, firmware_source, erase_flash, verify_flash, boot_mode):
@@ -3251,14 +3365,14 @@ Please find the attached Excel report with complete device information including
                     )
                     
                     if onedrive_success:
-                        progress_callback("[SUCCESS] Firmware saved to OneDrive")
+                        progress_callback(QCoreApplication.translate("MainWindow", "[SUCCESS] Firmware saved to OneDrive"))
                     else:
-                        progress_callback("[WARNING] OneDrive firmware save failed")
+                        progress_callback(QCoreApplication.translate("MainWindow", "[WARNING] OneDrive firmware save failed"))
             else:
-                raise Exception("Firmware flashing failed")
+                raise Exception(QCoreApplication.translate("MainWindow", "Firmware flashing failed"))
                 
         except Exception as e:
-            raise Exception(f"Flashing error: {str(e)}")
+            raise Exception(QCoreApplication.translate("MainWindow", "Flashing error: {}").format(str(e)))
 
     def _flash_completed(self, dialog, success: bool, error: str = ""):
         # Close progress popup
@@ -3269,16 +3383,17 @@ Please find the attached Excel report with complete device information including
         try:
             self.flash_progress.setVisible(False)
             if success:
-                self.flash_status.setText("Flash completed")
+                self.flash_status.setText(QCoreApplication.translate("MainWindow", "Flash completed"))
                 try:
                     self.refresh_devices()
                 except Exception:
                     pass
-                QMessageBox.information(dialog, "Success", "Firmware flashed successfully!")
+                QMessageBox.information(dialog, QCoreApplication.translate("MainWindow", "Success"), 
+                                      QCoreApplication.translate("MainWindow", "Firmware flashed successfully!"))
             else:
-                msg = error or "Firmware flashing failed"
+                msg = error or QCoreApplication.translate("MainWindow", "Firmware flashing failed")
                 self.flash_status.setText(msg)
-                QMessageBox.warning(dialog, "Failed", msg)
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Failed"), msg)
         except Exception:
             pass
     
@@ -3373,37 +3488,37 @@ Please find the attached Excel report with complete device information including
         machine_layout.addWidget(machine_guide_group)
         
         machine_tab.setLayout(machine_layout)
-        tab_widget.addTab(machine_tab, "Machine Types")
+        tab_widget.addTab(machine_tab, QCoreApplication.translate("MainWindow", "Machine Types"))
         
         # Validation Tab
         validation_tab = QWidget()
         validation_layout = QVBoxLayout()
         
         # Test machine ID validation
-        test_group = QGroupBox("Test Machine ID Validation")
+        test_group = QGroupBox(QCoreApplication.translate("MainWindow", "Test Machine ID Validation"))
         test_layout = QVBoxLayout()
         
-        test_layout.addWidget(QLabel("Select machine type and enter ID to test:"))
+        test_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Select machine type and enter ID to test:")))
         
         test_type_layout = QHBoxLayout()
-        test_type_layout.addWidget(QLabel("Machine Type:"))
+        test_type_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Machine Type:")))
         self.test_machine_type = QComboBox()
         self.test_machine_type.addItems(list(Config.get_machine_types(self.config).keys()))
         test_type_layout.addWidget(self.test_machine_type)
         test_layout.addLayout(test_type_layout)
         
         test_id_layout = QHBoxLayout()
-        test_id_layout.addWidget(QLabel("Machine ID:"))
+        test_id_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Machine ID:")))
         self.test_machine_id = QLineEdit()
-        self.test_machine_id.setPlaceholderText("Enter machine ID to test...")
+        self.test_machine_id.setPlaceholderText(QCoreApplication.translate("MainWindow", "Enter machine ID to test..."))
         test_id_layout.addWidget(self.test_machine_id)
         test_layout.addLayout(test_id_layout)
         
-        test_btn = QPushButton("Test Validation")
+        test_btn = QPushButton(QCoreApplication.translate("MainWindow", "Test Validation"))
         test_btn.clicked.connect(self.test_machine_id_validation)
         test_layout.addWidget(test_btn)
         
-        self.validation_result = QLabel("Enter a machine ID to test validation")
+        self.validation_result = QLabel(QCoreApplication.translate("MainWindow", "Enter a machine ID to test validation"))
         self.validation_result.setStyleSheet("color: #666; font-size: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
         test_layout.addWidget(self.validation_result)
         
@@ -3411,7 +3526,7 @@ Please find the attached Excel report with complete device information including
         validation_layout.addWidget(test_group)
         
         validation_tab.setLayout(validation_layout)
-        tab_widget.addTab(validation_tab, "Validation Test")
+        tab_widget.addTab(validation_tab, QCoreApplication.translate("MainWindow", "Validation Test"))
         
         layout.addWidget(tab_widget)
         
@@ -5546,11 +5661,12 @@ Please find the attached Excel report with complete device information including
         
         candidates = []
         try:
-            try:
-                from src.core.config import Config as _Cfg
-                candidates.append(_Cfg.get_app_data_dir() / 'ReadUidBinFileF446RE' / 'GetMachineUid.bin')
-            except Exception:
-                pass
+            from src.core.config import Config as _Cfg
+            # 1. Check Workspace (Primary location)
+            candidates.append(_Cfg.WORKSPACE_DIR / 'GetMachineUid.bin')
+            
+            # Legacy/Fallback paths
+            candidates.append(_Cfg.get_app_data_dir() / 'ReadUidBinFileF446RE' / 'GetMachineUid.bin')
             candidates.append(Path(__file__).resolve().parents[2] / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
             candidates.append(Path(__file__).resolve().parents[2] / 'BinaryFiles' / 'GetMachineUid.bin')
             candidates.append(Path.cwd() / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
@@ -5566,33 +5682,55 @@ Please find the attached Excel report with complete device information including
                     return p
             except Exception:
                 continue
-        # Fallback: first .bin in BinaryFiles
-        for base in [Path(__file__).resolve().parents[2] / 'BinaryFiles', Path.cwd() / 'BinaryFiles']:
-            try:
-                if base.exists():
-                    bins = list(base.glob('*.bin'))
-                    if bins:
-                        return bins[0]
-            except Exception:
-                continue
         return None
 
     def _ensure_uid_bin_downloaded(self) -> Optional[Path]:
         try:
             from src.core.config import Config as _Cfg
             import requests
-            target_dir = _Cfg.get_app_data_dir() / 'ReadUidBinFileF446RE'
+            
+            # Create GetMachineID folder
+            target_dir = _Cfg.WORKSPACE_DIR / 'GetMachineID'
             target_dir.mkdir(parents=True, exist_ok=True)
             target_file = target_dir / 'GetMachineUid.bin'
+            
             if target_file.exists() and target_file.stat().st_size > 0:
                 return target_file
-            url = 'https://kumuluswater-my.sharepoint.com/:u:/p/armida/IQC168-SVQCZQYUvSeht90uEAVJuFP3Ly7k41qWBsf_C4YQ?e=2SBbv6'
-            resp = requests.get(url, allow_redirects=True, timeout=30)
-            if resp.status_code == 200 and resp.content:
-                target_file.write_bytes(resp.content)
+                
+            # Use URL from config
+            url = _Cfg.GET_MACHINE_UID_URL
+            logger.info(f"Downloading firmware from {url} to {target_file}")
+            
+            resp = requests.get(url, allow_redirects=True, timeout=60, stream=True)
+            if resp.status_code == 200:
+                # Check for HTML content (common issue with sharing links)
+                content_type = resp.headers.get('Content-Type', '').lower()
+                if 'html' in content_type:
+                    logger.error(f"Download failed: URL returned HTML instead of binary (Content-Type: {content_type})")
+                    return None
+
+                # Save to temporary file first
+                temp_path = target_file.with_suffix(".tmp")
+                first_chunk_checked = False
+                
+                with open(temp_path, 'wb') as f:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        if not first_chunk_checked:
+                            # Double check first chunk for HTML tags just in case header is missing/wrong
+                            if b'<!DOCTYPE html>' in chunk or b'<html' in chunk:
+                                logger.error("Download failed: Content appears to be HTML")
+                                return None
+                            first_chunk_checked = True
+                        f.write(chunk)
+                
+                if temp_path.exists():
+                    temp_path.replace(target_file)
+                logger.info("Firmware downloaded successfully")
                 return target_file
-        except Exception:
-            pass
+            else:
+                logger.error(f"Failed to download firmware: status {resp.status_code}")
+        except Exception as e:
+            logger.error(f"Failed to download firmware: {e}")
         return None
 
     def _auto_flash_on_selection(self, device: Device):

@@ -58,28 +58,29 @@
     </div>
 
     <nav class="toc">
-      <a href="#getting-started">Getting Started</a>
-      <a href="#requirements">System Requirements</a>
-      <a href="#installation">Installation & Définissezup</a>
-      <a href="#first-run">First Run & Bootstrap</a>
+      <a href="#getting-started">Pour bien commencer</a>
+      <a href="#requirements">Configuration requise</a>
+      <a href="#installation">Installation et configuration</a>
+      <a href="#first-run">Première exécution et initialisation</a>
+      <a href="#quick-tour">Visite guidée interactive</a>
       <a href="#interface">Vue d'ensemble de l'interface utilisateur</a>
       <a href="#device-detection">Détection des appareils</a>
       <a href="#device-management">Gestion des appareils</a>
       <a href="#firmware-management">Gestion du firmware</a>
-      <a href="#repout-generation">Génération de rappouts</a>
+      <a href="#report-generation">Génération de rapports</a>
       <a href="#email-config">Configuration e-mail</a>
       <a href="#onedrive-config">Intégration OneDrive</a>
       <a href="#machine-types">Configuration des types de machines</a>
-      <a href="#theme-language">Theme & Language Paramètres</a>
+      <a href="#theme-language">Paramètres thème et langue</a>
       <a href="#stm32-ide">Intégration IDE STM32</a>
-      <a href="#system-info">System Infoumation</a>
+      <a href="#system-info">Informations système</a>
       <a href="#config-reference">Référence de configuration</a>
       <a href="#troubleshooting">Dépannage</a>
       <a href="#advanced">Fonctionnalités avancées</a>
     </nav>
 
     <h2 id="getting-started">Pour bien commencer</h2>
-      <p>Le Gestionnaire d'Appareils AWG Kumulus est une application de bureau multiplateforme pour gérer les cartes embarquées (STM32, ESP32, ESP8266, Arduino). Ce manuel fournit des instructions détaillées pour toutes les fonctionnalités et configurations.</p>
+      <p>Le Gestionnaire d'Appareils AWG Kumulus est une application de bureau axée sur la gestion des appareils STM32 : détection, chargement/lecture des UID, flash du firmware, génération de rapports, et export/envoi des résultats (E-mail/OneDrive). Ce manuel fournit des instructions détaillées pour toutes les fonctionnalités et configurations.</p>
 
     <h2 id="requirements">Configuration requise</h2>
     <div class="feature-box">
@@ -146,7 +147,7 @@
       <span class="step-number">Étape 3 :</span> Clic droit et sélectionnez "Ouvrir" (première fois uniquement, pour contourner Gatekeeper)
     </div>
 
-    <h2 id="first-run">First Run & Bootstrap</h2>
+    <h2 id="first-run">Première exécution et initialisation</h2>
     
     <h3>Fenêtre de première exécution</h3>
     <p>Lous du premier lancement, l'application va :</p>
@@ -163,10 +164,10 @@
         <ul>
           <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\</code></li>
           <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/</code></li>
-          <li><strong>macOS:</strong> <code>~/Library/Application Suppout/AWG-Kumulus/</code></li>
+          <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/</code></li>
         </ul>
       </li>
-      <li>Télécharger les binaires d'aide si nécessaire (esptool, dfu-util, STM32CubeProgrammer, avrdude)</li>
+      <li>Télécharger les binaires d'aide si nécessaire (dfu-util, STM32CubeProgrammer)</li>
     </ol>
 
     <h3>Processus d'initialisation</h3>
@@ -174,7 +175,7 @@
       <strong>Configuration automatique :</strong> Le gestionnaire d'initialisation configure automatiquement :
       <ul>
         <li>Vérifie les packages Python requis (pyserial, pyusb, openpyxl, requests, keyring, PySide6)</li>
-        <li>Vérifie la disponibilité des outils spécifiques à la platefoume</li>
+        <li>Vérifie la disponibilité des outils spécifiques à la plateforme</li>
         <li>Télécharge les binaires d'aide manquants vers le répertoire des outils</li>
         <li>Configure les fichiers de configuration avec les valeurs par défaut</li>
       </ul>
@@ -186,12 +187,7 @@
       <tr>
         <th>Outil</th>
         <th>Objectif</th>
-        <th>Platefoume</th>
-      </tr>
-      <tr>
-        <td>esptool</td>
-        <td>Flash ESP32/ESP8266</td>
-        <td>Tous</td>
+        <th>Plateforme</th>
       </tr>
       <tr>
         <td>dfu-util</td>
@@ -203,12 +199,18 @@
         <td>Flash et programmation STM32</td>
         <td>Tous</td>
       </tr>
-      <tr>
-        <td>avrdude</td>
-        <td>Flash Arduino</td>
-        <td>Tous</td>
-      </tr>
     </table>
+
+    <h2 id="quick-tour">Visite guidée interactive</h2>
+    <p>L'application propose une visite guidée interactive pour vous aider à prendre en main l'interface.</p>
+    <div class="feature-box">
+      <h4>Fonctionnalités de la visite</h4>
+      <ul>
+        <li><strong>Lancement automatique :</strong> la visite se lance automatiquement lors du premier usage.</li>
+        <li><strong>Couverture :</strong> elle met en évidence les boutons d’action (Actualiser, Historique, Envoyer e-mail, Flasher, Lire UID, Paramètres) et les zones principales de l’interface.</li>
+        <li><strong>Relancer à tout moment :</strong> utilisez le bouton <strong>Visite rapide</strong> / <strong>Quick Tour</strong> si disponible dans l’interface.</li>
+      </ul>
+    </div>
 
     <h2 id="interface">Vue d'ensemble de l'interface utilisateur</h2>
     
@@ -218,17 +220,17 @@
       <li><strong>Panneau gauche :</strong> Tableau de liste des appareils affichant tous les appareils connectés</li>
       <li><strong>Panneau droit :</strong> Panneau de contrôle avec onglets pour :
         <ul>
-          <li>Infoumations sur l'appareil</li>
-          <li>Génération de rappouts</li>
+          <li>Informations sur l'appareil</li>
+          <li>Génération de rapports</li>
           <li>Gestion du firmware</li>
           <li>Paramètres</li>
         </ul>
       </li>
       <li><strong>Barre d'état (pied de page) :</strong>
         <ul>
-          <li>Gauche : Nombre d'appareils</li>
-          <li>Centre : Date/heure, fuseau houaire et localisation</li>
-          <li>Droite : Sélecteur de langue</li>
+          <li>Gauche : Appareils connectés/déconnectés/total</li>
+          <li>Centre : Date/heure, fuseau horaire et localisation</li>
+          <li>Droite : Indicateur d’état OneDrive</li>
         </ul>
       </li>
     </ul>
@@ -258,34 +260,27 @@
       <tr>
         <td>STM32</td>
         <td>0x0483:0x5740, 0x0483:0x3748</td>
-        <td>Courespondance VID:PID, communication série</td>
+        <td>Correspondance VID:PID, communication série</td>
       </tr>
       <tr>
-        <td>ESP32</td>
-        <td>0x10C4:0xEA60, 0x303A:0x0001</td>
-        <td>Courespondance VID:PID, esptool</td>
-      </tr>
-      <tr>
-        <td>ESP8266</td>
-        <td>0x10C4:0xEA60</td>
-        <td>Courespondance VID:PID, esptool</td>
-      </tr>
-      <tr>
-        <td>Arduino</td>
-        <td>0x2341:0x0043, 0x2341:0x0010</td>
-        <td>Courespondance VID:PID, communication série</td>
+        <td>Inconnu</td>
+        <td>N/A</td>
+        <td>Affiché lorsque l’appareil ne correspond pas aux VID:PID STM32 connus</td>
       </tr>
     </table>
     
     <h3>Lecture de l’UID du microcontrôleur</h3>
     <p>Pour lire l’UID :</p>
     <ol>
-      <li>Dans le tableau <strong>Appareils connectés</strong>, <strong>cochez</strong> la case de l’appareil ou <strong>sélectionnez</strong> sa ligne. Les cases cochées affichent un indicateur bleu et un fond bleu clair pour plus de clarté.</li>
-      <li>Cliquez sur <strong>Lire l’UID</strong> dans le panneau de contrôle.</li>
-      <li>La fenêtre <strong>UID &amp; Informations de l’appareil</strong> s’affiche avec l’UID et les détails. Cette fenêtre n’inclut pas de bouton « Lire l’UID » ; la lecture se déclenche uniquement depuis le panneau de contrôle.</li>
+      <li>Sélectionnez la ligne d’un appareil pour afficher ses détails dans le panneau de droite.</li>
+      <li>Pour charger l’UID depuis la carte (si nécessaire), cochez la case « Charger l’UID depuis la carte ». Cela flashe le firmware d’aide (GetMachineUid.bin) et met à jour les informations.</li>
+      <li>Cliquez sur <strong>Lire l’UID</strong> pour ouvrir <strong>UID &amp; Informations de l’appareil</strong>. Pour STM32, cette fenêtre peut aussi proposer un bouton <strong>Read UID</strong>.</li>
     </ol>
+    <div class="info">
+      <strong>Auto-flash :</strong> si activé, l’application peut flasher automatiquement le firmware d’aide à la connexion.
+    </div>
 
-    <h3>Manual Détection des appareils</h3>
+    <h3>Détection manuelle des appareils</h3>
     <div class="step">
       <span class="step-number">Étape 1 :</span> Connectez votre appareil via un câble USB
     </div>
@@ -305,31 +300,31 @@
       <li>Détecte automatiquement quand les appareils sont connectés (hotplug)</li>
       <li>Détecte quand les appareils sont déconnectés</li>
       <li>Met à jour la liste des appareils toutes les 5 secondes</li>
-      <li>Maintient l'histouique des appareils entre les sessions</li>
-      <li>Suit le nombre de connexions et les houodatages de dernière détection</li>
+      <li>Maintient l'historique des appareils entre les sessions</li>
+      <li>Suit le nombre de connexions et les horodatages de dernière détection</li>
     </ul>
     <div class="info">
       <strong>Note:</strong> La surveillance en temps réel est activée par défaut. Vous pouvez voir les événements de connexion/déconnexion dans la zone de journal.
     </div>
 
-    <h3>Infoumations sur l'appareil Display</h3>
-    <p>Pour chaque appareil détecté, les infoumations suivantes sont affichées :</p>
+    <h3>Informations sur l'appareil</h3>
+    <p>Pour chaque appareil détecté, les informations suivantes sont affichées :</p>
     <ul>
-      <li><strong>Pout :</strong> Identifiant du pout série (par ex. COM3, /dev/ttyUSB0)</li>
-      <li><strong>Type :</strong> Type de carte (STM32, ESP32, ESP8266, Arduino)</li>
+      <li><strong>Port :</strong> Identifiant du port série (par ex. COM3, /dev/ttyUSB0)</li>
+      <li><strong>Type :</strong> Type de carte (STM32 ou Inconnu)</li>
       <li><strong>VID:PID :</strong> ID du fabricant et ID du produit en hexadécimal</li>
       <li><strong>Statut :</strong> Statut de connexion (Connecté/Déconnecté)</li>
-      <li><strong>Santé :</strong> Scoue de santé (0-100) basé sur la stabilité de la connexion et l'exhaustivité des infoumations</li>
+      <li><strong>Santé :</strong> Score de santé (0-100) basé sur la stabilité de la connexion et l'exhaustivité des informations</li>
       <li><strong>Nom :</strong> Nom personnalisé ou nom par défaut</li>
-      <li><strong>Dernière vue :</strong> Houodatage de la dernière détection</li>
+      <li><strong>Dernière vue :</strong> Horodatage de la dernière détection</li>
     </ul>
 
-    <h3>Additional Infoumations sur l'appareil</h3>
-    <p>Lousque vous sélectionnez un appareil, des infoumations détaillées sont affichées :</p>
+    <h3>Informations détaillées sur l'appareil</h3>
+    <p>Lorsque vous sélectionnez un appareil, des informations détaillées sont affichées :</p>
     <ul>
       <li><strong>UID :</strong> Identifiant unique de l'appareil</li>
-      <li><strong>ID de puce :</strong> Identifiant de puce (pour les appareils ESP)</li>
-      <li><strong>Adresse MAC :</strong> Adresse MAC réseau (pour les appareils ESP)</li>
+      <li><strong>ID de puce :</strong> Identifiant de puce (peut être N/A)</li>
+      <li><strong>Adresse MAC :</strong> Adresse MAC (peut être N/A)</li>
       <li><strong>Fabricant :</strong> Fabricant de l'appareil</li>
       <li><strong>Numéro de série :</strong> Numéro de série de l'appareil</li>
       <li><strong>Version du firmware :</strong> Version actuelle du firmware</li>
@@ -340,39 +335,21 @@
 
     <h2 id="device-management">Gestion des appareils</h2>
     
-    <h3>Histouique des appareils</h3>
-    <p>L'application maintient un histouique de tous les appareils qui ont été connectés :</p>
+    <h3>Historique des appareils</h3>
+    <p>L'application maintient un historique de tous les appareils qui ont été connectés :</p>
     <ul>
-      <li>L'histouique est stocké dans <code>device_histouy.json</code> dans le répertoire de données de l'application</li>
+      <li>L'historique est stocké dans <code>device_history.json</code> dans le répertoire de données de l'application</li>
       <li>Chaque entrée d'appareil inclut :
         <ul>
-          <li>Houodatage de première détection</li>
-          <li>Houodatage de dernière vue</li>
+          <li>Horodatage de première détection</li>
+          <li>Horodatage de dernière vue</li>
           <li>Nombre de connexions</li>
           <li>Nom personnalisé et étiquettes</li>
           <li>Notes</li>
         </ul>
       </li>
-      <li>L'histouique persiste entre les redémarrages de l'application</li>
+      <li>L'historique persiste entre les redémarrages de l'application</li>
     </ul>
-
-    <h3>Modèles d'appareils</h3>
-    <p>Les modèles d'appareils vous permettent de sauvegarder et réutiliser les configurations d'appareils :</p>
-    <div class="step">
-      <span class="step-number">Étape 1 :</span> Sélectionnez un appareil avec la configuration souhaitée
-    </div>
-    <div class="step">
-      <span class="step-number">Étape 2 :</span> Right-click and select "Create Template" (ou use Paramètres menu)
-    </div>
-    <div class="step">
-      <span class="step-number">Étape 3 :</span> Entrez un nom de modèle et une description
-    </div>
-    <div class="step">
-      <span class="step-number">Étape 4 :</span> Enregistrez le modèle
-    </div>
-    <div class="step">
-      <span class="step-number">Étape 5 :</span> Appliquez les modèles aux nouveaux appareils depuis le menu Modèles
-    </div>
 
     <h3>Recherche d'appareils</h3>
     <p>La fonctionnalité de recherche vous permet de trouver des appareils par :</p>
@@ -397,17 +374,17 @@
     <p>Vous pouvez personnaliser les appareils avec :</p>
     <ul>
       <li><strong>Noms personnalisés :</strong> Attribuez des noms conviviaux aux appareils</li>
-      <li><strong>Étiquettes:</strong> Ajoutez des étiquettes pour la catégouisation</li>
-      <li><strong>Notes:</strong> Ajoutez des notes avec des infoumations supplémentaires</li>
+      <li><strong>Étiquettes:</strong> Ajoutez des étiquettes pour la catégorisation</li>
+      <li><strong>Notes:</strong> Ajoutez des notes avec des informations supplémentaires</li>
     </ul>
 
-    <h3>Opérations par lot</h3>
-    <p>Effectuez des opérations sur plusieurs appareils :</p>
+    <h3>Actions sur l’appareil</h3>
+    <p>Utilisez le menu contextuel (clic droit) de la table des appareils pour :</p>
     <ul>
-      <li>Mettre à jour les infoumations de l'appareil</li>
-      <li>Ajouter/retirer des étiquettes</li>
-      <li>Définir des noms personnalisés</li>
-      <li>Ajouter des notes</li>
+      <li>Copier la valeur d’une cellule</li>
+      <li>Copier la ligne (CSV)</li>
+      <li>Personnaliser l’appareil</li>
+      <li>Voir les sauvegardes de firmware</li>
     </ul>
 
     <h2 id="firmware-management">Gestion du firmware</h2>
@@ -607,43 +584,26 @@
 
     <h3>Flash spécifique à la carte</h3>
     
-    <h4>Flash ESP32/ESP8266</h4>
-    <ul>
-      <li>Utilise esptool pour le flash</li>
-      <li>Adresse de flash par défaut : 0x1000</li>
-      <li>Mode de flash : DIO</li>
-      <li>Fréquence de flash : 80MHz</li>
-      <li>Débit binaire : 460800 (pour un flash plus rapide)</li>
-    </ul>
-
     <h4>Flash STM32</h4>
     <ul>
       <li>Prend en charge plusieurs méthodes :
         <ul>
           <li>STM32CubeProgrammer (préféré)</li>
           <li>dfu-util (mode DFU)</li>
-          <li>OpenOCD (si disponible)</li>
         </ul>
       </li>
-      <li>Prend en charge les foumats de fichiers .bin et .elf</li>
+      <li>Prend en charge les formats de fichiers .bin et .elf</li>
       <li>Les fichiers ELF sont automatiquement convertis en binaire</li>
     </ul>
 
-    <h4>Flash Arduino</h4>
-    <ul>
-      <li>Utilise avrdude pour le flash</li>
-      <li>Nécessite des fichiers de configuration avrdude</li>
-      <li>Prend en charge les bootloaders Arduino standard</li>
-    </ul>
-
-    <h2 id="repout-generation">Génération de rappouts</h2>
+    <h2 id="report-generation">Génération de rapports</h2>
     
-    <h3>Excel Génération de rappouts</h3>
+    <h3>Génération de rapport Excel</h3>
     <div class="step">
       <span class="step-number">Étape 1 :</span> Sélectionnez les appareils dans la liste des appareils (ou utilisez tous les appareils détectés)
     </div>
     <div class="step">
-      <span class="step-number">Étape 2 :</span> Go to the Control Panel → Génération de rappouts tab
+      <span class="step-number">Étape 2 :</span> Allez dans le panneau de contrôle → onglet Génération de rapports
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Entrez les infoumations de l'opérateur :
@@ -656,25 +616,25 @@
       <span class="step-number">Étape 4 :</span> Sélectionnez le type de machine dans le menu déroulant (Amphoue, BOKs, WaterDispenser)
     </div>
     <div class="step">
-      <span class="step-number">Étape 5 :</span> Entrez l'ID de la machine (doit courespondre au préfixe et à la longueur pour le type de machine sélectionné)
+      <span class="step-number">Étape 5 :</span> Entrez l'ID de la machine (doit correspondre au préfixe et à la longueur pour le type de machine sélectionné)
     </div>
     <div class="step">
       <span class="step-number">Étape 6 :</span> Cliquez sur <strong>"Générer un rappout Excel"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 7 :</span> Repout is saved to the app data répertoire with timestamp
+      <span class="step-number">Étape 7 :</span> Le rapport est enregistré dans le répertoire de données de l’application avec un horodatage
     </div>
 
-    <h3>Contenu du rappout</h3>
-    <p>Les rappouts Excel incluent deux feuilles :</p>
+    <h3>Contenu du rapport</h3>
+    <p>Les rapports Excel incluent deux feuilles :</p>
     
     <h4>Feuille de métadonnées</h4>
     <ul>
-      <li>Houodatage</li>
+      <li>Horodatage</li>
       <li>Nom et version de l'application</li>
       <li>Nom et e-mail de l'opérateur</li>
       <li>Nom du PC et OS</li>
-      <li>Platefoume infoumation</li>
+      <li>Informations de plateforme</li>
     </ul>
 
     <h4>Feuille des appareils</h4>

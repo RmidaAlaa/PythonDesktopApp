@@ -8,6 +8,7 @@ import time
 import json
 import threading
 import sys
+import concurrent.futures
 from datetime import datetime
 from typing import List, Dict, Optional, Callable
 from dataclasses import dataclass, asdict
@@ -222,13 +223,18 @@ class DeviceDetector:
             # Get all serial ports
             ports = serial.tools.list_ports.comports()
             
-            for port in ports:
-                try:
-                    device = self._identify_device(port)
-                    if device:
-                        devices.append(device)
-                except Exception as e:
-                    logger.warning(f"Error identifying device on {port.device}: {e}")
+            # Use ThreadPoolExecutor for parallel scanning
+            # This significantly reduces scan time when multiple ports are present or some are unresponsive
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_port = {executor.submit(self._identify_device, port): port for port in ports}
+                for future in concurrent.futures.as_completed(future_to_port):
+                    port = future_to_port[future]
+                    try:
+                        device = future.result()
+                        if device:
+                            devices.append(device)
+                    except Exception as e:
+                        logger.warning(f"Error identifying device on {port.device}: {e}")
             
             logger.info(f"Detected {len(devices)} device(s)")
             return devices
@@ -295,7 +301,17 @@ class DeviceDetector:
     def _read_stm32_info(self, device: Device):
         """Read STM32 specific information."""
         try:
-            device.uid = self._read_stm32_uid(device.port)
+            # Optimization: Try to find in history first if we have a serial number
+            if device.serial_number:
+                for hist_device in self.device_history.values():
+                    if hist_device.serial_number == device.serial_number and hist_device.uid and hist_device.uid != "N/A":
+                        device.uid = hist_device.uid
+                        logger.debug(f"Used cached UID for {device.port}")
+                        break
+            
+            if not device.uid:
+                device.uid = self._read_stm32_uid(device.port)
+            
             if not device.uid:
                 logger.debug("Firmware UID read failed, trying bootloader method")
                 device.uid = self._read_stm32_uid_bootloader(device.port)
@@ -336,7 +352,7 @@ class DeviceDetector:
             str: 24-character hex string (96-bit UID) or None if reading fails
         """
         try:
-            with serial.Serial(port=port, baudrate=115200, timeout=1.0) as ser:
+            with serial.Serial(port=port, baudrate=115200, timeout=3.0) as ser:
                 ser.reset_input_buffer()
                 ser.reset_output_buffer()
                 ser.write(b'GET_UID\r\n')
@@ -676,9 +692,25 @@ q
         # For STM32 devices, try to read UID if not already done
         if device.board_type == BoardType.STM32 and not device.uid:
             logger.debug(f"Attempting to read UID for STM32 device on {device.port}")
+            
+            # Method 1: Direct Serial GET_UID
             device.uid = self._read_stm32_uid(device.port)
             if device.uid:
-                logger.info(f"Successfully read UID {device.uid} for STM32 device on {device.port}")
+                logger.info(f"Successfully read UID {device.uid} via Direct Serial")
+                return device.uid
+            
+            # Method 2: Bootloader Protocol
+            logger.debug("Direct read failed, trying bootloader method...")
+            device.uid = self._read_stm32_uid_bootloader(device.port)
+            if device.uid:
+                logger.info(f"Successfully read UID {device.uid} via Bootloader")
+                return device.uid
+                
+            # Method 3: CubeProgrammer CLI (last resort)
+            logger.debug("Bootloader read failed, trying CubeProgrammer...")
+            device.uid = self._read_stm32_uid_via_cubeprogrammer()
+            if device.uid:
+                logger.info(f"Successfully read UID {device.uid} via CubeProgrammer")
                 return device.uid
 
         if device.serial_number:

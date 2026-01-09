@@ -19,3 +19,6 @@ dist/
 
 # Inno Setup
 Output/
+
+# Release artifacts
+release/Windows/*.exe

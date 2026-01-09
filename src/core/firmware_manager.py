@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
+from PySide6.QtCore import QCoreApplication
 
 from .logger import setup_logger
 from .config import Config
@@ -186,7 +187,9 @@ class FirmwareManager:
         try:
             file_path = Path(file_path)
             if not file_path.exists():
-                raise FileNotFoundError(f"Firmware file not found: {file_path}")
+                raise FileNotFoundError(
+                    QCoreApplication.translate("FirmwareManager", "Firmware file not found: {}").format(file_path)
+                )
             
             # Calculate checksum
             checksum = self._calculate_file_checksum(file_path)
@@ -223,7 +226,12 @@ class FirmwareManager:
         try:
             # Parse repository (owner/repo)
             if '/' not in repo:
-                raise ValueError("Repository must be in format 'owner/repo'")
+                raise ValueError(
+                    QCoreApplication.translate(
+                        "FirmwareManager",
+                        "Repository must be in format 'owner/repo'"
+                    )
+                )
             
             owner, repo_name = repo.split('/', 1)
             
@@ -247,7 +255,12 @@ class FirmwareManager:
                 asset = next((a for a in assets if any(a['name'].endswith(ext) for ext in firmware_extensions)), None)
             
             if not asset:
-                raise ValueError("No suitable firmware asset found in release")
+                raise ValueError(
+                    QCoreApplication.translate(
+                        "FirmwareManager",
+                        "No suitable firmware asset found in release"
+                    )
+                )
             
             firmware_info = FirmwareInfo(
                 name=asset['name'],
@@ -290,7 +303,12 @@ class FirmwareManager:
                 response.raise_for_status()
                 pipelines = response.json()
                 if not pipelines:
-                    raise ValueError("No successful pipelines found")
+                    raise ValueError(
+                        QCoreApplication.translate(
+                            "FirmwareManager",
+                            "No successful pipelines found"
+                        )
+                    )
                 pipeline_id = pipelines[0]['id']
                 pipeline_url = f"https://gitlab.com/api/v4/projects/{project_id}/pipelines/{pipeline_id}"
             
@@ -320,7 +338,12 @@ class FirmwareManager:
                             break
             
             if not firmware_job:
-                raise ValueError("No suitable firmware job found in pipeline")
+                raise ValueError(
+                    QCoreApplication.translate(
+                        "FirmwareManager",
+                        "No suitable firmware job found in pipeline"
+                    )
+                )
             
             # Get artifact download URL
             artifact_url = f"https://gitlab.com/api/v4/projects/{project_id}/jobs/{firmware_job['id']}/artifacts"
@@ -390,7 +413,9 @@ class FirmwareManager:
         """Download firmware file."""
         try:
             if firmware_id not in self.firmware_database:
-                raise ValueError(f"Firmware {firmware_id} not found")
+                raise ValueError(
+                    QCoreApplication.translate("FirmwareManager", "Firmware {} not found").format(firmware_id)
+                )
             
             firmware_info = self.firmware_database[firmware_id]
             
@@ -400,10 +425,12 @@ class FirmwareManager:
             
             # Download file
             if not firmware_info.url:
-                raise ValueError("No download URL available")
+                raise ValueError(
+                    QCoreApplication.translate("FirmwareManager", "No download URL available")
+                )
             
             if progress_callback:
-                progress_callback(f"Downloading {firmware_info.name}...")
+                progress_callback(QCoreApplication.translate("FirmwareManager", "Downloading {}...").format(firmware_info.name))
             
             response = requests.get(firmware_info.url, stream=True, timeout=300)
             response.raise_for_status()
@@ -429,7 +456,7 @@ class FirmwareManager:
                         
                         if progress_callback and total_size > 0:
                             progress = int((downloaded_size / total_size) * 100)
-                            progress_callback(f"Downloading {firmware_info.name}... {progress}%")
+                            progress_callback(QCoreApplication.translate("FirmwareManager", "Downloading {}... {}%").format(firmware_info.name, progress))
             
             # Update firmware info
             firmware_info.file_path = str(download_path)
@@ -439,7 +466,7 @@ class FirmwareManager:
             self._save_firmware_database()
             
             if progress_callback:
-                progress_callback(f"Downloaded {firmware_info.name} successfully")
+                progress_callback(QCoreApplication.translate("FirmwareManager", "Downloaded {} successfully").format(firmware_info.name))
             
             logger.info(f"Downloaded firmware: {firmware_info.name}")
             return str(download_path)
@@ -452,29 +479,29 @@ class FirmwareManager:
         """Validate firmware integrity."""
         try:
             if firmware_id not in self.firmware_database:
-                return False, "Firmware not found"
+                return False, QCoreApplication.translate("FirmwareManager", "Firmware not found")
             
             firmware_info = self.firmware_database[firmware_id]
             
             if not firmware_info.file_path or not Path(firmware_info.file_path).exists():
-                return False, "Firmware file not found"
+                return False, QCoreApplication.translate("FirmwareManager", "Firmware file not found")
             
             # Calculate current checksum
             current_checksum = self._calculate_file_checksum(Path(firmware_info.file_path))
             
             if firmware_info.checksum and current_checksum != firmware_info.checksum:
-                return False, f"Checksum mismatch. Expected: {firmware_info.checksum}, Got: {current_checksum}"
+                return False, QCoreApplication.translate("FirmwareManager", "Checksum mismatch. Expected: {}, Got: {}").format(firmware_info.checksum, current_checksum)
             
             # Check file size
             file_size = Path(firmware_info.file_path).stat().st_size
             if firmware_info.size and file_size != firmware_info.size:
-                return False, f"File size mismatch. Expected: {firmware_info.size}, Got: {file_size}"
+                return False, QCoreApplication.translate("FirmwareManager", "File size mismatch. Expected: {}, Got: {}").format(firmware_info.size, file_size)
             
-            return True, "Firmware validation passed"
+            return True, QCoreApplication.translate("FirmwareManager", "Firmware validation passed")
             
         except Exception as e:
             logger.error(f"Firmware validation failed: {e}")
-            return False, f"Validation error: {str(e)}"
+            return False, QCoreApplication.translate("FirmwareManager", "Validation error: {}").format(str(e))
     
     def backup_device_firmware(self, device: Device, reason: str = "manual") -> str:
         """Backup current device firmware."""

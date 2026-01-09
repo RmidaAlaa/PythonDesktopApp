@@ -7,6 +7,7 @@ from typing import Optional, Callable, Dict, Any, List
 import tempfile
 import hashlib
 import shutil
+from PySide6.QtCore import QCoreApplication
 
 from .config import Config
 from .logger import setup_logger
@@ -102,7 +103,7 @@ class FirmwareFlasher:
         """Download firmware from URL."""
         try:
             if progress_callback:
-                progress_callback(f"Downloading firmware from {url}...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Downloading firmware from {}...").format(url))
             
             response = requests.get(url, stream=True)
             response.raise_for_status()
@@ -120,7 +121,7 @@ class FirmwareFlasher:
                     downloaded += len(chunk)
                     if progress_callback and total_size > 0:
                         progress = (downloaded / total_size) * 100
-                        progress_callback(f"Downloading: {progress:.1f}%")
+                        progress_callback(QCoreApplication.translate("FirmwareFlasher", "Downloading: {:.1f}%").format(progress))
             
             temp_file.close()
             return Path(temp_file.name)
@@ -135,7 +136,7 @@ class FirmwareFlasher:
         """Flash firmware to STM32."""
         try:
             if progress_callback:
-                progress_callback("Preparing STM32 flash...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Preparing STM32 flash..."))
             
             # Check file type and handle accordingly
             if firmware_path.suffix.lower() == '.bin':
@@ -145,13 +146,13 @@ class FirmwareFlasher:
             else:
                 logger.error(f"Unsupported STM32 file format: {firmware_path.suffix}")
                 if progress_callback:
-                    progress_callback(f"Error: Unsupported file format: {firmware_path.suffix}")
+                    progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: Unsupported file format: {}").format(firmware_path.suffix))
                 return False
                 
         except Exception as e:
             logger.error(f"STM32 flashing error: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def _flash_stm32_bin(self, device: Device, firmware_path: Path, 
@@ -172,7 +173,7 @@ class FirmwareFlasher:
             
             logger.error("No STM32 flashing tool found")
             if progress_callback:
-                progress_callback("Error: No STM32 flashing tool found. Please install STM32CubeProgrammer or dfu-util")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: No STM32 flashing tool found. Please install STM32CubeProgrammer or dfu-util"))
             return False
             
         except Exception as e:
@@ -184,7 +185,7 @@ class FirmwareFlasher:
         """Flash STM32 ELF file."""
         try:
             if progress_callback:
-                progress_callback("Converting ELF to binary...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Converting ELF to binary..."))
             
             # Convert ELF to binary first
             bin_path = firmware_path.with_suffix('.bin')
@@ -200,20 +201,20 @@ class FirmwareFlasher:
             else:
                 logger.error(f"ELF conversion failed: {result.stderr}")
                 if progress_callback:
-                    progress_callback(f"Error: ELF conversion failed: {result.stderr}")
+                    progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: ELF conversion failed: {}").format(result.stderr))
                 return False
                 
         except Exception as e:
             logger.error(f"STM32 ELF flashing error: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def _flash_with_cubeprog(self, device: Device, firmware_path: Path,
                             progress_callback: Optional[Callable]) -> bool:
         logger.info("Using STM32CubeProgrammer")
         if progress_callback:
-            progress_callback("Flashing STM32 with STM32CubeProgrammer...")
+            progress_callback(QCoreApplication.translate("FirmwareFlasher", "Flashing STM32 with STM32CubeProgrammer..."))
         try:
             exe = Config.get_tool_executable("STM32CubeProgrammer", "STM32_Programmer_CLI.exe")
             
@@ -252,7 +253,7 @@ class FirmwareFlasher:
             if result.returncode == 0:
                 return True
             if progress_callback:
-                progress_callback("Error: STM32CubeProgrammer failed")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: STM32CubeProgrammer failed"))
             logger.error(f"STM32CubeProgrammer error: {result.stderr}")
             return False
         except Exception as e:
@@ -278,28 +279,28 @@ class FirmwareFlasher:
             # Download firmware if needed
             if not firmware_info.file_path or not Path(firmware_info.file_path).exists():
                 if progress_callback:
-                    progress_callback("Downloading firmware...")
+                    progress_callback(QCoreApplication.translate("FirmwareFlasher", "Downloading firmware..."))
                 firmware_path = self.firmware_manager.download_firmware(firmware_id, progress_callback)
             else:
                 firmware_path = firmware_info.file_path
             
             # Validate firmware
             if progress_callback:
-                progress_callback("Validating firmware...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Validating firmware..."))
             
             is_valid, message = self.firmware_manager.validate_firmware(firmware_id)
             if not is_valid:
-                raise ValueError(f"Firmware validation failed: {message}")
+                raise ValueError(QCoreApplication.translate("FirmwareFlasher", "Firmware validation failed: {}").format(message))
             
             # Backup current firmware
             if progress_callback:
-                progress_callback("Backing up current firmware...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Backing up current firmware..."))
             
             backup_path = self.firmware_manager.backup_device_firmware(device, "before_update")
             
             # Flash firmware
             if progress_callback:
-                progress_callback("Flashing firmware...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Flashing firmware..."))
             
             success = self.flash_firmware(device, firmware_path, progress_callback)
             
@@ -310,7 +311,7 @@ class FirmwareFlasher:
             else:
                 # Restore backup if flashing failed
                 if progress_callback:
-                    progress_callback("Flashing failed, restoring backup...")
+                    progress_callback(QCoreApplication.translate("FirmwareFlasher", "Flashing failed, restoring backup..."))
                 self._restore_firmware_backup(device, backup_path, progress_callback)
             
             return success
@@ -318,7 +319,7 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to flash firmware by ID: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def flash_from_github(self, device: Device, repo: str, release_tag: str = None,
@@ -326,7 +327,7 @@ class FirmwareFlasher:
         """Flash firmware from GitHub release."""
         try:
             if progress_callback:
-                progress_callback("Adding firmware from GitHub...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Adding firmware from GitHub..."))
             
             # Add firmware to database
             firmware_id = self.firmware_manager.add_firmware_from_github(
@@ -342,7 +343,7 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to flash from GitHub: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def flash_from_gitlab(self, device: Device, project_id: str, pipeline_id: str = None,
@@ -350,7 +351,7 @@ class FirmwareFlasher:
         """Flash firmware from GitLab pipeline."""
         try:
             if progress_callback:
-                progress_callback("Adding firmware from GitLab...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Adding firmware from GitLab..."))
             
             # Add firmware to database
             firmware_id = self.firmware_manager.add_firmware_from_gitlab(
@@ -366,7 +367,7 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to flash from GitLab: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def flash_from_url(self, device: Device, url: str, name: str, version: str,
@@ -374,7 +375,7 @@ class FirmwareFlasher:
         """Flash firmware from URL."""
         try:
             if progress_callback:
-                progress_callback("Adding firmware from URL...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Adding firmware from URL..."))
             
             # Add firmware to database
             firmware_id = self.firmware_manager.add_firmware_from_url(
@@ -390,7 +391,7 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to flash from URL: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def rollback_firmware(self, device: Device, backup_index: int = 0,
@@ -399,15 +400,17 @@ class FirmwareFlasher:
         try:
             backups = self.firmware_manager.get_device_backups(device)
             if not backups:
-                raise ValueError("No firmware backups available")
+                raise ValueError(QCoreApplication.translate("FirmwareFlasher", "No firmware backups available"))
             
             if backup_index >= len(backups):
-                raise ValueError(f"Backup index {backup_index} out of range")
+                raise ValueError(
+                    QCoreApplication.translate("FirmwareFlasher", "Backup index {} out of range").format(backup_index)
+                )
             
             backup = backups[backup_index]
             
             if progress_callback:
-                progress_callback(f"Rolling back to {backup.firmware_info.version}...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Rolling back to {}...").format(backup.firmware_info.version))
             
             # Backup current firmware before rollback
             current_backup = self.firmware_manager.backup_device_firmware(device, "before_rollback")
@@ -421,7 +424,7 @@ class FirmwareFlasher:
             else:
                 # Restore current firmware if rollback failed
                 if progress_callback:
-                    progress_callback("Rollback failed, restoring current firmware...")
+                    progress_callback(QCoreApplication.translate("FirmwareFlasher", "Rollback failed, restoring current firmware..."))
                 self._restore_firmware_backup(device, current_backup, progress_callback)
             
             return success
@@ -429,7 +432,7 @@ class FirmwareFlasher:
         except Exception as e:
             logger.error(f"Failed to rollback firmware: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Error: {}").format(str(e)))
             return False
     
     def get_device_firmware_status(self, device: Device) -> Dict[str, Any]:
@@ -485,7 +488,7 @@ class FirmwareFlasher:
         """Restore firmware from backup."""
         try:
             if progress_callback:
-                progress_callback("Restoring firmware backup...")
+                progress_callback(QCoreApplication.translate("FirmwareFlasher", "Restoring firmware backup..."))
             
             success = self.flash_firmware(device, backup_path, progress_callback)
             

@@ -179,6 +179,9 @@ class TranslationManager:
     def get_current_language(self) -> str:
         """Get current language code."""
         return self.current_language
+
+    def get_language_code(self) -> str:
+        return self.get_current_language()
     
     def is_rtl_language(self) -> bool:
         """Check if current language is right-to-left."""

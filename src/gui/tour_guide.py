@@ -1,7 +1,7 @@
 
 from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
                                QGraphicsDropShadowEffect, QApplication)
-from PySide6.QtCore import Qt, QPoint, QRect, QSize, QTimer
+from PySide6.QtCore import Qt, QPoint, QRect, QSize, QTimer, QCoreApplication
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPolygon, QFont, QPainterPath
 
 class TourBubble(QWidget):
@@ -30,7 +30,7 @@ class TourBubble(QWidget):
         self.step_label.setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 10px;")
         
         # Buttons
-        self.next_btn = QPushButton("Next")
+        self.next_btn = QPushButton(QCoreApplication.translate("Tour", "Next"))
         self.next_btn.setStyleSheet("""
             QPushButton {
                 background-color: white;
@@ -44,7 +44,7 @@ class TourBubble(QWidget):
             }
         """)
         
-        self.skip_btn = QPushButton("Skip")
+        self.skip_btn = QPushButton(QCoreApplication.translate("Tour", "Skip"))
         self.skip_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -92,7 +92,7 @@ class TourBubble(QWidget):
         self.title_label.setText(title)
         self.text_label.setText(text)
         self.step_label.setText(step_txt)
-        self.next_btn.setText("Finish" if is_last else "Next")
+        self.next_btn.setText(QCoreApplication.translate("Tour", "Finish") if is_last else QCoreApplication.translate("Tour", "Next"))
         
         # Adjust size hint
         self.adjustSize()
@@ -149,164 +149,164 @@ class TourManager:
         self.steps = [
             {
                 'target': None,
-                'title': 'Welcome to AWG Kumulus',
-                'text': 'This quick tour will guide you through all features and components of the application.',
+                'title': QCoreApplication.translate("Tour", "Welcome to AWG Kumulus"),
+                'text': QCoreApplication.translate("Tour", "This quick tour will guide you through all features and components of the application."),
                 'pos': 'center'
             },
             # --- Device List Section ---
             {
                 'target': 'device_table',
-                'title': 'Device List',
-                'text': 'All connected devices appear here. You can see Port, Type, UID, Firmware, and Status.',
+                'title': QCoreApplication.translate("Tour", "Device List"),
+                'text': QCoreApplication.translate("Tour", "All connected devices appear here. You can see Port, Type, UID, Firmware, and Status."),
                 'pos': 'right'
             },
             {
                 'target': 'filter_input',
-                'title': 'Filter Devices',
-                'text': 'Type here to filter devices by name, port, or type.',
+                'title': QCoreApplication.translate("Tour", "Filter Devices"),
+                'text': QCoreApplication.translate("Tour", "Type here to filter devices by name, port, or type."),
                 'pos': 'bottom'
             },
             {
                 'target': 'filter_type_combo',
-                'title': 'Filter by Type',
-                'text': 'Use this dropdown to view only specific board types (e.g., STM32).',
+                'title': QCoreApplication.translate("Tour", "Filter by Type"),
+                'text': QCoreApplication.translate("Tour", "Use this dropdown to view only specific board types (e.g., STM32)."),
                 'pos': 'bottom'
             },
             # --- Operator Info Section ---
             {
                 'target': 'operator_name',
-                'title': 'Operator Name',
-                'text': 'Enter your full name here. This will be included in reports and emails.',
+                'title': QCoreApplication.translate("Tour", "Operator Name"),
+                'text': QCoreApplication.translate("Tour", "Enter your full name here. This will be included in reports and emails."),
                 'pos': 'right'
             },
             {
                 'target': 'operator_email',
-                'title': 'Operator Email',
-                'text': 'Provide your email address for support requests and report identification.',
+                'title': QCoreApplication.translate("Tour", "Operator Email"),
+                'text': QCoreApplication.translate("Tour", "Provide your email address for support requests and report identification."),
                 'pos': 'right'
             },
             {
                 'target': 'operator_phone',
-                'title': 'Phone Number',
-                'text': 'Enter your contact number.',
+                'title': QCoreApplication.translate("Tour", "Phone Number"),
+                'text': QCoreApplication.translate("Tour", "Enter your contact number."),
                 'pos': 'right'
             },
             {
                 'target': 'operator_country',
-                'title': 'Country (Pays)',
-                'text': 'This is auto-detected, but you can correct it if needed.',
+                'title': QCoreApplication.translate("Tour", "Country (Pays)"),
+                'text': QCoreApplication.translate("Tour", "This is auto-detected, but you can correct it if needed."),
                 'pos': 'right'
             },
             # --- Machine Info Section ---
             {
                 'target': 'client_name',
-                'title': 'Client Name',
-                'text': 'MANDATORY: Enter the client name. Reports and emails cannot be sent without this.',
+                'title': QCoreApplication.translate("Tour", "Client Name"),
+                'text': QCoreApplication.translate("Tour", "MANDATORY: Enter the client name. Reports and emails cannot be sent without this."),
                 'pos': 'right'
             },
             {
                 'target': 'machine_type',
-                'title': 'Machine Type',
-                'text': 'Select the type of machine you are working on (e.g., Amphore).',
+                'title': QCoreApplication.translate("Tour", "Machine Type"),
+                'text': QCoreApplication.translate("Tour", "Select the type of machine you are working on (e.g., Amphore)."),
                 'pos': 'right'
             },
             {
                 'target': 'machine_id_suffix',
-                'title': 'Machine ID',
-                'text': 'Select or type the ID suffix. The full ID (Prefix + Suffix) is shown above.',
+                'title': QCoreApplication.translate("Tour", "Machine ID"),
+                'text': QCoreApplication.translate("Tour", "Select or type the ID suffix. The full ID (Prefix + Suffix) is shown above."),
                 'pos': 'right'
             },
             # --- Action Buttons ---
             {
                 'target': 'refresh_btn',
-                'title': 'Refresh Devices',
-                'text': 'Click to re-scan for connected devices. UIDs are cleared on refresh.',
+                'title': QCoreApplication.translate("Tour", "Refresh Devices"),
+                'text': QCoreApplication.translate("Tour", "Click to re-scan for connected devices. UIDs are cleared on refresh."),
                 'pos': 'top'
             },
             {
                 'target': 'history_btn',
-                'title': 'Device History',
-                'text': 'View a log of all devices detected in this session.',
+                'title': QCoreApplication.translate("Tour", "Device History"),
+                'text': QCoreApplication.translate("Tour", "View a log of all devices detected in this session."),
                 'pos': 'top'
             },
             {
                 'target': 'email_btn',
-                'title': 'Send Email',
-                'text': 'Send the generated report to configured recipients via SMTP or Azure.',
+                'title': QCoreApplication.translate("Tour", "Send Email"),
+                'text': QCoreApplication.translate("Tour", "Send the generated report to configured recipients via SMTP or Azure."),
                 'pos': 'top'
             },
             {
                 'target': 'flash_btn',
-                'title': 'Flash Firmware',
-                'text': 'Open the flashing dialog to update device firmware or restore backups.',
+                'title': QCoreApplication.translate("Tour", "Flash Firmware"),
+                'text': QCoreApplication.translate("Tour", "Open the flashing dialog to update device firmware or restore backups."),
                 'pos': 'top'
             },
             {
                 'target': 'read_uid_btn',
-                'title': 'Read UID',
-                'text': 'Manually read the Unique ID of a selected device.',
+                'title': QCoreApplication.translate("Tour", "Read UID"),
+                'text': QCoreApplication.translate("Tour", "Manually read the Unique ID of a selected device."),
                 'pos': 'top'
             },
             {
                 'target': 'open_stm32_btn',
-                'title': 'Open Project',
-                'text': 'Quickly open the STM32 project folder or VS Code workspace.',
+                'title': QCoreApplication.translate("Tour", "Open Project"),
+                'text': QCoreApplication.translate("Tour", "Quickly open the STM32 project folder or VS Code workspace."),
                 'pos': 'top'
             },
             {
                 'target': 'settings_btn',
-                'title': 'Settings',
-                'text': 'Configure Email, OneDrive, App Defaults, and Initialize App Data.',
+                'title': QCoreApplication.translate("Tour", "Settings"),
+                'text': QCoreApplication.translate("Tour", "Configure Email, OneDrive, App Defaults, and Initialize App Data."),
                 'pos': 'top'
             },
             # --- Header Icons ---
             {
                 'target': 'btn_manual_icon', # Assuming this attribute exists, checking logic below
-                'title': 'User Manual',
-                'text': 'Click here to open the full User Manual (PDF/HTML).',
+                'title': QCoreApplication.translate("Tour", "User Manual"),
+                'text': QCoreApplication.translate("Tour", "Click here to open the full User Manual (PDF/HTML)."),
                 'pos': 'bottom'
             },
             {
                 'target': 'btn_support_icon',
-                'title': 'Contact Support',
-                'text': 'Need help? Click here to send logs and a description to support.',
+                'title': QCoreApplication.translate("Tour", "Contact Support"),
+                'text': QCoreApplication.translate("Tour", "Need help? Click here to send logs and a description to support."),
                 'pos': 'bottom'
             },
             # --- Status & Footer ---
             {
                 'target': 'onedrive_status_label',
-                'title': 'OneDrive Status',
-                'text': 'Shows the current status of OneDrive sync.',
+                'title': QCoreApplication.translate("Tour", "OneDrive Status"),
+                'text': QCoreApplication.translate("Tour", "Shows the current status of OneDrive sync."),
                 'pos': 'top'
             },
             {
                 'target': 'footer_devices_label',
-                'title': 'Connected Devices',
-                'text': 'Total count of currently connected devices.',
+                'title': QCoreApplication.translate("Tour", "Connected Devices"),
+                'text': QCoreApplication.translate("Tour", "Total count of currently connected devices."),
                 'pos': 'top'
             },
             {
                 'target': 'footer_clock_label',
-                'title': 'System Time',
-                'text': 'Current date and time with UTC offset.',
+                'title': QCoreApplication.translate("Tour", "System Time"),
+                'text': QCoreApplication.translate("Tour", "Current date and time with UTC offset."),
                 'pos': 'top'
             },
             {
                 'target': 'footer_geo_label',
-                'title': 'Location & Timezone',
-                'text': 'Detected location and timezone information.',
+                'title': QCoreApplication.translate("Tour", "Location & Timezone"),
+                'text': QCoreApplication.translate("Tour", "Detected location and timezone information."),
                 'pos': 'top'
             },
             {
                 'target': 'btn_tour_icon',
-                'title': 'Restart Tour',
-                'text': 'Click this icon anytime to restart the quick tour.',
+                'title': QCoreApplication.translate("Tour", "Restart Tour"),
+                'text': QCoreApplication.translate("Tour", "Click this icon anytime to restart the quick tour."),
                 'pos': 'bottom'
             },
             {
                 'target': None,
-                'title': 'Tour Complete',
-                'text': 'You are all set! Click Finish to start using the app.',
+                'title': QCoreApplication.translate("Tour", "Tour Complete"),
+                'text': QCoreApplication.translate("Tour", "You are all set! Click Finish to start using the app."),
                 'pos': 'center'
             }
         ]

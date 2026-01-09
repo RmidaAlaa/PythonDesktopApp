@@ -7,6 +7,7 @@ from typing import Dict, List
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+from PySide6.QtCore import QCoreApplication
 try:
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 except Exception:
@@ -51,25 +52,28 @@ class ReportGenerator:
     def _create_metadata_sheet(self, workbook: Workbook, operator_info: Dict):
         """Create the metadata sheet."""
         sheet = workbook.active
-        sheet.title = self._safe_sheet_title("Metadata")
+        sheet.title = self._safe_sheet_title(QCoreApplication.translate("ReportGenerator", "Metadata"))
         
         # Get PC info
         pc_name = platform.node()
         pc_os = f"{platform.system()} {platform.release()}"
         
-        headers = ["Property", "Value"]
+        headers = [
+            QCoreApplication.translate("ReportGenerator", "Property"),
+            QCoreApplication.translate("ReportGenerator", "Value")
+        ]
         data = [
-            ["Timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-            ["Application", "AWG Kumulus Device Manager"],
-            ["Version", "1.0.0"],
-            ["Operator Name", self._sanitize_cell_value(operator_info.get("name", "N/A"))],
-            ["Operator Email", self._sanitize_cell_value(operator_info.get("email", "N/A"))],
-            ["Client Name", self._sanitize_cell_value(operator_info.get("client_name", "N/A"))],
-            ["Machine Type", self._sanitize_cell_value(operator_info.get("machine_type", "N/A"))],
-            ["Machine ID", self._sanitize_cell_value(operator_info.get("machine_id", "N/A"))],
-            ["PC Name", self._sanitize_cell_value(pc_name)],
-            ["PC OS", self._sanitize_cell_value(pc_os)],
-            ["Platform", self._sanitize_cell_value(platform.machine())],
+            [QCoreApplication.translate("ReportGenerator", "Timestamp"), datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            [QCoreApplication.translate("ReportGenerator", "Application"), "AWG Kumulus Device Manager"],
+            [QCoreApplication.translate("ReportGenerator", "Version"), "1.0.0"],
+            [QCoreApplication.translate("ReportGenerator", "Operator Name"), self._sanitize_cell_value(operator_info.get("name", "N/A"))],
+            [QCoreApplication.translate("ReportGenerator", "Operator Email"), self._sanitize_cell_value(operator_info.get("email", "N/A"))],
+            [QCoreApplication.translate("ReportGenerator", "Client Name"), self._sanitize_cell_value(operator_info.get("client_name", "N/A"))],
+            [QCoreApplication.translate("ReportGenerator", "Machine Type"), self._sanitize_cell_value(operator_info.get("machine_type", "N/A"))],
+            [QCoreApplication.translate("ReportGenerator", "Machine ID"), self._sanitize_cell_value(operator_info.get("machine_id", "N/A"))],
+            [QCoreApplication.translate("ReportGenerator", "PC Name"), self._sanitize_cell_value(pc_name)],
+            [QCoreApplication.translate("ReportGenerator", "PC OS"), self._sanitize_cell_value(pc_os)],
+            [QCoreApplication.translate("ReportGenerator", "Platform"), self._sanitize_cell_value(platform.machine())],
         ]
         
         # Write headers
@@ -92,13 +96,25 @@ class ReportGenerator:
     def _create_devices_sheet(self, workbook: Workbook, devices: List[Device], 
                              machine_type: str, machine_id: str):
         """Create the devices sheet."""
-        sheet = workbook.create_sheet(title=self._safe_sheet_title("Devices"))
+        sheet = workbook.create_sheet(title=self._safe_sheet_title(QCoreApplication.translate("ReportGenerator", "Devices")))
         
         headers = [
-            "Machine Type", "Machine ID", "Board Type", "Port", 
-            "VID", "PID", "UID", "Chip ID", "MAC Address", "Manufacturer", 
-            "Serial Number", "Firmware Version", "Hardware Version", 
-            "Flash Size", "CPU Frequency", "Timestamp"
+            QCoreApplication.translate("ReportGenerator", "Machine Type"), 
+            QCoreApplication.translate("ReportGenerator", "Machine ID"), 
+            QCoreApplication.translate("ReportGenerator", "Board Type"), 
+            QCoreApplication.translate("ReportGenerator", "Port"), 
+            QCoreApplication.translate("ReportGenerator", "VID"), 
+            QCoreApplication.translate("ReportGenerator", "PID"), 
+            QCoreApplication.translate("ReportGenerator", "UID"), 
+            QCoreApplication.translate("ReportGenerator", "Chip ID"), 
+            QCoreApplication.translate("ReportGenerator", "MAC Address"), 
+            QCoreApplication.translate("ReportGenerator", "Manufacturer"), 
+            QCoreApplication.translate("ReportGenerator", "Serial Number"), 
+            QCoreApplication.translate("ReportGenerator", "Firmware Version"), 
+            QCoreApplication.translate("ReportGenerator", "Hardware Version"), 
+            QCoreApplication.translate("ReportGenerator", "Flash Size"), 
+            QCoreApplication.translate("ReportGenerator", "CPU Frequency"), 
+            QCoreApplication.translate("ReportGenerator", "Timestamp")
         ]
         
         # Write headers
@@ -118,8 +134,8 @@ class ReportGenerator:
                 self._sanitize_cell_value(machine_id),
                 self._sanitize_cell_value(device.board_type.value),
                 self._sanitize_cell_value(device.port),
-                self._sanitize_cell_value(f"0x{device.vid:04X}") if device.vid else "N/A",
-                self._sanitize_cell_value(f"0x{device.pid:04X}") if device.pid else "N/A",
+                self._sanitize_cell_value(f"0x{device.vid:04X}") if device.vid else self._sanitize_cell_value("N/A"),
+                self._sanitize_cell_value(f"0x{device.pid:04X}") if device.pid else self._sanitize_cell_value("N/A"),
                 self._sanitize_cell_value(device.uid or "N/A"),
                 self._sanitize_cell_value(device.chip_id or "N/A"),
                 self._sanitize_cell_value(device.mac_address or "N/A"),
@@ -144,18 +160,30 @@ class ReportGenerator:
             sheet.column_dimensions[get_column_letter(i)].width = width
 
     def _sanitize_cell_value(self, value):
-        """Strip characters Excel refuses."""
+        """Sanitize value for Excel cell."""
         if value is None:
-            return "N/A"
-        text = str(value)
-        text = ILLEGAL_CHARACTERS_RE.sub("", text)
-        text = text.strip()
-        return text or "N/A"
+            return QCoreApplication.translate("ReportGenerator", "N/A")
+        if isinstance(value, str):
+            if not value or value == "N/A":
+                return QCoreApplication.translate("ReportGenerator", "N/A")
+            # Remove illegal characters
+            return ILLEGAL_CHARACTERS_RE.sub("", value)
+        return value
 
     def _safe_sheet_title(self, title: str, fallback: str = "Sheet") -> str:
-        """Ensure sheet titles avoid forbidden characters and length issues."""
-        raw = title or fallback
-        cleaned = "".join(ch if ch not in self._invalid_sheet_chars else " " for ch in raw)
-        cleaned = cleaned.strip() or fallback
-        return cleaned[:31]
+        """Ensure sheet title is valid for Excel."""
+        if not title:
+            return QCoreApplication.translate("ReportGenerator", fallback)
+        
+        # Remove invalid characters: \ / ? * [ ] :
+        title = "".join(c for c in title if c not in r"\/?*[]:")
+        
+        # Max length 31
+        title = title[:31]
+        title = title.strip()
+        
+        if not title:
+            return QCoreApplication.translate("ReportGenerator", fallback)
+            
+        return title
 

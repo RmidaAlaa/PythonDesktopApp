@@ -77,8 +77,8 @@ class ThemeManager(QObject):
     def get_available_themes(self) -> Dict[str, str]:
         """Get list of available themes."""
         themes = {
-            "☀️ Light Mode": ThemeType.LIGHT.value,
-            "🌙 Dark Mode": ThemeType.DARK.value,
+            QCoreApplication.translate("ThemeManager", "☀️ Light Mode"): ThemeType.LIGHT.value,
+            QCoreApplication.translate("ThemeManager", "🌙 Dark Mode"): ThemeType.DARK.value,
         }
         
         # Add custom themes

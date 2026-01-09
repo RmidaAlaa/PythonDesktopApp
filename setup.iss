@@ -41,6 +41,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[Dirs]
+Name: "{userdocs}\AWG-Kumulus-Workspace"; Permissions: users-modify
+
 [Files]
 ; Main Application
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -52,6 +55,11 @@ Source: "prerequisites\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafteri
 ; Drivers
 Source: "prerequisites\stlink\*"; DestDir: "{tmp}\stlink"; Flags: deleteafterinstall recursesubdirs createallsubdirs; Check: IsSTLinkNeeded
 Source: "prerequisites\cp210x\*"; DestDir: "{tmp}\cp210x"; Flags: deleteafterinstall recursesubdirs createallsubdirs; Check: IsCP210xNeeded
+
+[InstallDelete]
+; Clean up previous configuration and logs to ensure a fresh start
+Type: files; Name: "{userappdata}\AWG-Kumulus\config.json"
+Type: filesandordirs; Name: "{userdocs}\AWG-Kumulus-Workspace\logs"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

@@ -3,6 +3,7 @@
 import smtplib
 import requests
 import base64
+from PySide6.QtCore import QCoreApplication
 from msal import ConfidentialClientApplication
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -30,7 +31,7 @@ class EmailSender:
         required = ['client_id', 'tenant_id', 'client_secret', 'sender_email']
         missing = [k for k in required if not cfg.get(k)]
         if missing:
-            return f"Missing Azure config fields: {', '.join(missing)}"
+            return QCoreApplication.translate("EmailSender", "Missing Azure config fields: {}").format(', '.join(missing))
         return None
     
     def save_credentials(self, username: str, password: str):
@@ -62,7 +63,7 @@ class EmailSender:
             if not recipients:
                 raise ValueError("No recipients provided")
             if progress_callback:
-                progress_callback("Authenticating with Azure...")
+                progress_callback(QCoreApplication.translate("EmailSender", "Authenticating with Azure..."))
                 
             # Acquire Access Token using MSAL
             # azure_config may provide either 'authority' or 'token_url' (e.g. https://login.microsoftonline.com/<TENANT_ID>)
@@ -83,7 +84,7 @@ class EmailSender:
                 
             # Prepare Email
             if progress_callback:
-                progress_callback("Preparing email...")
+                progress_callback(QCoreApplication.translate("EmailSender", "Preparing email..."))
                 
             headers = {
                 'Authorization': f'Bearer {access_token}',
@@ -121,13 +122,13 @@ class EmailSender:
             
             # Send Email
             if progress_callback:
-                progress_callback("Sending via Graph API...")
+                progress_callback(QCoreApplication.translate("EmailSender", "Sending via Graph API..."))
                 
             # Use configured sender_email as the endpoint user for sendMail.
             # Allow sender_override only if it exactly matches configured sender to avoid permission errors
             configured_sender = azure_config.get('sender_email')
             if not configured_sender:
-                raise ValueError("No sender email provided in Azure config")
+                raise ValueError(QCoreApplication.translate("EmailSender", "No sender email provided in Azure config"))
 
             if sender_override and sender_override != configured_sender:
                 logger.warning(f"Ignoring sender_override '{sender_override}' because it does not match configured Azure sender '{configured_sender}'. Using configured sender to avoid Graph permission issues.")
@@ -157,7 +158,7 @@ class EmailSender:
         except Exception as e:
             logger.error(f"Failed to send email via Azure: {e}")
             if progress_callback:
-                progress_callback(f"Azure Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("EmailSender", "Azure Error: {}").format(str(e)))
             return False
 
     def send_email(self, smtp_config: dict, recipients: List[str], 
@@ -210,12 +211,11 @@ class EmailSender:
                 password = self.get_password(smtp_config.get('username', ''))
              
             if not password:
-                logger.error("Password not found (neither provided nor in keyring)")
-                return False
+                raise ValueError(QCoreApplication.translate("EmailSender", "Password not found (neither provided nor in keyring)"))
             
             # Connect to server
             if progress_callback:
-                progress_callback("Connecting to SMTP server...")
+                progress_callback(QCoreApplication.translate("EmailSender", "Connecting to SMTP server..."))
             server = smtplib.SMTP(smtp_config['host'], smtp_config['port'], timeout=20)
             
             if smtp_config.get('tls', True):
@@ -242,7 +242,7 @@ class EmailSender:
                     pass
             
             if progress_callback:
-                progress_callback("Email sent successfully!")
+                progress_callback(QCoreApplication.translate("EmailSender", "Email sent successfully!"))
             
             logger.info(f"Email sent to {recipients}")
             return True
@@ -250,6 +250,6 @@ class EmailSender:
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
             if progress_callback:
-                progress_callback(f"Error: {str(e)}")
+                progress_callback(QCoreApplication.translate("EmailSender", "Error: {}").format(str(e)))
             return False
 
