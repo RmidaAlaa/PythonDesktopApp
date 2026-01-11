@@ -21,4 +21,4 @@ dist/
 Output/
 
 # Release artifacts
-release/Windows/*.exe
+#release/Windows/*.exe
