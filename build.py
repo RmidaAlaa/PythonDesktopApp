@@ -9,7 +9,87 @@ import platform
 import subprocess
 import argparse
 import re
+import datetime
+import shutil
 from pathlib import Path
+
+
+def get_last_commit_message():
+    """Get the last git commit message."""
+    try:
+        res = subprocess.run(["git", "log", "-1", "--pretty=%B"], capture_output=True, text=True)
+        if res.returncode == 0:
+            lines = res.stdout.strip().split('\n')
+            # Filter out empty lines and return as bullet points
+            return '\n'.join([f"- {line.strip()}" for line in lines if line.strip()])
+    except Exception:
+        pass
+    return "- Maintenance update"
+
+
+def organize_release(version):
+    """Organize release artifacts and update README."""
+    print(f"Organizing release for version {version}...")
+    
+    release_dir = Path("release")
+    version_dir = release_dir / f"v{version}"
+    
+    # Create directories
+    version_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Move artifacts (Windows EXE)
+    exe_path = Path("dist/AWG-Kumulus-Device-Manager.exe")
+    if exe_path.exists():
+        dest_path = version_dir / exe_path.name
+        # Remove destination if exists to allow overwrite
+        if dest_path.exists():
+            dest_path.unlink()
+        shutil.move(str(exe_path), str(dest_path))
+        print(f"✓ Moved executable to {dest_path}")
+    else:
+        print("Warning: Executable not found in dist/")
+        
+    # Update README
+    readme_path = release_dir / "README.md"
+    date_str = datetime.date.today().isoformat()
+    changes = get_last_commit_message()
+    
+    header = "# Release History\n\nThis document tracks all released versions of the AWG Kumulus Device Manager.\n\n"
+    
+    entry = f"""## [v{version}](./v{version})
+**Date:** {date_str}
+**Features/Fixes:**
+{changes}
+
+---
+
+"""
+
+    if not readme_path.exists():
+        readme_path.write_text(header + entry, encoding="utf-8")
+        print(f"✓ Created {readme_path}")
+    else:
+        content = readme_path.read_text(encoding="utf-8")
+        # Check if version already exists to avoid duplicates
+        if f"## [v{version}]" not in content:
+            # Insert new entry after the header
+            # We assume the header ends after the description
+            split_marker = "AWG Kumulus Device Manager.\n\n"
+            if split_marker in content:
+                parts = content.split(split_marker, 1)
+                new_content = parts[0] + split_marker + entry + parts[1]
+            else:
+                # Fallback: Prepend to existing content (excluding main header if present)
+                if content.startswith("# Release History"):
+                    lines = content.split('\n', 2)
+                    new_content = '\n'.join(lines[:2]) + '\n\n' + entry + lines[2] if len(lines) > 2 else content + '\n' + entry
+                else:
+                    new_content = header + entry + content
+            
+            readme_path.write_text(new_content, encoding="utf-8")
+            print(f"✓ Updated {readme_path}")
+        else:
+            print(f"ℹ Release v{version} already exists in README.")
 
 
 def increment_version():
@@ -133,6 +213,9 @@ def main():
         
         print("-" * 50)
         print("✓ Build completed successfully!")
+        
+        # Organize release artifacts
+        organize_release(new_version)
         
     except subprocess.CalledProcessError as e:
         print(f"✗ Build failed: {e}")

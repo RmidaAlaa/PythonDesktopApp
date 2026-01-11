@@ -61,7 +61,7 @@ class Config:
     }
     
     DEFAULT_CONFIG = {
-        "version": "1.0.4",
+        "version": "1.0.5",
         "admin_password": "AWG",
         "auto_flash": {
             "enabled": False,

@@ -21,4 +21,5 @@ dist/
 Output/
 
 # Release artifacts
-#release/Windows/*.exe
+release/**/*.exe
+release/**/*.zip
