@@ -139,16 +139,28 @@ class TranslationManager:
             else:
                 logger.warning(f"Failed to load app-data translation: {self.current_language}")
 
-        # Fallback: project translations directory (developer environment)
+        # Fallback: project translations directory (developer environment or frozen)
         if not loaded:
             try:
+                import sys
                 from pathlib import Path as _Path
-                project_dir = _Path(__file__).resolve().parents[2]  # repo root
-                fallback = project_dir / "translations" / f"app_{self.current_language}.qm"
-                if fallback.exists() and self.translator.load(str(fallback)):
-                    app.installTranslator(self.translator)
-                    logger.info(f"Loaded translation from project: {self.current_language}")
-                    loaded = True
+                
+                # Check frozen (PyInstaller) path first
+                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                    frozen_path = _Path(sys._MEIPASS) / "translations" / f"app_{self.current_language}.qm"
+                    if frozen_path.exists() and self.translator.load(str(frozen_path)):
+                        app.installTranslator(self.translator)
+                        logger.info(f"Loaded translation from bundled resources: {self.current_language}")
+                        loaded = True
+                
+                # Check dev environment path
+                if not loaded:
+                    project_dir = _Path(__file__).resolve().parents[2]  # repo root
+                    fallback = project_dir / "translations" / f"app_{self.current_language}.qm"
+                    if fallback.exists() and self.translator.load(str(fallback)):
+                        app.installTranslator(self.translator)
+                        logger.info(f"Loaded translation from project: {self.current_language}")
+                        loaded = True
             except Exception as e:
                 logger.debug(f"Fallback translation load error: {e}")
 

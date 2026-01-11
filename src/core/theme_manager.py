@@ -3,7 +3,7 @@ Theme Manager for the Desktop Application.
 Handles different visual themes (Dark, Light, Custom).
 """
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QCoreApplication
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication
 from enum import Enum

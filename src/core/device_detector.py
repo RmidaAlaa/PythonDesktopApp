@@ -147,22 +147,6 @@ class Device:
             pass
         return f"{self.port}_{self.board_type.value}"
 
-def get_unique_id(self) -> str:
-    """Get unique identifier for the STM32 microcontroller."""
-    try:
-        # Adresse UID STM32 (exemple STM32F4)
-        UID_BASE = 0x1FFF7A10
-        UID_LENGTH = 12  # 96 bits
-        
-        # Lire la mémoire du MCU via l'interface debug
-        uid_bytes = self.read_memory(UID_BASE, UID_LENGTH)  # Méthode à implémenter selon ton API
-        uid_hex = ''.join(f'{b:02X}' for b in uid_bytes)
-        
-        return uid_hex
-    except Exception as e:
-        # Fallback si lecture impossible
-        return f"UID_Read_Error: {e}"
-
 
 class DeviceDetector:
     """Detects and manages connected embedded boards with enhanced features."""
@@ -172,6 +156,7 @@ class DeviceDetector:
         self.device_history: Dict[str, Device] = {}
         self.device_templates: Dict[str, Dict] = {}
         self.monitoring_active = False
+        self._paused = False  # Flag to pause monitoring temporarily
         self.monitoring_thread: Optional[threading.Thread] = None
         self.monitoring_callback: Optional[Callable] = None
         self.monitoring_interval = 5.0  # seconds - increased from 2.0 to reduce frequency
@@ -310,11 +295,13 @@ class DeviceDetector:
                         break
             
             if not device.uid:
-                device.uid = self._read_stm32_uid(device.port)
+                # device.uid = self._read_stm32_uid(device.port)
+                pass
             
             if not device.uid:
                 logger.debug("Firmware UID read failed, trying bootloader method")
-                device.uid = self._read_stm32_uid_bootloader(device.port)
+                # device.uid = self._read_stm32_uid_bootloader(device.port)
+                pass
 
             device.firmware_version = self._read_stm32_firmware_version(device.port)
             device.hardware_version = self._read_stm32_hardware_version(device.port)
@@ -343,25 +330,85 @@ class DeviceDetector:
         except Exception as e:
             logger.debug(f"Generic info reading failed: {e}")
     
+    def read_all_serial_output(self, port: str, timeout: float = 5.0) -> str:
+        """
+        Read all available output from the serial port for a given duration.
+        Useful for capturing boot logs or comprehensive device info.
+        """
+        output = []
+        try:
+            # Try different baud rates if not standard
+            baud_rate = 115200
+            
+            with serial.Serial(port, baud_rate, timeout=1.0) as ser:
+                ser.reset_input_buffer()
+                
+                # Send a newline to potentially wake up the CLI/output
+                ser.write(b'\r\n')
+                
+                start_time = time.time()
+                while (time.time() - start_time) < timeout:
+                    if ser.in_waiting:
+                        try:
+                            chunk = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+                            output.append(chunk)
+                        except Exception:
+                            pass
+                    time.sleep(0.1)
+                    
+        except Exception as e:
+            logger.warning(f"Failed to read serial output from {port}: {e}")
+            return f"Error reading serial: {str(e)}"
+            
+        return "".join(output)
+
     def _read_stm32_uid(self, port: str) -> Optional[str]:
         """
-        Read STM32 unique ID by sending a GET_UID command to the running application.
-        The device must be running firmware that implements the GET_UID command.
+        Read STM32 unique ID by sending a 'I' command to the running application.
+        The device must be running firmware that implements the 'I' command.
 
         Returns:
             str: 24-character hex string (96-bit UID) or None if reading fails
         """
         try:
-            with serial.Serial(port=port, baudrate=115200, timeout=3.0) as ser:
+            with serial.Serial(port=port, baudrate=115200, timeout=2.0) as ser:
                 ser.reset_input_buffer()
                 ser.reset_output_buffer()
-                ser.write(b'GET_UID\r\n')
-                response = ser.read_until(b'\n', 32).decode('ascii', 'ignore').strip()
-                if response.startswith('UID:') and len(response) == 28:
-                    uid = response[4:].upper()
-                    if all(c in '0123456789ABCDEF' for c in uid):
-                        return uid
-                logger.debug(f"Invalid UID response: {response}")
+                # Send 'I' command
+                ser.write(b'I')
+                
+                # Read response (expecting multiple lines)
+                start_time = time.time()
+                buffer = ""
+                while time.time() - start_time < 2.0:
+                    if ser.in_waiting:
+                        chunk = ser.read(ser.in_waiting).decode('ascii', errors='ignore')
+                        buffer += chunk
+                        if "UID:" in buffer:
+                            # Wait a bit more for the rest of the line if needed
+                            time.sleep(0.1)
+                            if ser.in_waiting:
+                                buffer += ser.read(ser.in_waiting).decode('ascii', errors='ignore')
+                            break
+                    time.sleep(0.05)
+                
+                # Parse UID from buffer
+                for line in buffer.splitlines():
+                    line = line.strip()
+                    if "UID:" in line:
+                         # Extract UID part
+                         parts = line.split('UID:')
+                         if len(parts) > 1:
+                             uid_part = parts[1].strip()
+                             # Cleanup if there are other chars (take first word)
+                             uid = uid_part.split()[0]
+                             # Normalize
+                             uid = uid.replace('0x', '').replace(':', '').upper()
+                             # Valid UID is usually 24 chars (96 bits)
+                             if len(uid) >= 24 and all(c in '0123456789ABCDEF' for c in uid):
+                                 return uid
+                
+                logger.debug(f"UID not found in response: {buffer[:100]}...")
                 return None
         except serial.SerialException as e:
             logger.debug(f"Serial error reading UID from {port}: {e}")
@@ -920,6 +967,16 @@ q
         self.monitoring_thread.start()
         logger.info("Started real-time device monitoring")
     
+    def pause_monitoring(self):
+        """Pause real-time monitoring temporarily."""
+        self._paused = True
+        logger.info("Device monitoring paused")
+
+    def resume_monitoring(self):
+        """Resume real-time monitoring."""
+        self._paused = False
+        logger.info("Device monitoring resumed")
+
     def stop_real_time_monitoring(self):
         """Stop real-time device monitoring."""
         self.monitoring_active = False
@@ -933,6 +990,10 @@ q
         
         while self.monitoring_active:
             try:
+                if self._paused:
+                    time.sleep(1)
+                    continue
+
                 # Get current device list without logging
                 current_devices = self._get_devices_silent()
                 current_device_ids = {device.get_unique_id() for device in current_devices}

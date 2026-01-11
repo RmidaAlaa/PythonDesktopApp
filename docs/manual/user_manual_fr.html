@@ -777,6 +777,16 @@
       <strong>Validation :</strong> Le test de configuration vérifie les champs requis (Client ID, Tenant ID, Client Secret, Email de l’expéditeur) avant envoi.
     </div>
 
+    <h3>File d'attente d'e-mails hors ligne</h3>
+    <div class="info">
+      <strong>Mode hors ligne :</strong> Si vous êtes hors ligne lors de l'envoi d'un rapport, l'e-mail est automatiquement ajouté à une file d'attente.
+    </div>
+    <ul>
+      <li>Les e-mails sont stockés de manière sécurisée jusqu'à ce que la connexion Internet soit rétablie.</li>
+      <li>L'application tente automatiquement d'envoyer les e-mails en file d'attente lorsqu'une connexion est détectée ou au prochain démarrage.</li>
+      <li>Si vous essayez de quitter l'application avec des e-mails non envoyés, une fenêtre de confirmation vous avertira.</li>
+    </ul>
+
     <h2 id="onedrive-config">Intégration OneDrive</h2>
     
     <h3>Configuration OneDrive</h3>
@@ -827,6 +837,31 @@ OneDrive/
       <li>Flash du firmware (si configuré)</li>
       <li>Manually triggered from Paramètres</li>
     </ul>
+
+    <h2 id="application-updates">Mises à jour de l'application</h2>
+    <p>L'application inclut un système de mise à jour intelligent pour vous garder sur la dernière version.</p>
+
+    <h3>Vérifications automatiques en arrière-plan</h3>
+    <ul>
+      <li>L'application vérifie silencieusement les mises à jour au démarrage.</li>
+      <li>Si une mise à jour est trouvée, un badge de notification rouge (ex: "1") apparaît sur le bouton de mise à jour en haut à droite.</li>
+      <li>Une notification toast non intrusive apparaîtra également.</li>
+    </ul>
+
+    <h3>Installation en un clic</h3>
+    <div class="step">
+      <span class="step-number">Étape 1 :</span> Cliquez sur le bouton de mise à jour avec badge.
+    </div>
+    <div class="step">
+      <span class="step-number">Étape 2 :</span> Consultez les notes de version dans la fenêtre.
+    </div>
+    <div class="step">
+      <span class="step-number">Étape 3 :</span> Cliquez sur <strong>"Installer la mise à jour"</strong>.
+    </div>
+    <div class="step">
+      <span class="step-number">Étape 4 :</span> L'application téléchargera l'installateur, l'exécutera automatiquement et redémarrera.
+    </div>
+
     <p>Les données de machine incluent :</p>
     <ul>
       <li>Infoumations sur la machine (type, ID, opérateur)</li>
@@ -1221,31 +1256,31 @@ OneDrive/
 
     <h2 id="troubleshooting">Dépannage</h2>
     
-    <h3>Détection des appareils Issues</h3>
+    <h3>Problèmes de détection d'appareils</h3>
     <div class="warning">
-      <strong>Problem:</strong> Aucun appareil détecté
+      <strong>Problème :</strong> Aucun appareil détecté
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
       <li>Vérifiez que le câble USB est correctement connecté</li>
       <li>Vérifiez que l'appareil est allumé</li>
       <li>Assurez-vous que les pilotes appropriés sont installés :
         <ul>
-          <li>STM32: STM32 Virtual COM Pout drivers</li>
-          <li>ESP32/ESP8266: CP210x ou CH340 drivers</li>
-          <li>Arduino : pilotes Arduino</li>
+          <li>STM32 : Pilotes STM32 Virtual COM Port</li>
+          <li>ESP32/ESP8266 : Pilotes CP210x ou CH340</li>
+          <li>Arduino : Pilotes Arduino</li>
         </ul>
       </li>
       <li>Sur Linux, ajoutez l'utilisateur au groupe dialout : <code>sudo usermod -a -G dialout $USER</code></li>
       <li>Essayez de cliquer sur "Actualiser les appareils" manuellement</li>
-      <li>Check Device Manager (Windows) ou <code>lsusb</code> (Linux) pour vérifier que l'appareil est reconnu par le système d'exploitation</li>
+      <li>Vérifiez le Gestionnaire de périphériques (Windows) ou <code>lsusb</code> (Linux) pour vérifier que l'appareil est reconnu par le système d'exploitation</li>
     </ol>
 
-    <h3>Problèmes de flash du firmware</h3>
+    <h3>Problèmes de flashage du firmware</h3>
     <div class="warning">
-      <strong>Problem:</strong> Le flash du firmware échoue
+      <strong>Problème :</strong> Le flashage du firmware échoue
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
       <li>Assurez-vous que l'appareil est en mode bootloader (si nécessaire) :
         <ul>
@@ -1253,88 +1288,106 @@ OneDrive/
           <li>STM32 : Entrez en mode DFU (varie selon la carte)</li>
         </ul>
       </li>
-      <li>Verify firmware file foumat is courect (.bin ou .elf)</li>
+      <li>Vérifiez que le format du fichier firmware est correct (.bin ou .elf)</li>
       <li>Vérifiez que le firmware est compatible avec le type de carte de l'appareil</li>
-      <li>Try a different USB pout</li>
-      <li>Vérifiez que les outils d'aide sont installés (vérifiez les journaux)</li>
+      <li>Essayez un autre port USB</li>
+      <li>Vérifiez que les outils auxiliaires sont installés (vérifiez les journaux)</li>
       <li>Vérifiez que l'appareil n'est pas utilisé par une autre application</li>
-      <li>Review log output fou specific errou messages</li>
+      <li>Consultez les journaux pour des messages d'erreur spécifiques</li>
     </ol>
 
     <h3>Problèmes d'envoi d'e-mail</h3>
     <div class="warning">
-      <strong>Problem:</strong> L'e-mail ne s'envoie pas
+      <strong>Problème :</strong> L'e-mail ne s'envoie pas
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
-      <li>Verify SMTP settings are courect:
+      <li>Vérifiez que les paramètres SMTP sont corrects :
         <ul>
-          <li>Hôte and pout match your email provider</li>
-          <li>TLS/SSL settings are courect</li>
+          <li>L'hôte et le port correspondent à votre fournisseur de messagerie</li>
+          <li>Les paramètres TLS/SSL sont corrects</li>
         </ul>
       </li>
-      <li>Check credentials are stoued in keyring:
+      <li>Vérifiez que les identifiants sont stockés dans le trousseau :
         <ul>
           <li>Windows : Gestionnaire d'identifiants</li>
-          <li>macOS : Accès au trousseau</li>
+          <li>macOS : Trousseau d'accès</li>
           <li>Linux : Secret Service</li>
         </ul>
       </li>
-      <li>Fou Gmail, use app-specific passwoud (not regular passwoud)</li>
-      <li>Verify netwouk connection is active</li>
-      <li>Vérifiez que les paramètres du pare-feu ne bloquent pas SMTP</li>
-      <li>Review log output fou specific errou messages</li>
+      <li>Pour Gmail, utilisez un mot de passe d'application (pas votre mot de passe habituel)</li>
+      <li>Vérifiez que la connexion réseau est active (les e-mails seront mis en file d'attente si hors ligne)</li>
+      <li>Vérifiez que les paramètres du pare-feu ne bloquent pas le SMTP</li>
+      <li>Consultez les journaux pour des messages d'erreur spécifiques</li>
     </ol>
 
-    <h3>Intégration OneDrive Issues</h3>
+    <h3>Problèmes d'intégration OneDrive</h3>
     <div class="warning">
-      <strong>Problem:</strong> OneDrive sync not wouking
+      <strong>Problème :</strong> La synchronisation OneDrive ne fonctionne pas
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
-      <li>Verify OneDrive folder path is courect and accessible</li>
+      <li>Vérifiez que le chemin du dossier OneDrive est correct et accessible</li>
       <li>Vérifiez que vous avez les permissions d'écriture sur le dossier</li>
       <li>Assurez-vous que OneDrive est en cours d'exécution et synchronisé</li>
       <li>Testez la connexion en utilisant le bouton "Tester la connexion" dans les paramètres</li>
-      <li>Verify user folder name is set courectly</li>
+      <li>Vérifiez que le nom du dossier utilisateur est défini correctement</li>
       <li>Vérifiez que la création automatique de dossiers est activée si nécessaire</li>
     </ol>
 
     <h3>Problèmes STM32CubeIDE</h3>
     <div class="warning">
-      <strong>Problem:</strong> STM32CubeIDE non trouvé
+      <strong>Problème :</strong> STM32CubeIDE non trouvé
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
       <li>Installez STM32CubeIDE depuis le site web STMicroelectronics</li>
-      <li>Définissez <code>STM32CUBEIDE_BIN</code> variable d'environnement to executable path</li>
-      <li>Ou définissez <code>STM32CUBEIDE_HOME</code> to installation répertoire</li>
+      <li>Définissez la variable d'environnement <code>STM32CUBEIDE_BIN</code> vers le chemin de l'exécutable</li>
+      <li>Ou définissez <code>STM32CUBEIDE_HOME</code> vers le répertoire d'installation</li>
       <li>Vérifiez l'installation en exécutant STM32CubeIDE manuellement</li>
-      <li>Check Windows Registry if on Windows (fou automatic detection)</li>
+      <li>Vérifiez le Registre Windows si sous Windows (pour la détection automatique)</li>
+    </ol>
+
+    <h3>Problèmes de mise à jour de l'application</h3>
+    <div class="warning">
+      <strong>Problème :</strong> Le téléchargement de la mise à jour échoue ou l'installateur ne démarre pas
+    </div>
+    <p><strong>Solutions :</strong></p>
+    <ol>
+      <li>Vérifiez votre connexion Internet</li>
+      <li>Si le téléchargement échoue, essayez de cliquer à nouveau sur "Installer la mise à jour"</li>
+      <li>Si l'installateur ne se lance pas, vérifiez votre dossier "Téléchargements" et lancez l'installateur manuellement</li>
+      <li>Assurez-vous d'avoir suffisamment d'espace disque</li>
+      <li>Si les problèmes persistent, téléchargez la dernière version directement depuis GitHub</li>
     </ol>
 
     <h3>Plantages de l'application</h3>
     <div class="warning">
-      <strong>Problem:</strong> Application crashes ou freezes
+      <strong>Problème :</strong> L'application plante ou se fige
     </div>
-    <p><strong>Solutions:</strong></p>
+    <p><strong>Solutions :</strong></p>
     <ol>
-      <li>Check log files in app data répertoire fou errou messages</li>
+      <li>Vérifiez les fichiers journaux dans le répertoire de données de l'application pour les messages d'erreur</li>
       <li>Vérifiez que tous les packages Python requis sont installés</li>
       <li>Essayez de supprimer le fichier de configuration et de redémarrer (sauvegardez d'abord !)</li>
       <li>Vérifiez l'espace disque disponible</li>
       <li>Vérifiez que les exigences système sont respectées</li>
-      <li>Contact suppout with log files</li>
+      <li>Contactez le support avec les fichiers journaux</li>
     </ol>
 
-    <h3>Fichiers de journal</h3>
-    <p>Log files are stoued in:</p>
+    <h3>Fichiers journaux</h3>
+    <p>Les fichiers journaux sont stockés dans :</p>
     <ul>
-      <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\logs\</code></li>
-      <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/logs/</code></li>
-      <li><strong>macOS:</strong> <code>~/Library/Application Suppout/AWG-Kumulus/logs/</code></li>
+      <li><strong>Windows :</strong> <code>%APPDATA%\AWG-Kumulus\logs\</code></li>
+      <li><strong>Linux :</strong> <code>~/.local/share/awg-kumulus/logs/</code></li>
+      <li><strong>macOS :</strong> <code>~/Library/Application Support/AWG-Kumulus/logs/</code></li>
     </ul>
-    <p>Log files are named with timestamps and can be attached when contacting suppout.</p>
+    <p>Les fichiers journaux sont nommés avec des horodatages et peuvent être joints lors de la prise de contact avec le support.</p>
+
+    <h3>Erreurs de chargement DLL</h3>
+    <ul>
+      <li>Si vous voyez "Failed to load Python DLL", assurez-vous d'utiliser l'exécutable à fichier unique (<code>.exe</code>) de la version, et non une construction basée sur un dossier.</li>
+    </ul>
 
     <h2 id="advanced">Fonctionnalités avancées</h2>
     

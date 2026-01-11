@@ -13,6 +13,9 @@ Cross-platform Python desktop application for managing embedded boards (STM32, E
 - **First-Run Bootstrap**: Automatically downloads required helper binaries on first launch
 - **Secure Storage**: Uses `keyring` for secure credential management (Windows Credential Manager / macOS Keychain / Linux Secret Service)
 - **Footer Info**: Displays your local timezone and approximate location (city, country)
+- **Offline Email Queuing**: Automatically queues emails when offline and sends them when connection is restored
+- **Smart Updates**: Background update checks with notification badges and one-click direct installation
+- **Single Executable**: Distributed as a standalone .exe file with no external dependencies
 
 ## Requirements
 
@@ -54,10 +57,10 @@ python main.py
 ### Windows (.exe)
 
 ```bash
-pyinstaller --name="AWG-Kumulus-Device-Manager" --windowed --onedir main.py
+pyinstaller --clean app.spec
 ```
 
-The executable will be in `dist/AWG-Kumulus-Device-Manager/`
+The executable will be in `dist/AWGKumulusDeviceManager.exe`. This is a single standalone file that can be moved anywhere.
 
 ### Linux (AppImage)
 
@@ -136,6 +139,15 @@ The report will be saved in the application data directory.
 1. Configure SMTP settings in the Settings dialog
 2. Credentials are stored securely using the OS keychain
 3. Click "📧 Send Email" to send the latest report
+
+**Offline Mode:** If you are offline, the email will be queued automatically. It will be sent as soon as the internet connection is restored or when you restart the app. A confirmation popup will warn you if you try to exit with unsent emails.
+
+### Application Updates
+
+1. The app automatically checks for updates in the background on startup.
+2. If an update is available, a red notification badge (e.g., "1") appears on the update button.
+3. Click the update button to view details and click "Install Update".
+4. The app will download the installer, run it, and restart.
 
 ### Flashing Firmware
 

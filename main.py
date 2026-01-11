@@ -6,10 +6,11 @@ Cross-platform Python desktop application for managing embedded boards.
 
 import sys
 import os
+import ctypes
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QSplashScreen
-from PySide6.QtGui import QGuiApplication, QPixmap
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication, QPixmap, QIcon
+from PySide6.QtCore import Qt, qInstallMessageHandler
 
 from src.core.config import Config
 from src.core.bootstrap import BootstrapManager
@@ -17,14 +18,34 @@ from src.core.version import format_version_banner
 from src.core.crash_handler import install_exception_handler
 from src.gui.main_window import MainWindow
 
+def qt_message_handler(mode, context, message):
+    """Custom Qt message handler to suppress specific internal warnings."""
+    # Filter out QWindowsWindow::setGeometry warnings
+    if "QWindowsWindow::setGeometry" in message:
+        return
+    # Write other messages to stderr
+    sys.stderr.write(f"{message}\n")
+    sys.stderr.flush()
+
 def main():
     """Entry point for the application."""
+    # Install custom message handler
+    qInstallMessageHandler(qt_message_handler)
+
     # Install crash handler
     install_exception_handler()
 
     # Ensure application name is set
     QApplication.setApplicationName("AWG Kumulus Device Manager")
     QApplication.setOrganizationName("AWG")
+    
+    # Set App ID for Windows Taskbar Icon
+    if os.name == 'nt':
+        myappid = 'awg.kumulus.devicemanager.1.0.0'
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception:
+            pass
     
     # High-DPI: use Qt6 rounding policy instead of deprecated attributes
     try:
@@ -35,8 +56,18 @@ def main():
     # Create Qt application first (needed for Splash Screen)
     app = QApplication(sys.argv)
 
+    # Set Global App Icon
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent
+
+    icon_path = base_path / "src" / "assets" / "logo.png"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
+
     # Show Splash Screen
-    splash_pix = QPixmap(str(Path(__file__).parent / "src" / "assets" / "washing-machine.png"))
+    splash_pix = QPixmap(str(icon_path))
     # Scale if too big
     if splash_pix.width() > 600:
         splash_pix = splash_pix.scaledToWidth(600, Qt.SmoothTransformation)

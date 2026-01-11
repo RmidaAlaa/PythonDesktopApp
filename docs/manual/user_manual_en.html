@@ -596,6 +596,30 @@
       <li>ELF files are automatically converted to binary</li>
     </ul>
 
+    <h2 id="application-updates">Application Updates</h2>
+    <p>The application includes a smart update system to keep you on the latest version.</p>
+
+    <h3>Automatic Background Checks</h3>
+    <ul>
+      <li>The app silently checks for updates on startup.</li>
+      <li>If an update is found, a red notification badge (e.g., "1") appears on the Update button in the top-right corner.</li>
+      <li>A non-intrusive toast notification will also appear.</li>
+    </ul>
+
+    <h3>One-Click Installation</h3>
+    <div class="step">
+      <span class="step-number">Step 1:</span> Click the badged update button.
+    </div>
+    <div class="step">
+      <span class="step-number">Step 2:</span> Review the release notes in the dialog.
+    </div>
+    <div class="step">
+      <span class="step-number">Step 3:</span> Click <strong>"Install Update"</strong>.
+    </div>
+    <div class="step">
+      <span class="step-number">Step 4:</span> The app will download the installer, run it automatically, and restart.
+    </div>
+
     <h2 id="report-generation">Report Generation</h2>
     
     <h3>Excel Report Generation</h3>
@@ -776,6 +800,16 @@
     <div class="step">
       <span class="step-number">Step 5:</span> Email is sent to support with your message and optional logs
     </div>
+
+    <h3>Offline Email Queuing</h3>
+    <div class="info">
+      <strong>Offline Mode:</strong> If you are offline when sending a report, the email is automatically added to a queue.
+    </div>
+    <ul>
+      <li>Emails are stored securely until internet connection is restored.</li>
+      <li>The app automatically attempts to send queued emails when a connection is detected or on next startup.</li>
+      <li>If you try to exit the app with unsent emails, a confirmation popup will warn you.</li>
+    </ul>
 
     <h2 id="onedrive-config">OneDrive Integration</h2>
     
@@ -1278,7 +1312,7 @@ OneDrive/
         </ul>
       </li>
       <li>For Gmail, use app-specific password (not regular password)</li>
-      <li>Verify network connection is active</li>
+      <li>Verify network connection is active (emails will be queued if offline)</li>
       <li>Check firewall settings aren't blocking SMTP</li>
       <li>Review log output for specific error messages</li>
     </ol>
@@ -1310,6 +1344,19 @@ OneDrive/
       <li>Check Windows Registry if on Windows (for automatic detection)</li>
     </ol>
 
+    <h3>Application Update Issues</h3>
+    <div class="warning">
+      <strong>Problem:</strong> Update download fails or installer doesn't start
+    </div>
+    <p><strong>Solutions:</strong></p>
+    <ol>
+      <li>Check your internet connection</li>
+      <li>If download fails, try clicking "Install Update" again</li>
+      <li>If the installer doesn't launch, check your "Downloads" folder and run the installer manually</li>
+      <li>Ensure you have sufficient disk space</li>
+      <li>If issues persist, download the latest version directly from GitHub</li>
+    </ol>
+
     <h3>Application Crashes</h3>
     <div class="warning">
       <strong>Problem:</strong> Application crashes or freezes
@@ -1332,6 +1379,11 @@ OneDrive/
       <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/logs/</code></li>
     </ul>
     <p>Log files are named with timestamps and can be attached when contacting support.</p>
+
+    <h3>DLL Load Errors</h3>
+    <ul>
+      <li>If you see "Failed to load Python DLL", ensure you are using the single-file executable (<code>.exe</code>) from the release, not a folder-based build.</li>
+    </ul>
 
     <h2 id="advanced">Advanced Features</h2>
     

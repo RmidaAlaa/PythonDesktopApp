@@ -17,19 +17,35 @@ from .firmware_manager import FirmwareManager, FirmwareInfo, FirmwareSource
 logger = setup_logger("FirmwareFlasher")
 
 
-class FirmwareFlasher:
+from PySide6.QtCore import QObject, Signal
+
+class FirmwareFlasher(QObject):
     """Enhanced firmware flashing with advanced management integration."""
     
+    progress_update = Signal(str)
+
     def __init__(self):
+        super().__init__()
         self.logger = logger
         self.firmware_manager = FirmwareManager()
     
     def flash_firmware(self, device: Device, firmware_source: str, 
                       progress_callback: Optional[Callable] = None) -> bool:
         """Flash firmware to a device from a source."""
+        # Wrap callback to emit signal if provided
+        if progress_callback:
+            def signal_wrapper(msg):
+                self.progress_update.emit(msg)
+                progress_callback(msg)
+            callback = signal_wrapper
+        else:
+            def signal_wrapper(msg):
+                self.progress_update.emit(msg)
+            callback = signal_wrapper
+
         try:
             # Download firmware if it's a URL
-            firmware_path = self._get_firmware_file(firmware_source, progress_callback)
+            firmware_path = self._get_firmware_file(firmware_source, callback)
             
             if not firmware_path or not firmware_path.exists():
                 logger.error(f"Invalid firmware source: {firmware_source}")
@@ -37,13 +53,13 @@ class FirmwareFlasher:
             
             # Flash based on board type
             if device.board_type == BoardType.STM32:
-                return self._flash_stm32(device, firmware_path, progress_callback)
+                return self._flash_stm32(device, firmware_path, callback)
             else:
                 guess = self._guess_board_type(device, firmware_path)
                 if guess == BoardType.STM32:
-                    return self._flash_stm32(device, firmware_path, progress_callback)
+                    return self._flash_stm32(device, firmware_path, callback)
                 if firmware_path.suffix.lower() in ('.bin', '.elf'):
-                    return self._flash_stm32(device, firmware_path, progress_callback)
+                    return self._flash_stm32(device, firmware_path, callback)
                 logger.error(f"Unsupported board type: {device.board_type}")
                 return False
                 

@@ -14,6 +14,8 @@ from typing import List, Optional
 
 import keyring
 from .logger import setup_logger
+from .email_queue import EmailQueueManager
+from .utils import check_internet_connection
 
 logger = setup_logger("EmailSender")
 
@@ -25,6 +27,7 @@ class EmailSender:
     
     def __init__(self):
         self.logger = logger
+        self.queue_manager = EmailQueueManager()
     
     @staticmethod
     def _validate_azure_config(cfg: dict) -> Optional[str]:
@@ -164,7 +167,8 @@ class EmailSender:
     def send_email(self, smtp_config: dict, recipients: List[str], 
                    subject: str, body: str, attachment_path: Optional[Path] = None,
                    progress_callback=None, password: Optional[str] = None,
-                   azure_config: Optional[dict] = None, sender_override: Optional[str] = None) -> bool:
+                   azure_config: Optional[dict] = None, sender_override: Optional[str] = None,
+                   queue_if_offline: bool = True) -> bool:
         """Send an email via SMTP or Azure.
         
         Args:
@@ -177,7 +181,34 @@ class EmailSender:
             password: Optional explicit password (overrides keyring).
             azure_config: Optional Azure configuration. If provided and enabled, uses Azure.
             sender_override: Optional email address to use as sender (for Azure).
+            queue_if_offline: Whether to queue the email if internet is unavailable.
         """
+        # Check internet connection
+        if not check_internet_connection():
+            if queue_if_offline:
+                logger.info("No internet connection. Queuing email.")
+                if progress_callback:
+                    progress_callback(QCoreApplication.translate("EmailSender", "Offline. Queuing email for later..."))
+                
+                email_data = {
+                    "smtp_config": smtp_config,
+                    "recipients": recipients,
+                    "subject": subject,
+                    "body": body,
+                    "attachment_path": attachment_path,
+                    "azure_config": azure_config,
+                    "sender_override": sender_override,
+                    # password is not stored for security; relying on keyring or re-prompt if needed, 
+                    # but usually manual password isn't used in auto-send.
+                }
+                self.queue_manager.add_to_queue(email_data)
+                return True
+            else:
+                logger.warning("No internet connection and queuing disabled.")
+                if progress_callback:
+                    progress_callback(QCoreApplication.translate("EmailSender", "No internet connection."))
+                return False
+
         # Check if Azure is enabled
         if azure_config and azure_config.get('enabled'):
             return self.send_email_azure(azure_config, recipients, subject, body, attachment_path, progress_callback, sender_override)

@@ -1,5 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
 
 block_cipher = None
 
@@ -8,31 +7,27 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('machineTypes.json', '.'),
-        ('src', 'src'),
-        ('docs/manual/user_manual_en.html', 'docs/manual'),
-        ('docs/manual/user_manual_fr.html', 'docs/manual'),
-        ('release/USAGE.md', '.'),
-        ('README.md', '.'),
+        ('src/assets', 'src/assets'),
+        ('translations', 'translations'),
+        ('BinaryFiles', 'BinaryFiles'),
     ],
     hiddenimports=[
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        'pyserial',
+        'PySide6',
+        'serial',
         'openpyxl',
-        'keyring',
+        'requests',
+        'src.core',
+        'src.gui',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['PyQt5', 'PyQt6', 'PySide2'],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
-
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -49,12 +44,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # No console window
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='resources/app_icon.ico',
+    icon='src/assets/logo.png',
 )
-

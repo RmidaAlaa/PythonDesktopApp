@@ -40,7 +40,7 @@ def setup_logger(name="AWG Kumulus"):
             maxBytes=10 * 1024 * 1024,  # 10MB
             backupCount=5
         )
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.INFO)
         file_format = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
         )

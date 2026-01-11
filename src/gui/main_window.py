@@ -4,11 +4,13 @@ import sys
 import os
 import time
 import serial
-import sys
+import platform
+import socket
 from pathlib import Path
 import locale
 import zipfile
 import re
+import requests
 from typing import Dict, Optional
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -32,9 +34,13 @@ from ..core.bootstrap import BootstrapManager
 from ..core.logger import setup_logger
 from ..core.theme_manager import ThemeManager, ThemeType
 from ..core.translation_manager import TranslationManager, TrContext
+from ..core.version import get_version
+from ..core.updater import AppUpdater
 from ..gui.theme_language_dialog import ThemeLanguageSelectionDialog
+from ..gui.update_dialog import UpdateDialog, UpdateCheckWorker
 from ..core.onedrive_manager import OneDriveManager
 from ..core.system_info import get_timezone, get_location
+from ..core.utils import check_internet_connection
 from .tour_guide import TourManager
 from .toast import ToastOverlay
 from datetime import datetime, timedelta
@@ -76,6 +82,43 @@ class WorkerThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+
+class BadgedButton(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.badge_count = 0
+        self.badge_color = QColor(255, 59, 48) # Red
+        self.text_color = QColor(255, 255, 255) # White
+
+    def setBadge(self, count):
+        self.badge_count = count
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.badge_count > 0:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # Badge dimensions
+            size = 14
+            rect = self.rect()
+            # Position at top-right
+            x = rect.width() - size - 2
+            y = 2
+            
+            # Draw circle
+            painter.setBrush(QBrush(self.badge_color))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(x, y, size, size)
+            
+            # Draw text
+            painter.setPen(QPen(self.text_color))
+            font = painter.font()
+            font.setBold(True)
+            font.setPointSize(8)
+            painter.setFont(font)
+            painter.drawText(x, y, size, size, Qt.AlignCenter, str(self.badge_count))
 
 class MainWindow(QMainWindow):
     BUTTON_FONT_PT = 8
@@ -178,6 +221,17 @@ class MainWindow(QMainWindow):
         # Initialize Toast Overlay
         self.toast = ToastOverlay(self)
 
+        # Auto-check for updates (silent)
+        QTimer.singleShot(2000, self.check_for_updates_background)
+
+        # Initialize background email queue processor
+        self.queue_timer = QTimer(self)
+        self.queue_timer.timeout.connect(self.process_email_queue)
+        self.queue_timer.start(60000)  # Check every 60 seconds
+        
+        # Trigger initial queue check shortly after startup
+        QTimer.singleShot(5000, self.process_email_queue)
+
     def _init_services(self):
         try:
             self.device_detector = DeviceDetector()
@@ -185,10 +239,11 @@ class MainWindow(QMainWindow):
             self.email_sender = EmailSender()
             self.firmware_flasher = FirmwareFlasher()
             self.onedrive_manager = OneDriveManager()
-            # try:
-            #     self.device_detector.start_real_time_monitoring(self._device_change_callback)
-            # except Exception:
-            #     pass
+            self.app_updater = AppUpdater()
+            try:
+                self.device_detector.start_real_time_monitoring(self._device_change_callback)
+            except Exception:
+                pass
             try:
                 self._update_onedrive_status_indicator()
             except Exception:
@@ -199,7 +254,11 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         """Set up the user interface."""
         self.setWindowTitle(QCoreApplication.translate("MainWindow", "AWG Kumulus Device Manager v1.0.0"))
-        # More responsive minimum size for smaller laptop screens
+        try:
+            self.setWindowIcon(self._icon("logo.png"))
+        except Exception:
+            pass
+            
         self.setMinimumSize(1024, 600)
         from PySide6.QtWidgets import QApplication
         _screen_rect = QApplication.primaryScreen().availableGeometry()
@@ -249,10 +308,18 @@ class MainWindow(QMainWindow):
         # Keyboard shortcuts (no toolbar)
         try:
             QShortcut(QKeySequence.Refresh, self, activated=self.refresh_devices)
-            QShortcut(QKeySequence("Ctrl+R"), self, activated=self.generate_report)
+            QShortcut(QKeySequence("F5"), self, activated=self.refresh_devices)
+            QShortcut(QKeySequence("Ctrl+R"), self, activated=self.refresh_devices)
+            QShortcut(QKeySequence("Ctrl+G"), self, activated=self.generate_report)
             QShortcut(QKeySequence("Ctrl+E"), self, activated=self.send_email)
             QShortcut(QKeySequence("Ctrl+F"), self, activated=self.flash_firmware_dialog)
             QShortcut(QKeySequence("Ctrl+K"), self, activated=self.show_device_search_dialog)
+            
+            # New shortcuts
+            QShortcut(QKeySequence("Ctrl+U"), self, activated=self.read_uid_dialog)
+            QShortcut(QKeySequence("Ctrl+O"), self, activated=self.open_stm32_project_dialog)
+            QShortcut(QKeySequence("Ctrl+S"), self, activated=self.show_settings_menu)
+            QShortcut(QKeySequence("F1"), self, activated=self.show_shortcuts_help)
         except Exception:
             pass
 
@@ -262,6 +329,34 @@ class MainWindow(QMainWindow):
         # Initialize Tour Manager
         self.tour_manager = TourManager(self)
     
+    def closeEvent(self, event):
+        """Handle application close event."""
+        # Check for pending emails if offline
+        try:
+            if hasattr(self, 'email_sender') and hasattr(self.email_sender, 'queue_manager'):
+                pending = self.email_sender.queue_manager.get_pending_emails()
+                if pending and not check_internet_connection():
+                    reply = QMessageBox.question(
+                        self,
+                        QCoreApplication.translate("MainWindow", "Unsent Emails"),
+                        QCoreApplication.translate("MainWindow", 
+                            "You have {count} unsent emails and no internet connection.\n"
+                            "These emails are saved and will be sent automatically when you restart the app with an internet connection.\n\n"
+                            "Do you want to close the application now?"
+                        ).format(count=len(pending)),
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    
+                    if reply == QMessageBox.No:
+                        event.ignore()
+                        return
+
+        except Exception as e:
+            logger.error(f"Error in closeEvent: {e}")
+            
+        super().closeEvent(event)
+
     def create_device_panel(self):
         """Create the device list panel."""
         panel = QWidget()
@@ -365,15 +460,18 @@ class MainWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle(QCoreApplication.translate('MainWindow', 'Settings'))
         dialog.setMinimumWidth(300)
+        dialog.setObjectName("settings_menu_dialog")
         
         layout = QVBoxLayout()
         layout.setSpacing(10)
         
         # Helper to create styled buttons
-        def create_btn(text, icon_name, slot):
+        def create_btn(text, icon_name, slot, obj_name=None):
             btn = QPushButton(text)
             btn.setMinimumHeight(44)
             btn.setStyleSheet(primary_button_style())
+            if obj_name:
+                btn.setObjectName(obj_name)
             # Apply font (assuming _apply_button_font exists or just standard)
             try:
                 btn.setFont(QFont("Segoe UI", 10, QFont.Bold))
@@ -392,7 +490,8 @@ class MainWindow(QMainWindow):
         btn_config = create_btn(
             QCoreApplication.translate('Settings', 'Config'),
             "settings.png",
-            self.show_protected_config_dialog
+            self.show_protected_config_dialog,
+            "settings_config_btn"
         )
         layout.addWidget(btn_config)
         
@@ -400,7 +499,8 @@ class MainWindow(QMainWindow):
         btn_machine = create_btn(
             QCoreApplication.translate('Settings', 'Machine Configuration'),
             "washing-machine.png",
-            self.configure_machine_types_dialog
+            self.configure_machine_types_dialog,
+            "settings_machine_btn"
         )
         layout.addWidget(btn_machine)
         
@@ -408,7 +508,8 @@ class MainWindow(QMainWindow):
         btn_theme = create_btn(
             QCoreApplication.translate('MainWindow', 'Themes & Language'),
             "theme.png",
-            self.show_theme_language_dialog
+            self.show_theme_language_dialog,
+            "settings_theme_btn"
         )
         layout.addWidget(btn_theme)
         
@@ -464,6 +565,91 @@ class MainWindow(QMainWindow):
                 pass
         except Exception as e:
             QMessageBox.critical(self, QCoreApplication.translate('Dialogs', 'Error'), str(e))
+
+    def show_shortcuts_help(self):
+        """Show a dialog with available keyboard shortcuts."""
+        shortcuts = [
+            ("F5 / Ctrl+R", QCoreApplication.translate("MainWindow", "Refresh Device List")),
+            ("Ctrl+F", QCoreApplication.translate("MainWindow", "Flash Firmware")),
+            ("Ctrl+U", QCoreApplication.translate("MainWindow", "Read Device UID")),
+            ("Ctrl+O", QCoreApplication.translate("MainWindow", "Open STM32 Project")),
+            ("Ctrl+S", QCoreApplication.translate("MainWindow", "Open Settings")),
+            ("Ctrl+K", QCoreApplication.translate("MainWindow", "Search Devices")),
+            ("Ctrl+G", QCoreApplication.translate("MainWindow", "Generate Report")),
+            ("Ctrl+E", QCoreApplication.translate("MainWindow", "Send Email")),
+            ("F1", QCoreApplication.translate("MainWindow", "Show Shortcuts Help")),
+        ]
+        
+        # Build a nice HTML table for the message
+        msg = "<h3>" + QCoreApplication.translate("MainWindow", "Keyboard Shortcuts") + "</h3>"
+        msg += "<table width='100%'>"
+        for key, desc in shortcuts:
+            msg += f"<tr><td style='font-weight:bold; padding-right: 20px;'>{key}</td><td>{desc}</td></tr>"
+        msg += "</table>"
+            
+        QMessageBox.information(self, QCoreApplication.translate("MainWindow", "Keyboard Shortcuts"), msg)
+
+    def check_for_updates(self):
+        """Check for application updates (interactive)."""
+        try:
+            current_version, _ = get_version()
+            
+            # Use cached result if available
+            cached = getattr(self, '_cached_update_result', None)
+            
+            dialog = UpdateDialog(self, self.app_updater, current_version, cached_result=cached)
+            dialog.exec()
+            
+            # Clear badge after checking/updating if dialog was closed without updating
+            # But if they just closed it, maybe we should keep the badge?
+            # User said "add to the check for update button ... a littel number 1".
+            # Usually the badge clears after you view the update or update it.
+            # I'll clear it if they open the dialog, assuming they saw it.
+            if hasattr(self, 'btn_update_icon') and isinstance(self.btn_update_icon, BadgedButton):
+                self.btn_update_icon.setBadge(0)
+            
+        except Exception as e:
+            logger.error(f"Failed to check for updates: {e}")
+            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), 
+                               QCoreApplication.translate("MainWindow", "Failed to check for updates.") + f"\n{e}")
+
+    def check_for_updates_background(self):
+        """Check for application updates silently."""
+        try:
+            current_version, _ = get_version()
+            self._update_worker = UpdateCheckWorker(self.app_updater, current_version)
+            self._update_worker.finished.connect(self.on_auto_update_check_finished)
+            self._update_worker.start()
+        except Exception as e:
+            logger.error(f"Failed to start background update check: {e}")
+
+    def on_auto_update_check_finished(self, result):
+        """Handle background update check result."""
+        try:
+            if result:
+                # Update found! 
+                # Show badge
+                if hasattr(self, 'btn_update_icon') and isinstance(self.btn_update_icon, BadgedButton):
+                    self.btn_update_icon.setBadge(1)
+                
+                # Notify user
+                new_ver = result.get('version', 'unknown')
+                self.toast.show_message(
+                    QCoreApplication.translate("MainWindow", "Update Available"),
+                    QCoreApplication.translate("MainWindow", "Version {} is available.").format(new_ver),
+                    duration=5000,
+                    icon_type="info"
+                )
+                
+                # Cache result
+                self._cached_update_result = result
+            else:
+                # No update found
+                if hasattr(self, 'btn_update_icon') and isinstance(self.btn_update_icon, BadgedButton):
+                    self.btn_update_icon.setBadge(0)
+                self._cached_update_result = None
+        except Exception as e:
+            logger.error(f"Error handling update check result: {e}")
 
     def create_control_panel(self):
         """Create the control panel."""
@@ -521,6 +707,18 @@ class MainWindow(QMainWindow):
         self.btn_tour_icon.clicked.connect(self.show_quick_tour_dialog)
         self.btn_tour_icon.setFixedSize(QSize(32, 32))
         header_row.addWidget(self.btn_tour_icon)
+        
+        self.btn_update_icon = BadgedButton()
+        try:
+            self.btn_update_icon.setIcon(self._icon("update.png"))
+            self.btn_update_icon.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        self.btn_update_icon.setToolTip(QCoreApplication.translate("MainWindow", "Check for Updates"))
+        self.btn_update_icon.setObjectName("btn_check_updates")
+        self.btn_update_icon.clicked.connect(self.check_for_updates)
+        self.btn_update_icon.setFixedSize(QSize(32, 32))
+        header_row.addWidget(self.btn_update_icon)
         
         op_layout.addLayout(header_row)
 
@@ -671,6 +869,7 @@ class MainWindow(QMainWindow):
         # Row 0: Refresh, History
         # Refresh Devices
         refresh_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Refresh Devices'))
+        refresh_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Refresh Device List (Ctrl+R)'))
         refresh_btn.clicked.connect(self.refresh_devices)
         refresh_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(refresh_btn)
@@ -701,6 +900,7 @@ class MainWindow(QMainWindow):
         
         # Row 1: Email, Flash
         email_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Send Email'))
+        email_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Send Email Report (Ctrl+E)'))
         email_btn.clicked.connect(self.send_email)
         email_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(email_btn)
@@ -715,6 +915,8 @@ class MainWindow(QMainWindow):
         self.email_btn = email_btn  # Store as instance variable for translation
         
         flash_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Flash Firmware'))
+        flash_btn.setObjectName("flash_btn")
+        flash_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Flash Firmware (Ctrl+F)'))
         flash_btn.clicked.connect(self.flash_firmware_dialog)
         flash_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(flash_btn)
@@ -731,6 +933,8 @@ class MainWindow(QMainWindow):
         # Row 2: Read UID, Open Proj
         # Read UID
         read_uid_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Read UID'))
+        read_uid_btn.setObjectName("read_uid_btn")
+        read_uid_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Read Device UID (Ctrl+U)'))
         read_uid_btn.clicked.connect(self.read_uid_dialog)
         read_uid_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(read_uid_btn)
@@ -746,6 +950,8 @@ class MainWindow(QMainWindow):
 
         # Open STM32 Project
         open_stm32_btn = QPushButton(QCoreApplication.translate('MainWindow', 'OpenProj'))
+        open_stm32_btn.setObjectName("open_stm32_btn")
+        open_stm32_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Open STM32 Project (Ctrl+O)'))
         open_stm32_btn.clicked.connect(self.open_stm32_project_dialog)
         open_stm32_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(open_stm32_btn)
@@ -761,6 +967,8 @@ class MainWindow(QMainWindow):
 
         # Row 3: Settings
         settings_btn = QPushButton(QCoreApplication.translate('MainWindow', 'Settings'))
+        settings_btn.setObjectName("settings_btn")
+        settings_btn.setToolTip(QCoreApplication.translate('MainWindow', 'Open Settings (Ctrl+S)'))
         settings_btn.clicked.connect(self.show_settings_menu)
         settings_btn.setStyleSheet(primary_button_style())
         self._apply_button_font(settings_btn)
@@ -819,13 +1027,18 @@ class MainWindow(QMainWindow):
             pass
 
     def _icon(self, filename: str) -> QIcon:
-        p = Path(__file__).resolve().parent.parent / "assets" / filename
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+             base = Path(sys._MEIPASS)
+             p = base / "src" / "assets" / filename
+        else:
+             p = Path(__file__).resolve().parent.parent / "assets" / filename
         return QIcon(str(p))
     
     def refresh_devices(self):
         """Refresh the device list."""
         if hasattr(self, 'scan_worker') and self.scan_worker and self.scan_worker.isRunning():
-            logger.info("Scan already in progress")
+            logger.info("Scan already in progress, queuing next scan")
+            self._pending_refresh = True
             return
 
         self._show_status(QCoreApplication.translate("MainWindow", "Scanning for devices..."))
@@ -865,6 +1078,11 @@ class MainWindow(QMainWindow):
             self.refresh_btn.setEnabled(True)
             self.refresh_btn.setText(QCoreApplication.translate('MainWindow', 'Refresh Devices'))
 
+        # Check for pending refresh
+        if getattr(self, '_pending_refresh', False):
+            self._pending_refresh = False
+            QTimer.singleShot(100, self.refresh_devices)
+
         # Auto-generate report when inputs are ready (silent)
         try:
             QTimer.singleShot(50, self.auto_generate_report_if_ready)
@@ -896,9 +1114,10 @@ class MainWindow(QMainWindow):
             self.device_table.setItem(row, 2, it)
 
             # UID (column 3)
-            # User requested UID to be null/empty after refresh
-            uid_val = "" 
-            it = QTableWidgetItem(uid_val)
+            uid_val = device.uid
+            if not uid_val:
+                uid_val = "—"
+            it = QTableWidgetItem(str(uid_val))
             it.setToolTip(self._device_details_text(device))
             self.device_table.setItem(row, 3, it)
 
@@ -1035,13 +1254,26 @@ class MainWindow(QMainWindow):
 
     def _build_device_details_group(self) -> QGroupBox:
         group = QGroupBox(QCoreApplication.translate("MainWindow", "Selected Device Details"))
-        form = QFormLayout()
-        group.setLayout(form)
+        
+        # Scroll area for details
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        
+        content_widget = QWidget()
+        form = QFormLayout(content_widget)
+        
         self.device_detail_labels = {}
         detail_fields = [
             ("board", QCoreApplication.translate("MainWindow", "Board Type")),
             ("port", QCoreApplication.translate("MainWindow", "Port")),
             ("uid", QCoreApplication.translate("MainWindow", "UID")),
+            ("chip_id", QCoreApplication.translate("MainWindow", "Chip ID")),
+            ("mac", QCoreApplication.translate("MainWindow", "MAC Address")),
+            ("firmware", QCoreApplication.translate("MainWindow", "Firmware Version")),
+            ("hardware", QCoreApplication.translate("MainWindow", "Hardware Version")),
+            ("flash", QCoreApplication.translate("MainWindow", "Flash Size")),
+            ("cpu", QCoreApplication.translate("MainWindow", "CPU Frequency")),
             ("serial", QCoreApplication.translate("MainWindow", "Serial Number")),
             ("vidpid", QCoreApplication.translate("MainWindow", "VID:PID")),
             ("manufacturer", QCoreApplication.translate("MainWindow", "Manufacturer")),
@@ -1059,11 +1291,19 @@ class MainWindow(QMainWindow):
             value_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
             form.addRow(QLabel(label_text + ":"), value_label)
             self.device_detail_labels[key] = value_label
+            
         self.device_extra_info = QTextEdit()
         self.device_extra_info.setReadOnly(True)
         self.device_extra_info.setPlaceholderText(QCoreApplication.translate("MainWindow", "No additional info yet"))
         self.device_extra_info.setMaximumHeight(140)
         form.addRow(QLabel(QCoreApplication.translate("MainWindow", "Additional Info:")), self.device_extra_info)
+        
+        scroll.setWidget(content_widget)
+        
+        layout = QVBoxLayout()
+        layout.addWidget(scroll)
+        group.setLayout(layout)
+        
         return group
 
     def _clear_device_details(self):
@@ -1103,6 +1343,12 @@ class MainWindow(QMainWindow):
             "board": device.board_type.value,
             "port": device.port,
             "uid": device.uid or "N/A",
+            "chip_id": device.chip_id or "N/A",
+            "mac": device.mac_address or "N/A",
+            "firmware": device.firmware_version or "N/A",
+            "hardware": device.hardware_version or "N/A",
+            "flash": device.flash_size or "N/A",
+            "cpu": device.cpu_frequency or "N/A",
             "serial": device.serial_number or "N/A",
             "vidpid": vidpid,
             "manufacturer": device.manufacturer or "N/A",
@@ -1185,94 +1431,240 @@ class MainWindow(QMainWindow):
             dialog.setMinimumDuration(0)
             dialog.setAutoClose(False)
             dialog.show()
-            QApplication.processEvents()
+            # QApplication.processEvents() # Removed to prevent recursive repaint
             return dialog
         except Exception:
             return None
 
-    def _load_device_uid(self, device: Device, row: int):
-        """Load UID by flashing firmware and reading device info."""
+    def _on_uid_progress(self, msg):
+        """Handle progress updates for UID loading dialog."""
+        if self.uid_loading_dialog:
+            self.uid_loading_dialog.setLabelText(msg)
+
+    def _load_device_uid(self, device: Device, row: int, show_info: bool = True):
+        """Load UID by flashing firmware and reading device info (Async)."""
         try:
             # Show loading popup
-            loading_dialog = self._show_uid_loading_overlay()
-            if not loading_dialog:
+            self.uid_loading_dialog = self._show_uid_loading_overlay()
+            if not self.uid_loading_dialog:
                 return
 
-            def progress(message):
-                text = message or QCoreApplication.translate("MainWindow", "Working...")
-                self._show_status(text)
-                if loading_dialog:
-                    loading_dialog.setLabelText(text)
-                QApplication.processEvents()
+            # Connect progress signal
+            try:
+                self.firmware_flasher.progress_update.disconnect(self._on_uid_progress)
+            except (RuntimeError, TypeError):
+                # Ignore if not connected
+                pass
+            except Exception:
+                pass
+            self.firmware_flasher.progress_update.connect(self._on_uid_progress)
 
-            # Find UID firmware path
-            p = self._find_uid_firmware_path()
-            if not p:
-                progress(QCoreApplication.translate("MainWindow", "GetMachineUid.bin not found in BinaryFiles"))
-                if loading_dialog:
-                    loading_dialog.close()
-                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Firmware Not Found"), QCoreApplication.translate("MainWindow", "GetMachineUid.bin not found in BinaryFiles folder"))
-                return
+            # Capture data for thread
+            machine_id_text = self.machine_id.text() or ""
 
-            progress(QCoreApplication.translate("MainWindow", "Flashing UID firmware..."))
-
-            # Flash the firmware
-            ok = self.firmware_flasher.flash_firmware(device, str(p), progress)
-            if ok:
-                progress(QCoreApplication.translate("MainWindow", "Reading device information..."))
-
-                # Read device info
-                self.device_detector._read_device_info(device)
-                device.extra_info = device.extra_info or {}
-                device.extra_info['uid_flashed'] = True
-                device.extra_info['machine_id'] = self.machine_id.text() or ""
-
-                # Update device in history
-                self.device_detector.update_device_in_history(device)
-
-                # Update table and details
-                self._update_device_table_row(device, row)
-                self._update_device_details(device)
-
-                progress(QCoreApplication.translate("MainWindow", "UID loaded successfully!"))
-                self._show_status(QCoreApplication.translate("MainWindow", "UID loaded successfully!"))
-
-                # Show UID info dialog
-                try:
-                    self._show_uid_info_dialog(device)
-                except Exception:
-                    pass
-
-            else:
-                progress(QCoreApplication.translate("MainWindow", "Firmware flashing failed"))
-                QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Flash Failed"), QCoreApplication.translate("MainWindow", "Failed to flash UID firmware"))
+            # Start worker
+            self.uid_worker = WorkerThread(
+                self._load_device_uid_task,
+                device,
+                machine_id_text
+            )
+            self.uid_worker.finished.connect(lambda: self._on_uid_load_success(device, row, show_info))
+            self.uid_worker.error.connect(lambda err: self._on_uid_load_error(err))
+            self.uid_worker.start()
 
         except Exception as e:
-            logger.warning(f"UID loading error: {e}")
-            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), f"{QCoreApplication.translate('MainWindow', 'Failed to load UID:')} {str(e)}")
-        finally:
-            # Close loading dialog
-            if loading_dialog:
-                loading_dialog.close()
+            logger.warning(f"UID loading setup error: {e}")
+            if self.uid_loading_dialog:
+                self.uid_loading_dialog.close()
+            QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), f"{str(e)}")
 
-    def _find_uid_firmware_path(self) -> Optional[Path]:
-        """Find the GetMachineUid.bin firmware file."""
-        # Check standard locations
-        possible_paths = [
-            # Development/Source relative
-            Path(__file__).resolve().parent.parent.parent.parent / "BinaryFiles" / "GetMachineID" / "GetMachineUid.bin",
-            # Distributed/Installed relative
-            Path(sys.executable).parent / "BinaryFiles" / "GetMachineID" / "GetMachineUid.bin",
-            # Working directory relative
-            Path.cwd() / "BinaryFiles" / "GetMachineID" / "GetMachineUid.bin",
-             # Parent of working directory (sometimes needed in dev)
-            Path.cwd().parent / "BinaryFiles" / "GetMachineID" / "GetMachineUid.bin",
+    def _ensure_uid_firmware_ready(self, progress_callback) -> Path:
+        """Find or download GetMachineUid.bin (Thread-safe, for WorkerThread)."""
+        # 1. Search local paths
+        candidates = [
+            Config.WORKSPACE_DIR / 'GetMachineID' / 'GetMachineUid.bin',
+            Path.cwd() / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin',
+            Path.cwd() / 'BinaryFiles' / 'GetMachineUid.bin',
         ]
+
+        # Check bundled resources (PyInstaller)
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            base = Path(sys._MEIPASS)
+            candidates.insert(0, base / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
+            candidates.insert(0, base / 'BinaryFiles' / 'GetMachineUid.bin')
         
-        for p in possible_paths:
-            if p.exists():
-                return p
-        return None
+        # Try to find existing
+        for p in candidates:
+            try:
+                if p.exists() and p.stat().st_size > 1000:
+                    return p
+            except Exception:
+                continue
+                
+        # 2. Download if not found
+        if not check_internet_connection():
+            raise Exception(QCoreApplication.translate("MainWindow", "Internet connection required to download firmware. Please connect to the internet."))
+
+        target_file = Config.WORKSPACE_DIR / 'GetMachineID' / 'GetMachineUid.bin'
+        try:
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            url = Config.GET_MACHINE_UID_URL
+            progress_callback(QCoreApplication.translate("MainWindow", "Downloading firmware..."))
+            
+            resp = requests.get(url, stream=True, timeout=30)
+            resp.raise_for_status()
+            
+            total = int(resp.headers.get('content-length', 0))
+            downloaded = 0
+            
+            with open(target_file, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total > 0:
+                            pct = int(downloaded / total * 100)
+                            # Only update periodically to avoid spamming signals
+                            if pct % 10 == 0: 
+                                progress_callback(QCoreApplication.translate("MainWindow", f"Downloading firmware... {pct}%"))
+                                
+            if target_file.stat().st_size < 1000:
+                 raise ValueError("Downloaded file too small")
+                 
+            return target_file
+            
+        except Exception as e:
+            logger.error(f"Failed to download firmware: {e}")
+            if target_file.exists():
+                try:
+                    target_file.unlink()
+                except Exception:
+                    pass
+            raise Exception(f"Firmware download failed: {str(e)}")
+
+    def _load_device_uid_task(self, device, machine_id_text):
+        """Background task for UID loading."""
+        # Pause monitoring to avoid conflicts
+        if hasattr(self.device_detector, 'pause_monitoring'):
+            self.device_detector.pause_monitoring()
+            
+        try:
+            def progress(msg):
+                self.firmware_flasher.progress_update.emit(msg)
+
+            # Ensure firmware
+            firmware_path = self._ensure_uid_firmware_ready(progress)
+
+            self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "Flashing UID firmware..."))
+            
+            # Flash
+            ok = self.firmware_flasher.flash_firmware(device, str(firmware_path))
+            if not ok:
+                raise Exception("Firmware flashing failed")
+                
+            self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "Reading device information..."))
+            
+            # Read info
+            time.sleep(1.0) # Give it a moment to boot
+            self.device_detector._read_device_info(device)
+            
+            # Explicitly read UID if missing (STM32 only)
+            if not device.uid and device.board_type == BoardType.STM32:
+                self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "Checking boot output for UID..."))
+                try:
+                    # Attempt to read boot output first (without resetting buffer)
+                    with serial.Serial(device.port, 115200, timeout=0.5) as ser:
+                        boot_output = ""
+                        # Quick read of what's already there
+                        if ser.in_waiting:
+                            boot_output = ser.read(ser.in_waiting).decode('ascii', errors='ignore')
+                        
+                        # Check for UID
+                        if "UID:" in boot_output:
+                            for line in boot_output.splitlines():
+                                if "UID:" in line:
+                                    parts = line.split('UID:')
+                                    if len(parts) > 1:
+                                        uid_cand = parts[1].strip().split()[0]
+                                        uid_cand = uid_cand.replace('0x', '').replace(':', '').upper()
+                                        if len(uid_cand) >= 24:
+                                            device.uid = uid_cand
+                                            break
+                except Exception as e:
+                    logger.debug(f"Boot output read failed: {e}")
+
+                # If still no UID, try the command method
+                if not device.uid:
+                    self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "Reading UID directly..."))
+                    uid = self.device_detector.read_stm32_uid_direct(device.port)
+                    if uid:
+                        device.uid = uid
+
+            # Capture all serial output (e.g. boot logs)
+            self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "Capturing detailed serial info..."))
+            serial_dump = self.device_detector.read_all_serial_output(device.port, timeout=3.0)
+            
+            # Update device object
+            device.extra_info = device.extra_info or {}
+            device.extra_info['uid_flashed'] = True
+            device.extra_info['machine_id'] = machine_id_text
+            device.extra_info['serial_output'] = serial_dump
+            
+            # Update history
+            self.device_detector.update_device_in_history(device)
+            
+        finally:
+            # Resume monitoring
+            if hasattr(self.device_detector, 'resume_monitoring'):
+                self.device_detector.resume_monitoring()
+
+    def _on_uid_load_success(self, device, row, show_info=True):
+        """Handle successful UID load."""
+        try:
+            try:
+                self.firmware_flasher.progress_update.disconnect(self._on_uid_progress)
+            except (RuntimeError, TypeError):
+                pass
+            except Exception:
+                pass
+                
+            if self.uid_loading_dialog:
+                self.uid_loading_dialog.close()
+                self.uid_loading_dialog = None
+                
+            self._show_status(QCoreApplication.translate("MainWindow", "UID loaded successfully!"))
+            
+            # Update UI
+            self._update_device_table_row(device, row)
+            self._update_device_details(device)
+            
+            # Info popup removed as per request - only loading overlay was shown
+            # if show_info:
+            #    try:
+            #        self._show_uid_info_dialog(device)
+            #    except Exception:
+            #        pass
+        except Exception as e:
+            logger.error(f"Error in _on_uid_load_success: {e}", exc_info=True)
+            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Warning"), 
+                                f"UID loaded but UI update failed: {e}")
+
+    def _on_uid_load_error(self, err):
+        """Handle UID load error."""
+        try:
+            self.firmware_flasher.progress_update.disconnect(self._on_uid_progress)
+        except (RuntimeError, TypeError):
+            pass
+        except Exception:
+            pass
+            
+        if self.uid_loading_dialog:
+            self.uid_loading_dialog.close()
+            self.uid_loading_dialog = None
+            
+        QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), f"{QCoreApplication.translate('MainWindow', 'Failed to load UID:')} {err}")
+
 
     def _adjust_layout_density(self, row_count: int):
         try:
@@ -1379,14 +1771,15 @@ class MainWindow(QMainWindow):
         dialog.setLayout(v)
 
         def on_accept():
+            if not check_internet_connection():
+                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Internet Required"), QCoreApplication.translate("MainWindow", "Please connect to the internet to send emails."))
+                return
+
             description = desc.toPlainText().strip()
             if not description:
                 QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Description"), QCoreApplication.translate("MainWindow", "Please provide a brief description of the issue."))
                 return
             client_name = (self.client_name.text() if hasattr(self, 'client_name') else self.config.get('client_name', '')).strip()
-            if not client_name:
-                QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Missing Client Name"), QCoreApplication.translate("MainWindow", "Please fill in Client Name in Machine Information before sending support request."))
-                return
 
             smtp_config = self.config.get('smtp', {})
             azure_config = self.config.get('azure', {})
@@ -1397,6 +1790,18 @@ class MainWindow(QMainWindow):
             if not is_smtp_valid and not is_azure_valid:
                 QMessageBox.warning(dialog, QCoreApplication.translate("MainWindow", "Email Not Configured"), QCoreApplication.translate("MainWindow", "Please configure Email settings first in Settings > Configure Email."))
                 return
+
+            # Check if logs are included, if not warn user
+            if not include_logs_chk.isChecked():
+                reply = QMessageBox.question(
+                    dialog,
+                    QCoreApplication.translate("MainWindow", "Include Logs?"),
+                    QCoreApplication.translate("MainWindow", "Including application logs helps us analyze and resolve issues faster.\n\nDo you want to include logs?"),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                if reply == QMessageBox.Yes:
+                    include_logs_chk.setChecked(True)
 
             # Prepare optional logs zip
             attachment_path = None
@@ -1415,20 +1820,50 @@ class MainWindow(QMainWindow):
 
             # Build email body
             operator_name = self.operator_name.text()
-            operator_email = self.operator_email.text()
-            machine_type = self.machine_type.currentText()
-            machine_id = self.machine_id.text()
-            device_summary = self._create_device_summary()
+            
+            # Gather info for template
+            app_name = Config.APP_NAME
+            app_version = get_version()[0]
+            os_version = platform.platform()
+            device_name = socket.gethostname()
+            install_type = "Production" if getattr(sys, 'frozen', False) else "Development"
+            timestamp = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm:ss')
+            
+            if include_logs_chk.isChecked():
+                logs_status = QCoreApplication.translate("MainWindow", "Logs are attached to this email.")
+            else:
+                logs_status = ""
 
-            client_name = (self.client_name.text() if hasattr(self, 'client_name') else self.config.get('client_name', '')).strip()
-            body = (
-                f"{QCoreApplication.translate('MainWindow', 'Support request from')} {operator_name} ({operator_email})\n\n"
-                f"{QCoreApplication.translate('MainWindow', 'Machine Type')}: {machine_type}\n"
-                f"{QCoreApplication.translate('MainWindow', 'Machine ID')}: {machine_id}\n"
-                f"{QCoreApplication.translate('MainWindow', 'Client Name')}: {client_name or '-'}\n"
-                f"{QCoreApplication.translate('MainWindow', 'Devices Detected')}: {len(self.devices)}\n\n"
-                f"{QCoreApplication.translate('MainWindow', 'User Description')}:\n{description}\n\n"
-                f"{QCoreApplication.translate('MainWindow', 'Device Details')}:\n{device_summary}\n"
+            body = QCoreApplication.translate("MainWindow", """Hello Support Team,
+
+A new support request has been submitted from the {app_name} application.
+
+User Description:
+{user_description}
+
+Application Information (Auto-collected):
+App Version: {app_version}
+Operating System: {os_version}
+Device Name: {device_name}
+Installation Type: {install_type}
+Date & Time: {timestamp}
+
+Logs Attachment:
+{logs_status}
+
+Please review the information above and contact the user if additional details are required.
+
+Best regards,
+{operator_name} Support System""").format(
+                app_name=app_name,
+                user_description=description,
+                app_version=app_version,
+                os_version=os_version,
+                device_name=device_name,
+                install_type=install_type,
+                timestamp=timestamp,
+                logs_status=logs_status,
+                operator_name=operator_name
             )
 
             self.progress_bar.setVisible(True)
@@ -1680,8 +2115,64 @@ class MainWindow(QMainWindow):
         # User requested that clicking "Send Email" triggers report generation and confirmation
         self.generate_report()
     
+    def process_email_queue(self):
+        """Process queued emails when internet is available."""
+        # Check internet without blocking UI too much
+        # (check_internet_connection uses a short timeout)
+        if not check_internet_connection():
+            return
+            
+        try:
+            pending = self.email_sender.queue_manager.get_pending_emails()
+            if not pending:
+                return
+                
+            logger.info(f"Processing {len(pending)} queued emails...")
+            
+            for email_entry in pending:
+                try:
+                    # Extract ID
+                    email_id = email_entry["id"]
+                    
+                    # Prepare attachment path
+                    attachment_path = None
+                    if email_entry.get("attachment_path"):
+                        p = Path(email_entry["attachment_path"])
+                        if p.exists():
+                            attachment_path = p
+                    
+                    # Try to send
+                    # Note: We pass queue_if_offline=False to avoid infinite queuing loop
+                    # if the connection drops mid-process.
+                    success = self.email_sender.send_email(
+                        smtp_config=email_entry.get("smtp_config", {}),
+                        recipients=email_entry.get("recipients", []),
+                        subject=email_entry.get("subject", ""),
+                        body=email_entry.get("body", ""),
+                        attachment_path=attachment_path,
+                        azure_config=email_entry.get("azure_config"),
+                        sender_override=email_entry.get("sender_override"),
+                        queue_if_offline=False
+                    )
+                    
+                    if success:
+                        self.email_sender.queue_manager.remove_from_queue(email_id)
+                        logger.info(f"Successfully sent queued email {email_id}")
+                    else:
+                        logger.warning(f"Failed to send queued email {email_id}. Keeping in queue.")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing queued email {email_entry.get('id')}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error in process_email_queue: {e}")
+
     def send_email_automatically(self):
         """Automatically send email with the last generated report."""
+        if not check_internet_connection():
+             QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "Internet Required"), QCoreApplication.translate("MainWindow", "Please connect to the internet to send support emails."))
+             return
+
         if not self.last_report_path or not self.last_report_path.exists():
             QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Report"), 
                               QCoreApplication.translate("MainWindow", "No report available to send."))
@@ -2350,13 +2841,17 @@ Please find the attached Excel report with complete device information including
     
     def flash_firmware_dialog(self):
         """Open firmware flashing dialog."""
+        # Allow opening without devices for tour/testing purposes, but show warning
         if not self.devices:
-            QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Devices"), QCoreApplication.translate("MainWindow", "No devices detected"))
-            return
+             # Just a non-blocking notification or empty state in dialog
+             pass
         
         dialog = QDialog(self)
         dialog.setWindowTitle(QCoreApplication.translate("MainWindow", "Flash Firmware"))
-        dialog.setWindowState(Qt.WindowMaximized)
+        dialog.setMinimumWidth(500)
+        dialog.setObjectName("flash_firmware_dialog")
+        # Remove Maximize call to keep dialog compact
+        # dialog.setWindowState(Qt.WindowMaximized)
         
         main_layout = QVBoxLayout(dialog)
         scroll = QScrollArea()
@@ -2372,17 +2867,24 @@ Please find the attached Excel report with complete device information including
         
         device_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Choose device to flash:")))
         device_list = QListWidget()
+        device_list.setObjectName("flash_device_list")
         device_list.setMaximumHeight(70)  # Limit height to make it smaller
         
-        for device in self.devices:
-            item_text = f"{device.board_type.value} - {device.port}"
-            if device.manufacturer:
-                item_text += f" ({device.manufacturer})"
-            item = QListWidgetItem(item_text)
-            item.setData(Qt.UserRole, device)
+        if self.devices:
+            for device in self.devices:
+                item_text = f"{device.board_type.value} - {device.port}"
+                if device.manufacturer:
+                    item_text += f" ({device.manufacturer})"
+                item = QListWidgetItem(item_text)
+                item.setData(Qt.UserRole, device)
+                device_list.addItem(item)
+            device_list.setCurrentRow(0)  # Select first device
+        else:
+            # Add a placeholder item if no devices
+            item = QListWidgetItem(QCoreApplication.translate("MainWindow", "No devices detected"))
+            item.setFlags(Qt.NoItemFlags) # Disable selection
             device_list.addItem(item)
-        
-        device_list.setCurrentRow(0)  # Select first device
+            
         device_layout.addWidget(device_list)
         device_group.setLayout(device_layout)
         layout.addWidget(device_group)
@@ -2395,6 +2897,7 @@ Please find the attached Excel report with complete device information including
         source_layout = QHBoxLayout()
         source_layout.addWidget(QLabel(QCoreApplication.translate("MainWindow", "Source Type:")))
         source_combo = QComboBox()
+        source_combo.setObjectName("flash_source_combo")
         source_combo.addItems([
             QCoreApplication.translate("MainWindow", "Local File (.bin/.elf)"),
             QCoreApplication.translate("MainWindow", "URL Download"),
@@ -2406,10 +2909,12 @@ Please find the attached Excel report with complete device information including
         # File selection
         file_layout = QHBoxLayout()
         file_path = QLineEdit()
+        file_path.setObjectName("flash_file_path")
         file_path.setPlaceholderText(QCoreApplication.translate("MainWindow", "Select firmware file or enter URL..."))
         file_layout.addWidget(file_path)
         
         browse_btn = QPushButton(QCoreApplication.translate("MainWindow", "Browse"))
+        browse_btn.setObjectName("flash_browse_btn")
         browse_btn.clicked.connect(lambda: self._browse_firmware_file(file_path))
         file_layout.addWidget(browse_btn)
         firmware_layout.addLayout(file_layout)
@@ -2529,8 +3034,14 @@ Please find the attached Excel report with complete device information including
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         flash_btn = buttons.button(QDialogButtonBox.Ok)
         flash_btn.setText("Flash Firmware")
+        
+        # Disable flash button if no devices
+        if not self.devices:
+            flash_btn.setEnabled(False)
+            
         flash_btn.clicked.connect(lambda: self._start_flashing(
-            dialog, device_list.currentItem().data(Qt.UserRole),
+            dialog, 
+            device_list.currentItem().data(Qt.UserRole) if device_list.currentItem() and device_list.currentItem().data(Qt.UserRole) else None,
             file_path.text(), erase_checkbox.isChecked(),
             verify_checkbox.isChecked(), boot_combo.currentText()
         ))
@@ -2544,21 +3055,19 @@ Please find the attached Excel report with complete device information including
             pass  # Dialog was accepted
     def read_uid_dialog(self):
         """Flash GetMachineUid.bin and read the UID from the device."""
-        if getattr(self, '_is_reading_uid', False):
-            return
-        self._is_reading_uid = True
-
         # Get list of devices currently shown in table
         devices = getattr(self, 'filtered_devices', self.devices)
         device = None
+        row = -1
         
         # 1. Check for checked items (checkbox in column 0)
-        for row in range(self.device_table.rowCount()):
-            item = self.device_table.item(row, 0)
+        for r in range(self.device_table.rowCount()):
+            item = self.device_table.item(r, 0)
             if item and item.checkState() == Qt.Checked:
-                if 0 <= row < len(devices):
-                    device = devices[row]
-                    break # Take the first checked one
+                if 0 <= r < len(devices):
+                    device = devices[r]
+                    row = r
+                    break
         
         # 2. If no checkbox checked, check for selected row
         if not device:
@@ -2569,224 +3078,11 @@ Please find the attached Excel report with complete device information including
                     device = devices[row]
         
         if not device:
-            self._is_reading_uid = False
             QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "No Device"),
                                 QCoreApplication.translate("MainWindow", "Please check or select a board from the table first."))
             return
 
-        self.current_uid_device = device
-
-        # CRITICAL FIX: Always use GetMachineUid.bin for UID reading
-        # Not whatever firmware was previously selected
-        p = self._find_uid_firmware_path()
-        if not p:
-            p = self._ensure_uid_bin_downloaded()
-        
-        if not p:
-            self._is_reading_uid = False
-            QMessageBox.critical(
-                self, 
-                QCoreApplication.translate("MainWindow", "Firmware Not Found"),
-                QCoreApplication.translate("MainWindow", 
-                    "GetMachineUid.bin firmware not found.\n\n"
-                    "This special firmware is required to read the UID from the board.\n"
-                    "The application will attempt to download it automatically.\n\n"
-                    "If download fails, please check your internet connection."
-                )
-            )
-            return
-
-        # Verify the file is actually the UID firmware (not a random .bin file)
-        if not p.name.lower().startswith('getmachineuid'):
-            self._is_reading_uid = False
-            QMessageBox.warning(
-                self,
-                QCoreApplication.translate("MainWindow", "Wrong Firmware"),
-                QCoreApplication.translate("MainWindow",
-                    f"Found firmware file: {p.name}\n\n"
-                    "This is not the GetMachineUid.bin firmware.\n"
-                    "UID reading requires the specific GetMachineUid.bin firmware.\n\n"
-                    "The application will attempt to download it."
-                )
-            )
-            # Try to download the correct one
-            p = self._ensure_uid_bin_downloaded()
-            if not p:
-                return
-
-        # Progress Dialog
-        self.uid_loading_dialog = QProgressDialog(
-            QCoreApplication.translate("MainWindow", "Starting UID read process..."), 
-            None, 0, 0, self
-        )
-        self.uid_loading_dialog.setWindowTitle(
-            QCoreApplication.translate("MainWindow", "Reading UID - DO NOT CLOSE")
-        )
-        self.uid_loading_dialog.setWindowModality(Qt.WindowModal)
-        self.uid_loading_dialog.setCancelButton(None) # Make it non-cancellable
-        self.uid_loading_dialog.setMinimumDuration(0)
-        self.uid_loading_dialog.setRange(0, 0) # Indeterminate progress
-        self.uid_loading_dialog.show()
-
-        # Result container
-        self.uid_read_result = None
-
-        # Define task
-        def task(device_obj, firmware_path):
-            def update_status(msg):
-                QTimer.singleShot(0, lambda: self.uid_loading_dialog.setLabelText(msg))
-
-            # 1. Flash the GetMachineUid.bin firmware
-            update_status(QCoreApplication.translate("MainWindow", 
-                "Step 1/3: Flashing GetMachineUid.bin firmware... (Do not unplug)"))
-            
-            success = self.firmware_flasher.flash_firmware(
-                device_obj, 
-                str(firmware_path), 
-                lambda msg: update_status(QCoreApplication.translate("MainWindow", "Step 1/3: {}").format(msg))
-            )
-            
-            if not success:
-                raise Exception(QCoreApplication.translate("MainWindow", 
-                    "Firmware flashing failed. Please check:\n"
-                    "1. Device is properly connected\n"
-                    "2. Device drivers are installed\n"
-                    "3. No other program is using the device"))
-
-            # 2. Wait for device reboot and re-enumeration
-            update_status(QCoreApplication.translate("MainWindow", 
-                "Step 2/3: Waiting for device to reboot..."))
-            time.sleep(6) # Wait for device to reboot and re-enumerate
-            
-            # 3. Connect to serial port and read UID
-            port_name = device_obj.port
-            baud_rate = 115200 
-            
-            update_status(QCoreApplication.translate("MainWindow", 
-                "Step 3/3: Connecting to serial port {}...").format(port_name))
-            
-            try:
-                # Retry connection a few times (device may take time to be ready)
-                max_retries = 5
-                for attempt in range(max_retries):
-                    try:
-                        with serial.Serial(port_name, baud_rate, timeout=1) as ser:
-                            update_status(QCoreApplication.translate("MainWindow", 
-                                "Step 3/3: Reading UID data (Attempt {}/{})...").format(attempt + 1, max_retries))
-                            
-                            # Active polling loop - send 'i' command and read response
-                            start_time = time.time()
-                            uid = None
-                            timeout = 5  # 5 seconds per attempt
-                            
-                            while time.time() - start_time < timeout:
-                                # Send info command
-                                ser.write(b'i')
-                                ser.flush()
-                                time.sleep(0.2)
-                                
-                                # Read all available lines
-                                while ser.in_waiting:
-                                    try:
-                                        line = ser.readline().decode('utf-8', errors='ignore').strip()
-                                        
-                                        # Look for UID in response
-                                        # Format 1: "Serial (UID hex): XXXX"
-                                        if "Serial (UID hex):" in line:
-                                            uid = line.split(":")[-1].strip()
-                                            break
-                                        
-                                        # Format 2: "Unique ID: XX-XX-XX"
-                                        if "Unique ID:" in line and "-" in line:
-                                            parts = line.split(":")[-1].strip().split("-")
-                                            if len(parts) == 3:
-                                                uid = "".join(parts)
-                                                break
-                                        
-                                        # Format 3: Just the UID hex string
-                                        if len(line) == 24 and all(c in '0123456789ABCDEFabcdef' for c in line):
-                                            uid = line
-                                            break
-                                            
-                                    except Exception as read_error:
-                                        logger.warning(f"Error reading line: {read_error}")
-                                        continue
-                                
-                                if uid:
-                                    self.uid_read_result = uid
-                                    return
-                                
-                                time.sleep(0.5)
-                        
-                        # If we get here, we connected but didn't get UID
-                        if attempt < max_retries - 1:
-                            update_status(QCoreApplication.translate("MainWindow",
-                                "No UID received, retrying... ({}/{})").format(attempt + 1, max_retries))
-                            time.sleep(1)
-                        
-                    except serial.SerialException as se:
-                        if attempt < max_retries - 1:
-                            update_status(QCoreApplication.translate("MainWindow",
-                                "Connection failed, retrying... ({}/{})").format(attempt + 1, max_retries))
-                            time.sleep(1)
-                        else:
-                            raise Exception(f"Failed to connect to serial port after {max_retries} attempts: {se}")
-                
-                if not self.uid_read_result:
-                    raise Exception(
-                        "Could not retrieve UID from device.\n\n"
-                        "Possible reasons:\n"
-                        "1. Device is not running the GetMachineUid firmware\n"
-                        "2. Serial communication is not working\n"
-                        "3. Device requires a reset\n\n"
-                        "Try unplugging and reconnecting the device."
-                    )
-
-            except Exception as se:
-                raise Exception(f"Communication error: {se}")
-
-        # Thread
-        self.uid_worker = WorkerThread(task, device, p)
-        self.uid_worker.succeeded.connect(self._on_uid_read_finished)
-        self.uid_worker.error.connect(self._on_uid_read_error)
-        self.uid_worker.start()
-    def _on_uid_read_finished(self):
-        self._is_reading_uid = False
-        self.uid_loading_dialog.close()
-        uid = self.uid_read_result
-        device = getattr(self, 'current_uid_device', None)
-
-        if uid:
-            if device:
-                device.uid = uid
-                device.extra_info = device.extra_info or {}
-                device.extra_info['uid_flashed'] = True
-                
-                self.device_detector.update_device_in_history(device)
-                self._update_device_details(device)
-                
-                try:
-                    for i, d in enumerate(self.devices):
-                        if d.port == device.port:
-                             self._update_device_table_row(d, i)
-                             break
-                except Exception:
-                    pass
-                
-                # Show nice dialog
-                self._show_uid_info_dialog(device)
-            else:
-                # Fallback logging only, to avoid double popups if dialog is shown elsewhere
-                logger.warning(f"UID read successfully ({uid}) but device context was lost.")
-        else:
-             QMessageBox.warning(self, QCoreApplication.translate("MainWindow", "UID Read"), 
-                               QCoreApplication.translate("MainWindow", "Flash successful but failed to read UID."))
-
-    def _on_uid_read_error(self, err):
-        self._is_reading_uid = False
-        self.uid_loading_dialog.close()
-        QMessageBox.critical(self, QCoreApplication.translate("MainWindow", "Error"), 
-                           QCoreApplication.translate("MainWindow", "Failed to read UID: {}").format(err))
+        self._load_device_uid(device, row, show_info=True)
 
     def _browse_firmware_file(self, file_path_widget):
         """Browse for firmware file."""
@@ -3299,24 +3595,18 @@ Please find the attached Excel report with complete device information including
         self.flash_progress.setValue(0)
         self.flash_status.setText("Preparing to flash...")
         
-        # Update progress callback
-        def update_progress(msg):
-            self.flash_status.setText(msg)
-            val = self.flash_progress.value() + 20
-            if val > 100: val = 20
-            self.flash_progress.setValue(val)
-            
-            # Update popup
-            if hasattr(self, 'flash_progress_dialog') and self.flash_progress_dialog:
-                self.flash_progress_dialog.setLabelText(msg)
-            
-            dialog.repaint()
+        # Connect progress signal
+        try:
+            self.firmware_flasher.progress_update.disconnect(self._on_flash_progress_update)
+        except Exception:
+            pass
+        self.firmware_flasher.progress_update.connect(self._on_flash_progress_update)
         
         try:
             # Start flashing in a separate thread
             self.flash_thread = WorkerThread(
                 self._flash_firmware_worker,
-                device, firmware_source, erase_flash, verify_flash, boot_mode, update_progress
+                device, firmware_source, erase_flash, verify_flash, boot_mode
             )
             self.flash_thread.succeeded.connect(lambda: self._flash_completed(dialog, True))
             self.flash_thread.error.connect(lambda error: self._flash_completed(dialog, False, error))
@@ -3328,24 +3618,39 @@ Please find the attached Excel report with complete device information including
             QMessageBox.critical(dialog, "Flash Error", f"Failed to start flashing: {str(e)}")
             self.flash_progress.setVisible(False)
     
-    def _flash_firmware_worker(self, device, firmware_source, erase_flash, verify_flash, boot_mode, progress_callback):
+    def _on_flash_progress_update(self, msg):
+        """Handle progress updates for flashing dialog."""
+        if hasattr(self, 'flash_status') and self.flash_status:
+            self.flash_status.setText(msg)
+        if hasattr(self, 'flash_progress') and self.flash_progress:
+            val = self.flash_progress.value() + 5
+            if val > 100: val = 5
+            self.flash_progress.setValue(val)
+        if hasattr(self, 'flash_progress_dialog') and self.flash_progress_dialog:
+            self.flash_progress_dialog.setLabelText(msg)
+
+    def _flash_firmware_worker(self, device, firmware_source, erase_flash, verify_flash, boot_mode):
         """Worker function for firmware flashing."""
         try:
-            progress_callback("Initializing firmware flasher...")
-            
             # Flash the firmware
             success = self.firmware_flasher.flash_firmware(
                 device=device,
                 firmware_source=firmware_source,
-                progress_callback=progress_callback
+                progress_callback=None # Use signals instead
             )
             
             if success:
-                progress_callback("Firmware flashed successfully!")
-                
                 # Save firmware to OneDrive if enabled
                 if self.onedrive_manager.is_enabled():
-                    progress_callback("Saving firmware to OneDrive...")
+                    # We can't emit signal directly from here easily without callback, 
+                    # but FirmwareFlasher handles flashing signals.
+                    # For OneDrive, we might miss progress updates if we don't emit them.
+                    # But FirmwareFlasher doesn't know about OneDrive here.
+                    # We can use self.firmware_flasher.progress_update.emit() if we wanted, 
+                    # but we are in a thread. 
+                    # Actually, FirmwareFlasher is a QObject, so emitting its signal from another thread is fine.
+                    self.firmware_flasher.progress_update.emit("Saving firmware to OneDrive...")
+                    
                     _p = Path(firmware_source)
                     firmware_info = {
                         "name": _p.name,
@@ -3357,17 +3662,17 @@ Please find the attached Excel report with complete device information including
                     }
                     
                     onedrive_success = self.onedrive_manager.save_firmware_file(
-                        operator_name=self.operator_name.text(),
-                        machine_type=self.machine_type.currentText(),
-                        machine_id=self.machine_id.text(),
+                        operator_name=getattr(self, 'operator_name', type('obj', (object,), {'text': lambda: ''})()).text(),
+                        machine_type=getattr(self, 'machine_type', type('obj', (object,), {'currentText': lambda: ''})()).currentText(),
+                        machine_id=getattr(self, 'machine_id', type('obj', (object,), {'text': lambda: ''})()).text(),
                         firmware_path=_p if _p.exists() else Path(),
                         firmware_info=firmware_info
                     )
                     
                     if onedrive_success:
-                        progress_callback(QCoreApplication.translate("MainWindow", "[SUCCESS] Firmware saved to OneDrive"))
+                        self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "[SUCCESS] Firmware saved to OneDrive"))
                     else:
-                        progress_callback(QCoreApplication.translate("MainWindow", "[WARNING] OneDrive firmware save failed"))
+                        self.firmware_flasher.progress_update.emit(QCoreApplication.translate("MainWindow", "[WARNING] OneDrive firmware save failed"))
             else:
                 raise Exception(QCoreApplication.translate("MainWindow", "Firmware flashing failed"))
                 
@@ -3407,8 +3712,8 @@ Please find the attached Excel report with complete device information including
         """Open machine types configuration dialog."""
         dialog = QDialog(self)
         dialog.setWindowTitle("Machine Types Configuration")
-        dialog.setMinimumWidth(700)
-        dialog.setMinimumHeight(500)
+        dialog.setMinimumWidth(600)
+        dialog.setMinimumHeight(400)
         
         layout = QVBoxLayout()
         
@@ -3417,7 +3722,15 @@ Please find the attached Excel report with complete device information including
         
         # Machine Types Management Tab
         machine_tab = QWidget()
-        machine_layout = QVBoxLayout()
+        machine_tab_layout = QVBoxLayout(machine_tab)
+        
+        # Scroll area for machine tab
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        
+        content_widget = QWidget()
+        machine_layout = QVBoxLayout(content_widget)
         
         # Machine types list
         list_group = QGroupBox("Machine Types")
@@ -3458,6 +3771,7 @@ Please find the attached Excel report with complete device information including
         • <b>Length:</b> Total length of machine ID including prefix<br><br>
         <b>Example:</b> Name="Amphore", Prefix="AMP-", Length=12 → IDs like "AMP-123456789"
         """)
+        basic_config_guide.setWordWrap(True)
         basic_config_guide.setStyleSheet("color: #333; font-size: 10px; background: #f0f8ff; padding: 8px; border-radius: 4px; border: 1px solid #b0d4f1;")
         machine_guide_layout.addWidget(basic_config_guide)
         
@@ -3470,6 +3784,7 @@ Please find the attached Excel report with complete device information including
         • Test validation before deploying to production<br>
         • Document your machine type standards for your team
         """)
+        best_practices_guide.setWordWrap(True)
         best_practices_guide.setStyleSheet("color: #333; font-size: 10px; background: #fff0f0; padding: 8px; border-radius: 4px; border: 1px solid #f1b0b0;")
         machine_guide_layout.addWidget(best_practices_guide)
         
@@ -3481,13 +3796,19 @@ Please find the attached Excel report with complete device information including
         • <b>BOKs:</b> Prefix="BOK-", Length=10 → "BOK-1234567"<br>
         • <b>Custom:</b> Prefix="CUST-", Length=15 → "CUST-1234567890"
         """)
+        examples_guide.setWordWrap(True)
         examples_guide.setStyleSheet("color: #333; font-size: 10px; background: #f0fff0; padding: 8px; border-radius: 4px; border: 1px solid #b0f1b0;")
         machine_guide_layout.addWidget(examples_guide)
         
         machine_guide_group.setLayout(machine_guide_layout)
         machine_layout.addWidget(machine_guide_group)
         
-        machine_tab.setLayout(machine_layout)
+        # Add stretch to push content up
+        machine_layout.addStretch()
+        
+        scroll_area.setWidget(content_widget)
+        machine_tab_layout.addWidget(scroll_area)
+        
         tab_widget.addTab(machine_tab, QCoreApplication.translate("MainWindow", "Machine Types"))
         
         # Validation Tab
@@ -4794,7 +5115,10 @@ Please find the attached Excel report with complete device information including
 
         dialog = QDialog(self)
         dialog.setWindowTitle(QCoreApplication.translate('MainWindow', 'Open Project'))
-        dialog.setWindowState(Qt.WindowMaximized)
+        dialog.setMinimumWidth(600)
+        dialog.setObjectName("open_project_dialog")
+        # Remove Maximize call to keep dialog compact
+        # dialog.setWindowState(Qt.WindowMaximized)
         
         main_layout = QVBoxLayout(dialog)
         scroll = QScrollArea()
@@ -4806,6 +5130,7 @@ Please find the attached Excel report with complete device information including
 
         # IDE status
         ide_status_label = QLabel()
+        ide_status_label.setWordWrap(True)
         installed, ide_path, source = stm32cubeide_install_status()
         if installed and ide_path:
             ide_status_label.setText(QCoreApplication.translate('MainWindow', f'STM32CubeIDE: Found at {ide_path} (via {source})'))
@@ -4820,7 +5145,9 @@ Please find the attached Excel report with complete device information including
 
         # Mode selection
         mode_local = QRadioButton(QCoreApplication.translate('MainWindow', 'Use local project path'))
+        mode_local.setObjectName("open_project_mode_local")
         mode_git = QRadioButton(QCoreApplication.translate('MainWindow', 'Clone from Git URL'))
+        mode_git.setObjectName("open_project_mode_git")
         mode_local.setChecked(True)
         layout.addWidget(mode_local)
         layout.addWidget(mode_git)
@@ -4832,6 +5159,7 @@ Please find the attached Excel report with complete device information including
         local_container.setLayout(local_container_row)
         local_container_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Project Folder:')))
         local_input = QLineEdit()
+        local_input.setObjectName("open_local_input")
         local_input.setPlaceholderText(QCoreApplication.translate('MainWindow', 'Select a folder containing the project'))
         local_container_row.addWidget(local_input)
         browse_local = QPushButton(QCoreApplication.translate('MainWindow', 'Browse...'))
@@ -4845,6 +5173,7 @@ Please find the attached Excel report with complete device information including
 
         # Helper hint (shown for local mode)
         hint_label = QLabel()
+        hint_label.setWordWrap(True)
         hint_label.setStyleSheet('color: #616161; font-size: 12px;')
         layout.addWidget(hint_label)
 
@@ -4854,6 +5183,7 @@ Please find the attached Excel report with complete device information including
         git_url_container.setLayout(git_url_row)
         git_url_row.addWidget(QLabel(QCoreApplication.translate('MainWindow', 'Git URL:')))
         git_url_input = QLineEdit()
+        git_url_input.setObjectName("open_git_input")
         git_url_input.setPlaceholderText('https://gitlab.com/owner/repo.git')
         git_url_row.addWidget(git_url_input)
         layout.addWidget(git_url_container)
@@ -4890,6 +5220,9 @@ Please find the attached Excel report with complete device information including
         browse_ws.clicked.connect(_browse_ws)
         ws_row.addWidget(browse_ws)
         layout.addWidget(workspace_container)
+
+        # Add stretch to push content up
+        layout.addStretch()
 
         # Visibility toggle based on mode selection
         def _update_mode():
@@ -5594,144 +5927,100 @@ Please find the attached Excel report with complete device information including
             QMessageBox.information(dialog, "Success", f"Template '{template_name}' deleted successfully!")
             dialog.accept()  # Close and reopen to refresh
 
+    def _run_auto_flash_worker(self, device, firmware_path=None, show_info_dialog=False):
+        """Run auto-flash in a worker thread to prevent recursive repaints."""
+        loading_dialog = self._show_uid_loading_overlay() if device.board_type.value == 'STM32' else None
+        machine_id = self.machine_id.text() or ""
+        
+        def update_progress(msg):
+            self._show_status(msg)
+            if loading_dialog:
+                loading_dialog.setLabelText(msg)
+        
+        # Connect to flasher signal
+        self.firmware_flasher.progress_update.connect(update_progress)
+        
+        def task(device_obj, fw_path, mid):
+            if hasattr(self.device_detector, 'pause_monitoring'):
+                self.device_detector.pause_monitoring()
+            try:
+                def progress_emitter(msg):
+                    self.firmware_flasher.progress_update.emit(msg)
+
+                if not fw_path:
+                    fw_path = self._ensure_uid_firmware_ready(progress_emitter)
+
+                # Flash
+                ok = self.firmware_flasher.flash_firmware(device_obj, str(fw_path))
+                if not ok:
+                    raise Exception("Flashing failed")
+                
+                # Read Info
+                time.sleep(2.0)
+                self.device_detector._read_device_info(device_obj)
+                
+                # Update info
+                device_obj.extra_info = device_obj.extra_info or {}
+                device_obj.extra_info["uid_flashed"] = True
+                device_obj.extra_info["machine_id"] = mid
+                
+            finally:
+                if hasattr(self.device_detector, 'resume_monitoring'):
+                    self.device_detector.resume_monitoring()
+
+        def cleanup():
+            try:
+                self.firmware_flasher.progress_update.disconnect(update_progress)
+            except Exception:
+                pass
+            if loading_dialog:
+                loading_dialog.close()
+
+        def on_success():
+            cleanup()
+            self._show_status("Auto-flash: success")
+            self.device_detector.update_device_in_history(device)
+            self.refresh_devices()
+            self._update_device_details(device)
+            if show_info_dialog:
+                try:
+                    self._show_uid_info_dialog(device)
+                except Exception:
+                    pass
+
+        def on_error(err_msg):
+            cleanup()
+            if "Internet connection required" in err_msg:
+                 QMessageBox.warning(self, "Internet Required", err_msg)
+            self._show_status(f"Auto-flash failed: {err_msg}")
+            logger.warning(f"Auto-flash failed: {err_msg}")
+
+        self.flash_worker = WorkerThread(task, device, firmware_path, machine_id)
+        self.flash_worker.succeeded.connect(on_success)
+        self.flash_worker.error.connect(on_error)
+        self.flash_worker.start()
+
     def _auto_flash_on_connect(self, device: Device):
         cfg = self.config.get('auto_flash', {})
         path = cfg.get('firmware_path', '').strip()
         allowed = set(cfg.get('board_types', []) or [])
         enabled = bool(cfg.get('enabled', False))
-        if not (enabled and path):
-            p = self._find_uid_firmware_path()
-            if p:
-                path = str(p)
-            else:
-                self._show_status("UID firmware GetMachineUid.bin not found; skipping auto-flash")
-                return
-        if device.board_type.value not in allowed:
-            try:
-                from ..core.device_detector import BoardType
-                if device.board_type == BoardType.UNKNOWN:
-                    pass
-                else:
-                    return
-            except Exception:
-                return
-        p = Path(path)
-        if not p.exists():
-            raise RuntimeError("Auto-flash firmware path not found")
-        loading_dialog = self._show_uid_loading_overlay() if device.board_type.value == 'STM32' else None
         
-        def progress(message):
-            text = message or QCoreApplication.translate("MainWindow", "Working...")
-            self._show_status(text)
-            if loading_dialog:
-                loading_dialog.setLabelText(text)
-            QApplication.processEvents()
+        if allowed and device.board_type.value not in allowed:
+            return
 
-        try:
-            ok = self.firmware_flasher.flash_firmware(device, str(p), progress)
-            if ok:
-                self._show_status("Auto-flash: success, updating device info...")
-                try:
-                    if loading_dialog:
-                        loading_dialog.setLabelText(QCoreApplication.translate("MainWindow", "Loading microcontroller UID..."))
-                    self.device_detector._read_device_info(device)
-                    try:
-                        device.extra_info = device.extra_info or {}
-                        device.extra_info["uid_flashed"] = True
-                        device.extra_info["machine_id"] = self.machine_id.text() or ""
-                    except Exception:
-                        pass
-                    self.device_detector.update_device_in_history(device)
-                except Exception:
-                    pass
-                self.refresh_devices()
-                try:
-                    self._show_uid_info_dialog(device)
-                except Exception:
-                    pass
-            else:
-                self._show_status("Auto-flash: failed")
-        finally:
-            if loading_dialog:
-                loading_dialog.close()
+        if enabled and path:
+            p = Path(path)
+            if not p.exists():
+                logger.warning(f"Auto-flash firmware path not found: {path}")
+                return
+            self._run_auto_flash_worker(device, str(p), show_info_dialog=True)
+        else:
+            # Default to UID firmware if it's STM32
+            if device.board_type.value == 'STM32':
+                self._run_auto_flash_worker(device, None, show_info_dialog=True)
 
-    def _find_uid_firmware_path(self) -> Optional[Path]:
-        # Ensure downloaded if missing
-        self._ensure_uid_bin_downloaded()
-        
-        candidates = []
-        try:
-            from src.core.config import Config as _Cfg
-            # 1. Check Workspace (Primary location)
-            candidates.append(_Cfg.WORKSPACE_DIR / 'GetMachineUid.bin')
-            
-            # Legacy/Fallback paths
-            candidates.append(_Cfg.get_app_data_dir() / 'ReadUidBinFileF446RE' / 'GetMachineUid.bin')
-            candidates.append(Path(__file__).resolve().parents[2] / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
-            candidates.append(Path(__file__).resolve().parents[2] / 'BinaryFiles' / 'GetMachineUid.bin')
-            candidates.append(Path.cwd() / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
-            candidates.append(Path.cwd() / 'BinaryFiles' / 'GetMachineUid.bin')
-            import sys
-            candidates.append(Path(sys.executable).resolve().parent / 'BinaryFiles' / 'GetMachineID' / 'GetMachineUid.bin')
-            candidates.append(Path(sys.executable).resolve().parent / 'BinaryFiles' / 'GetMachineUid.bin')
-        except Exception:
-            pass
-        for p in candidates:
-            try:
-                if p.exists():
-                    return p
-            except Exception:
-                continue
-        return None
 
-    def _ensure_uid_bin_downloaded(self) -> Optional[Path]:
-        try:
-            from src.core.config import Config as _Cfg
-            import requests
-            
-            # Create GetMachineID folder
-            target_dir = _Cfg.WORKSPACE_DIR / 'GetMachineID'
-            target_dir.mkdir(parents=True, exist_ok=True)
-            target_file = target_dir / 'GetMachineUid.bin'
-            
-            if target_file.exists() and target_file.stat().st_size > 0:
-                return target_file
-                
-            # Use URL from config
-            url = _Cfg.GET_MACHINE_UID_URL
-            logger.info(f"Downloading firmware from {url} to {target_file}")
-            
-            resp = requests.get(url, allow_redirects=True, timeout=60, stream=True)
-            if resp.status_code == 200:
-                # Check for HTML content (common issue with sharing links)
-                content_type = resp.headers.get('Content-Type', '').lower()
-                if 'html' in content_type:
-                    logger.error(f"Download failed: URL returned HTML instead of binary (Content-Type: {content_type})")
-                    return None
-
-                # Save to temporary file first
-                temp_path = target_file.with_suffix(".tmp")
-                first_chunk_checked = False
-                
-                with open(temp_path, 'wb') as f:
-                    for chunk in resp.iter_content(chunk_size=8192):
-                        if not first_chunk_checked:
-                            # Double check first chunk for HTML tags just in case header is missing/wrong
-                            if b'<!DOCTYPE html>' in chunk or b'<html' in chunk:
-                                logger.error("Download failed: Content appears to be HTML")
-                                return None
-                            first_chunk_checked = True
-                        f.write(chunk)
-                
-                if temp_path.exists():
-                    temp_path.replace(target_file)
-                logger.info("Firmware downloaded successfully")
-                return target_file
-            else:
-                logger.error(f"Failed to download firmware: status {resp.status_code}")
-        except Exception as e:
-            logger.error(f"Failed to download firmware: {e}")
-        return None
 
     def _auto_flash_on_selection(self, device: Device):
         try:
@@ -5740,32 +6029,17 @@ Please find the attached Excel report with complete device information including
             # Avoid repeated flashing in one session
             if getattr(device, 'extra_info', None) and device.extra_info.get('uid_flashed'):
                 return
-            p = self._find_uid_firmware_path()
-            if not p:
-                raise RuntimeError("GetMachineUid.bin not found in BinaryFiles")
-            loading_dialog = self._show_uid_loading_overlay() if device.board_type.value == 'STM32' else None
-            def progress(message):
-                text = message or QCoreApplication.translate("MainWindow", "Working...")
-                self._show_status(text)
-                if loading_dialog:
-                    loading_dialog.setLabelText(text)
-                QApplication.processEvents()
-            ok = self.firmware_flasher.flash_firmware(device, str(p), progress)
-            if ok:
-                try:
-                    if loading_dialog:
-                        loading_dialog.setLabelText(QCoreApplication.translate("MainWindow", "Loading microcontroller UID..."))
-                    self.device_detector._read_device_info(device)
-                    device.extra_info = device.extra_info or {}
-                    device.extra_info['uid_flashed'] = True
-                    device.extra_info['machine_id'] = self.machine_id.text() or ""
-                    self.device_detector.update_device_in_history(device)
-                except Exception:
-                    pass
-                self._update_device_details(device)
-                self.refresh_devices()
-            if loading_dialog:
-                loading_dialog.close()
+            
+            # Find row
+            devices = getattr(self, 'filtered_devices', self.devices)
+            try:
+                row = devices.index(device)
+            except ValueError:
+                return
+            
+            # Trigger load (no info dialog)
+            self._load_device_uid(device, row, show_info=False)
+            
         except Exception as e:
             logger.warning(f"Selection auto-flash error: {e}")
     
@@ -5773,7 +6047,9 @@ Please find the attached Excel report with complete device information including
         """Update a specific row in the device table with new device info."""
         try:
             # Update UID column (3)
-            uid_val = device.uid or device.get_unique_id()
+            uid_val = device.uid
+            if not uid_val:
+                uid_val = "—"
             it = QTableWidgetItem(uid_val)
             it.setToolTip(self._device_details_text(device))
             self.device_table.setItem(row, 3, it)
@@ -5799,22 +6075,30 @@ Please find the attached Excel report with complete device information including
     def _show_uid_info_dialog(self, device: Device):
         d = QDialog(self)
         d.setWindowTitle("Device UID & Info")
-        layout = QFormLayout()
+        d.resize(500, 600)  # Make it larger to fit the logs
+        
+        main_layout = QVBoxLayout()
+        
+        # --- Info Form ---
+        form_group = QGroupBox("Device Details")
+        form_layout = QFormLayout()
 
         # UID with read button for STM32
         uid_layout = QHBoxLayout()
         uid_label = QLabel(device.uid or "N/A")
+        uid_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         uid_layout.addWidget(uid_label)
-        layout.addRow(QLabel("UID:"), uid_layout)
+        form_layout.addRow(QLabel("UID:"), uid_layout)
 
-        layout.addRow(QLabel("Chip ID:"), QLabel(device.chip_id or "N/A"))
-        layout.addRow(QLabel("MAC:"), QLabel(device.mac_address or "N/A"))
-        layout.addRow(QLabel("Firmware:"), QLabel(device.firmware_version or "N/A"))
-        layout.addRow(QLabel("Hardware:"), QLabel(device.hardware_version or "N/A"))
-        layout.addRow(QLabel("Flash:"), QLabel(device.flash_size or "N/A"))
-        layout.addRow(QLabel("CPU:"), QLabel(device.cpu_frequency or "N/A"))
-        layout.addRow(QLabel("Serial:"), QLabel(device.serial_number or "N/A"))
-        layout.addRow(QLabel("Manufacturer:"), QLabel(device.manufacturer or "N/A"))
+        form_layout.addRow(QLabel("Chip ID:"), QLabel(device.chip_id or "N/A"))
+        form_layout.addRow(QLabel("MAC:"), QLabel(device.mac_address or "N/A"))
+        form_layout.addRow(QLabel("Firmware:"), QLabel(device.firmware_version or "N/A"))
+        form_layout.addRow(QLabel("Hardware:"), QLabel(device.hardware_version or "N/A"))
+        form_layout.addRow(QLabel("Flash:"), QLabel(device.flash_size or "N/A"))
+        form_layout.addRow(QLabel("CPU:"), QLabel(device.cpu_frequency or "N/A"))
+        form_layout.addRow(QLabel("Serial:"), QLabel(device.serial_number or "N/A"))
+        form_layout.addRow(QLabel("Manufacturer:"), QLabel(device.manufacturer or "N/A"))
+        
         def _fmt_hex(val):
             try:
                 if val is None:
@@ -5827,74 +6111,55 @@ Please find the attached Excel report with complete device information including
                 return f"0x{int(s):04X}"
             except Exception:
                 return str(val)
-        layout.addRow(QLabel("VID:PID:"), QLabel(f"{_fmt_hex(device.vid)}:{_fmt_hex(device.pid)}" if device.vid and device.pid else "N/A"))
+                
+        form_layout.addRow(QLabel("VID:PID:"), QLabel(f"{_fmt_hex(device.vid)}:{_fmt_hex(device.pid)}" if device.vid and device.pid else "N/A"))
+        form_group.setLayout(form_layout)
+        main_layout.addWidget(form_group)
+        
+        # --- Serial Output Section ---
+        if device.extra_info and 'serial_output' in device.extra_info:
+            log_group = QGroupBox("Raw Serial Output")
+            log_layout = QVBoxLayout()
+            
+            log_text = QTextEdit()
+            log_text.setReadOnly(True)
+            log_text.setPlainText(device.extra_info['serial_output'])
+            log_text.setStyleSheet("font-family: Consolas, monospace; font-size: 10px;")
+            
+            log_layout.addWidget(log_text)
+            log_group.setLayout(log_layout)
+            main_layout.addWidget(log_group)
+
         btns = QDialogButtonBox(QDialogButtonBox.Close)
         btns.rejected.connect(d.reject)
-        v = QVBoxLayout()
-        v.addLayout(layout)
-        v.addWidget(btns)
-        d.setLayout(v)
+        main_layout.addWidget(btns)
+        
+        d.setLayout(main_layout)
         d.exec()
-
-    def _read_device_uid(self, dialog, device, uid_label):
-        """Read UID for the device and update the label."""
-        try:
-            self._show_status("Reading UID...")
-            QApplication.processEvents()
-
-            uid = self.device_detector.read_stm32_uid_direct(device.port)
-            if uid:
-                device.uid = uid
-                uid_label.setText(uid)
-                self._show_status(f"UID read successfully: {uid}")
-                # Update device in history
-                self.device_detector.update_device_in_history(device)
-                # Refresh table
-                self.update_device_table()
-            else:
-                self._show_status("Failed to read UID")
-                QMessageBox.warning(dialog, "UID Read Failed",
-                                  "Could not read UID from the device. Make sure:\n"
-                                  "1. The device is connected via SWD/JTAG\n"
-                                  "2. STM32CubeProgrammer or OpenOCD is installed\n"
-                                  "3. The device is powered on")
-
-        except Exception as e:
-            self._show_status("Error reading UID")
-            QMessageBox.critical(dialog, "Error", f"Failed to read UID: {str(e)}")
 
 class ChipDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         col = index.column()
         text = str(index.data()) if index.data() is not None else ""
-        if col in (3, 4) and text:
+        # Check for Status column (5)
+        if col == 5 and text:
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing, True)
             rect = option.rect.adjusted(6, 6, -6, -6)
             pal = option.palette
             bg = pal.alternateBase().color()
             fg = pal.windowText().color()
-            if col == 3:
-                t = text.lower()
-                if "connected" in t:
-                    bg = pal.highlight().color().lighter(160)
-                elif "disconnected" in t:
-                    bg = pal.brightText().color()
-                    bg = QColor(bg.red(), max(0, bg.green()-120), max(0, bg.blue()-120)).lighter(140)
-                else:
-                    bg = pal.highlight().color().lighter(200)
+            
+            # Status column logic
+            t = text.lower()
+            if "connected" in t:
+                bg = pal.highlight().color().lighter(160)
+            elif "disconnected" in t:
+                bg = pal.brightText().color()
+                bg = QColor(bg.red(), max(0, bg.green()-120), max(0, bg.blue()-120)).lighter(140)
             else:
-                try:
-                    val = int(text.replace('%', '').strip())
-                except Exception:
-                    val = -1
-                if val >= 80:
-                    bg = pal.highlight().color().lighter(160)
-                elif val >= 60:
-                    bg = pal.highlight().color().lighter(190)
-                else:
-                    bg = pal.brightText().color()
-                    bg = QColor(bg.red(), max(0, bg.green()-120), max(0, bg.blue()-120)).lighter(140)
+                bg = pal.highlight().color().lighter(200)
+
             painter.setBrush(bg)
             painter.setPen(Qt.NoPen)
             painter.drawRoundedRect(rect, 10, 10)
