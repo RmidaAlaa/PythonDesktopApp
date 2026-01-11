@@ -30,7 +30,7 @@ def get_version() -> Tuple[str, str]:
     Version is read from env `APP_VERSION` if present, otherwise defaults to `1.0.0`.
     Commit is short Git hash or `unknown`.
     """
-    version = os.environ.get("APP_VERSION", "1.0.0")
+    version = os.environ.get("APP_VERSION", "1.0.4")
     commit = _git_commit_short()
     return version, commit
 

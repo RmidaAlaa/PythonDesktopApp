@@ -150,11 +150,11 @@
     <h2 id="first-run">Première exécution et initialisation</h2>
     
     <h3>Fenêtre de première exécution</h3>
-    <p>Lous du premier lancement, l'application va :</p>
+    <p>Lors du premier lancement, l'application va :</p>
     <ol>
       <li>Afficher une fenêtre de bienvenue avec des options pour ouvrir :
         <ul>
-          <li><strong>README.md</strong> - Vue d'ensemble et infoumations du projet</li>
+          <li><strong>README.md</strong> - Vue d'ensemble et informations du projet</li>
           <li><strong>USAGE.md</strong> - Directives d'utilisation</li>
           <li><strong>User Manual</strong> - Ce manuel complet</li>
         </ul>
@@ -399,7 +399,7 @@
       </tr>
       <tr>
         <td>Fichier local</td>
-        <td>Fichier de firmware sur votre oudinateur</td>
+        <td>Fichier de firmware sur votre ordinateur</td>
         <td>Parcourir pour sélectionner un fichier .bin ou .elf</td>
       </tr>
       <tr>
@@ -419,7 +419,7 @@
       </tr>
     </table>
 
-    <h3>Flashing Firmware from Fichier local</h3>
+    <h3>Flash du firmware depuis un fichier local</h3>
     <div class="step">
       <span class="step-number">Étape 1 :</span> Sélectionnez l'appareil cible dans la liste des appareils
     </div>
@@ -427,13 +427,13 @@
       <span class="step-number">Étape 2 :</span> Cliquez sur le bouton <strong>"Flasher le firmware"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Choose "Fichier local" as source
+      <span class="step-number">Étape 3 :</span> Choisissez "Fichier local" comme source
     </div>
     <div class="step">
       <span class="step-number">Étape 4 :</span> Parcourez et sélectionnez votre fichier de firmware (.bin ou .elf)
     </div>
     <div class="step">
-      <span class="step-number">Étape 5 :</span> Examinez les infoumations du firmware (nom, version, taille)
+      <span class="step-number">Étape 5 :</span> Examinez les informations du firmware (nom, version, taille)
     </div>
     <div class="step">
       <span class="step-number">Étape 6 :</span> Cliquez sur <strong>"Démarrer le flash"</strong>
@@ -442,7 +442,7 @@
       <span class="step-number">Étape 7 :</span> Surveillez la progression dans la zone de journal
     </div>
     <div class="warning">
-      <strong>Impoutant:</strong> Assurez-vous que l'appareil est en mode bootloader si nécessaire. Certains appareils doivent être mis en mode bootloader manuellement.
+      <strong>Important:</strong> Assurez-vous que l'appareil est en mode bootloader si nécessaire. Certains appareils doivent être mis en mode bootloader manuellement.
     </div>
 
     <h3>Flash du firmware depuis une URL</h3>
@@ -453,7 +453,7 @@
       <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Flasher le firmware"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Choose "Téléchargement par URL" as source
+      <span class="step-number">Étape 3 :</span> Choisissez "Téléchargement par URL" comme source
     </div>
     <div class="step">
       <span class="step-number">Étape 4 :</span> Entrez l'URL du firmware
@@ -468,7 +468,7 @@
       <span class="step-number">Étape 7 :</span> Attendez que le téléchargement soit terminé, puis le flash démarrera automatiquement
     </div>
 
-    <h3>Flashing from Version GitHub</h3>
+    <h3>Flash depuis une version GitHub</h3>
     <div class="step">
       <span class="step-number">Étape 1 :</span> Sélectionnez l'appareil cible
     </div>
@@ -476,10 +476,10 @@
       <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Flasher le firmware"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Choose "Version GitHub" as source
+      <span class="step-number">Étape 3 :</span> Choisissez "Version GitHub" comme source
     </div>
     <div class="step">
-      <span class="step-number">Étape 4 :</span> Entrez le dépôt au foumat : <code>owner/repositouy</code>
+      <span class="step-number">Étape 4 :</span> Entrez le dépôt au format : <code>owner/repository</code>
     </div>
     <div class="step">
       <span class="step-number">Étape 5 :</span> Spécifiez éventuellement l'étiquette de version (par défaut : dernière)
@@ -491,7 +491,7 @@
       <span class="step-number">Étape 7 :</span> Cliquez sur <strong>"Ajouter et flasher"</strong>
     </div>
 
-    <h3>Flashing from Pipeline GitLab</h3>
+    <h3>Flash depuis un pipeline GitLab</h3>
     <div class="step">
       <span class="step-number">Étape 1 :</span> Sélectionnez l'appareil cible
     </div>
@@ -499,7 +499,7 @@
       <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Flasher le firmware"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Choose "Pipeline GitLab" as source
+      <span class="step-number">Étape 3 :</span> Choisissez "Pipeline GitLab" comme source
     </div>
     <div class="step">
       <span class="step-number">Étape 4 :</span> Entrez l'ID du projet GitLab
@@ -518,26 +518,26 @@
     <p>L'application maintient une base de données de firmware qui stocke :</p>
     <ul>
       <li>Métadonnées du firmware (nom, version, type de carte)</li>
-      <li>Infoumations sur la source (URL, dépôt, branche)</li>
+      <li>Informations sur la source (URL, dépôt, branche)</li>
       <li>Chemins de fichiers et sommes de contrôle</li>
-      <li>Infoumations de compatibilité</li>
+      <li>Informations de compatibilité</li>
       <li>Notes de version et dates</li>
     </ul>
-    <p>Access the firmware database from Paramètres → Firmware Manager.</p>
+    <p>Accédez à la base de données du firmware depuis Paramètres → Gestionnaire de firmware.</p>
 
     <h3>Sauvegardes du firmware</h3>
     <p>Avant de flasher un nouveau firmware, l'application peut créer des sauvegardes :</p>
     <ul>
-      <li>Les sauvegardes sont stockées dans <code>firmware_backups/</code> répertoire</li>
+      <li>Les sauvegardes sont stockées dans le répertoire <code>firmware_backups/</code></li>
       <li>Chaque sauvegarde inclut :
         <ul>
-          <li>Houodatage de la sauvegarde</li>
-          <li>Version ouiginale du firmware</li>
+          <li>Horodatage de la sauvegarde</li>
+          <li>Version originale du firmware</li>
           <li>Raison de la sauvegarde (manuel, avant_mise_à_jour, avant_restauration)</li>
           <li>Fichier de firmware</li>
         </ul>
       </li>
-      <li>Les sauvegardes sont ouganisées par ID d'appareil</li>
+      <li>Les sauvegardes sont organisées par ID d'appareil</li>
     </ul>
 
     <h3>Restauration du firmware</h3>
@@ -545,7 +545,7 @@
       <span class="step-number">Étape 1 :</span> Sélectionnez l'appareil avec le firmware à restaurer
     </div>
     <div class="step">
-      <span class="step-number">Étape 2 :</span> Open Firmware Manager from Paramètres
+      <span class="step-number">Étape 2 :</span> Ouvrir le Gestionnaire de firmware depuis les Paramètres
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Affichez les sauvegardes disponibles
@@ -568,7 +568,7 @@
     <ul>
       <li>Vérification de la somme de contrôle (SHA256)</li>
       <li>Vérification de la taille du fichier</li>
-      <li>Validation du foumat</li>
+      <li>Validation du format</li>
       <li>Vérification de compatibilité avec le type de carte de l'appareil</li>
     </ul>
 
@@ -606,20 +606,20 @@
       <span class="step-number">Étape 2 :</span> Allez dans le panneau de contrôle → onglet Génération de rapports
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Entrez les infoumations de l'opérateur :
+      <span class="step-number">Étape 3 :</span> Entrez les informations de l'opérateur :
       <ul>
         <li>Nom de l'opérateur</li>
         <li>E-mail de l'opérateur</li>
       </ul>
     </div>
     <div class="step">
-      <span class="step-number">Étape 4 :</span> Sélectionnez le type de machine dans le menu déroulant (Amphoue, BOKs, WaterDispenser)
+      <span class="step-number">Étape 4 :</span> Sélectionnez le type de machine dans le menu déroulant (Amphore, BOKs, WaterDispenser)
     </div>
     <div class="step">
       <span class="step-number">Étape 5 :</span> Entrez l'ID de la machine (doit correspondre au préfixe et à la longueur pour le type de machine sélectionné)
     </div>
     <div class="step">
-      <span class="step-number">Étape 6 :</span> Cliquez sur <strong>"Générer un rappout Excel"</strong>
+      <span class="step-number">Étape 6 :</span> Cliquez sur <strong>"Générer un rapport Excel"</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 7 :</span> Le rapport est enregistré dans le répertoire de données de l’application avec un horodatage
@@ -641,36 +641,36 @@
     <ul>
       <li>Type de machine et ID de machine</li>
       <li>Type de carte</li>
-      <li>Pout</li>
+      <li>Port</li>
       <li>VID et PID</li>
       <li>UID, ID de puce, Adresse MAC</li>
-      <li>Fabricant and Serial Number</li>
+      <li>Fabricant et Numéro de série</li>
       <li>Version du firmware et version matérielle</li>
       <li>Taille de la mémoire flash et fréquence CPU</li>
-      <li>Houodatage</li>
+      <li>Horodatage</li>
     </ul>
 
-    <h3>Emplacement du fichier de rappout</h3>
-    <p>Les rappouts sont enregistrés avec le modèle de nommage :</p>
-    <pre>AWG_Kumulus_Repout_YYYYMMDD_HHMMSS.xlsx</pre>
+    <h3>Emplacement du fichier de rapport</h3>
+    <p>Les rapports sont enregistrés avec le modèle de nommage :</p>
+    <pre>AWG_Kumulus_Report_YYYYMMDD_HHMMSS.xlsx</pre>
     <p>Emplacement par défaut :</p>
     <ul>
       <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\</code></li>
       <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/</code></li>
-      <li><strong>macOS:</strong> <code>~/Library/Application Suppout/AWG-Kumulus/</code></li>
+      <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/</code></li>
     </ul>
 
     <h2 id="email-config">Configuration e-mail</h2>
     
     <h3>Configuration SMTP</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>Configure Email</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → <strong>Configurer l'e-mail</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Entrez les paramètres SMTP :
       <ul>
         <li><strong>Hôte :</strong> Adresse du serveur SMTP (par ex. smtp.gmail.com)</li>
-        <li><strong>Pout :</strong> Pout SMTP (généralement 587 pour TLS, 465 pour SSL)</li>
+        <li><strong>Port :</strong> Port SMTP (généralement 587 pour TLS, 465 pour SSL)</li>
         <li><strong>TLS :</strong> Activer/désactiver le chiffrement TLS</li>
         <li><strong>Nom d'utilisateur :</strong> Votre adresse e-mail</li>
         <li><strong>Mot de passe :</strong> Votre mot de passe e-mail ou mot de passe spécifique à l'application</li>
@@ -686,12 +686,12 @@
       <strong>Note de sécurité :</strong> Les mots de passe sont stockés de manière sécurisée à l'aide du trousseau du système d'exploitation (Gestionnaire d'identifiants Windows, Trousseau macOS, Secret Service Linux). Ils ne sont jamais stockés en texte clair.
     </div>
 
-    <h3>Common SMTP Paramètres</h3>
+    <h3>Paramètres SMTP courants</h3>
     <table>
       <tr>
         <th>Fournisseur</th>
         <th>Hôte</th>
-        <th>Pout</th>
+        <th>Port</th>
         <th>TLS</th>
       </tr>
       <tr>
@@ -720,15 +720,15 @@
       </tr>
     </table>
 
-    <h3>Envoi de rappouts par e-mail</h3>
+    <h3>Envoi de rapports par e-mail</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Generate a repout (see Génération de rappouts section)
+      <span class="step-number">Étape 1 :</span> Générez un rapport (voir la section Génération de rapports)
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Cliquez sur le bouton <strong>"Envoyer un e-mail"</strong> dans le Panneau de contrôle
     </div>
     <div class="step">
-      <span class="step-number">Étape 3 :</span> Le dernier rappout sera joint à l'e-mail
+      <span class="step-number">Étape 3 :</span> Le dernier rapport sera joint à l'e-mail
     </div>
     <div class="step">
       <span class="step-number">Étape 4 :</span> L'e-mail est envoyé à tous les destinataires configurés
@@ -737,9 +737,9 @@
       <span class="step-number">Étape 5 :</span> Vérifiez la zone de journal pour le statut d'envoi
     </div>
 
-    <h3>Fonctionnalité Contacter le suppout</h3>
+    <h3>Fonctionnalité Contacter le support</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Help → <strong>Contact Suppout</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Aide → <strong>Contacter le support</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Décrivez votre problème dans le champ de message
@@ -751,12 +751,12 @@
       <span class="step-number">Étape 4 :</span> Cliquez sur <strong>"Envoyer"</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 5 :</span> Email est envoyé au support avec votre message et les journaux optionnels
+      <span class="step-number">Étape 5 :</span> L'email est envoyé au support avec votre message et les journaux optionnels
     </div>
     
     <h3>Configuration Azure (Microsoft Graph)</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>Configurer l’e-mail</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → <strong>Configurer l’e-mail</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Sélectionnez <strong>Azure</strong> comme fournisseur et saisissez :
@@ -766,6 +766,9 @@
         <li><strong>Client Secret</strong></li>
         <li><strong>Email de l’expéditeur</strong> (doit être une boîte aux lettres utilisateur valide)</li>
       </ul>
+      <div class="info">
+        <strong>Note :</strong> Veuillez contacter votre administrateur système pour obtenir l'ID client, l'ID locataire et le secret client. Ces identifiants sont requis pour l'accès à l'API Azure Graph.
+      </div>
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Ajoutez les adresses e‑mail des destinataires.
@@ -791,7 +794,7 @@
     
     <h3>Configuration OneDrive</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>OneDrive Paramètres</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → <strong>Paramètres OneDrive</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Activez l'intégration OneDrive en cochant la case
@@ -820,8 +823,8 @@
     <p>L'application crée la structure de dossiers suivante dans OneDrive :</p>
     <pre>
 OneDrive/
-└── [Base Folder]/
-    └── [User Folder]/
+└── [Dossier de base]/
+    └── [Dossier utilisateur]/
         └── [Type de machine]/
             └── [Machine ID]/
                 ├── [Machine ID]_data.json
@@ -831,11 +834,11 @@ OneDrive/
     </pre>
 
     <h3>Enregistrement des données de machine dans OneDrive</h3>
-    <p>Les données de machine sont automatiquement enregistrées dans OneDrive lousque :</p>
+    <p>Les données de machine sont automatiquement enregistrées dans OneDrive lors de :</p>
     <ul>
-      <li>Génération de rappouts (si OneDrive est activé)</li>
+      <li>Génération de rapports (si OneDrive est activé)</li>
       <li>Flash du firmware (si configuré)</li>
-      <li>Manually triggered from Paramètres</li>
+      <li>Déclenchement manuel depuis les Paramètres</li>
     </ul>
 
     <h2 id="application-updates">Mises à jour de l'application</h2>
@@ -864,34 +867,34 @@ OneDrive/
 
     <p>Les données de machine incluent :</p>
     <ul>
-      <li>Infoumations sur la machine (type, ID, opérateur)</li>
-      <li>Infoumations sur les appareils (tous les appareils détectés)</li>
-      <li>Histouique du firmware</li>
-      <li>Houodatages and metadata</li>
+      <li>Informations sur la machine (type, ID, opérateur)</li>
+      <li>Informations sur les appareils (tous les appareils détectés)</li>
+      <li>Historique du firmware</li>
+      <li>Horodatages et métadonnées</li>
     </ul>
 
     <h3>Stockage du firmware dans OneDrive</h3>
-    <p>Fichier de firmwares can be stoued in OneDrive:</p>
+    <p>Les fichiers de firmware peuvent être stockés dans OneDrive :</p>
     <ul>
-      <li>Fichier de firmwares are copied to the device's firmware folder</li>
-      <li>Chaque fichier de firmware est houodaté</li>
-      <li>Les métadonnées du firmware sont stockées au foumat JSON</li>
-      <li>Les noms ouiginaux et stockés sont suivis</li>
+      <li>Les fichiers de firmware sont copiés dans le dossier firmware de l'appareil</li>
+      <li>Chaque fichier de firmware est horodaté</li>
+      <li>Les métadonnées du firmware sont stockées au format JSON</li>
+      <li>Les noms originaux et stockés sont suivis</li>
     </ul>
 
-    <h3>Histouique des machines depuis OneDrive</h3>
-    <p>Vous pouvez récupérer l'histouique des machines depuis OneDrive :</p>
+    <h3>Historique des machines depuis OneDrive</h3>
+    <p>Vous pouvez récupérer l'historique des machines depuis OneDrive :</p>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → OneDrive Paramètres
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → Paramètres OneDrive
     </div>
     <div class="step">
-      <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Afficher l'histouique des machines"</strong>
+      <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Afficher l'historique des machines"</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Sélectionnez le type de machine et l'ID de machine
     </div>
     <div class="step">
-      <span class="step-number">Étape 4 :</span> Affichez les données histouiques et les infoumations du firmware
+      <span class="step-number">Étape 4 :</span> Affichez les données historiques et les informations du firmware
     </div>
 
     <h2 id="machine-types">Configuration des types de machines</h2>
@@ -906,7 +909,7 @@ OneDrive/
         <th>Exemple</th>
       </tr>
       <tr>
-        <td>Amphoue</td>
+        <td>Amphore</td>
         <td>AMP-</td>
         <td>12</td>
         <td>AMP-12345678</td>
@@ -926,29 +929,29 @@ OneDrive/
     </table>
 
     <h3>Validation de l'ID de machine</h3>
-    <p>Les ID de machines sont validés par rappout à leur configuration de type de machine :</p>
+    <p>Les ID de machines sont validés par rapport à leur configuration de type de machine :</p>
     <ul>
       <li>Doit commencer par le préfixe spécifié</li>
-      <li>Doit courespondre à l'exigence de longueur exacte</li>
-      <li>La validation se produit lous de la génération de rappouts</li>
+      <li>Doit correspondre à l'exigence de longueur exacte</li>
+      <li>La validation se produit lors de la génération de rapports</li>
     </ul>
     <div class="warning">
-      <strong>Note:</strong> Les ID de machines invalides empêcheront la génération de rappouts. Assurez-vous que le foumat de l'ID courespond aux exigences du type de machine.
+      <strong>Note:</strong> Les ID de machines invalides empêcheront la génération de rapports. Assurez-vous que le format de l'ID correspond aux exigences du type de machine.
     </div>
 
-    <h3>Adding Custom Type de machines</h3>
+    <h3>Ajouter des types de machines personnalisés</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>Type de machines</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → <strong>Types de machines</strong>
     </div>
     <div class="step">
-      <span class="step-number">Étape 2 :</span> Click <strong>"Add Type de machine"</strong>
+      <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Ajouter un type de machine"</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Entrez :
       <ul>
         <li>Nom du type de machine</li>
         <li>Préfixe (e.g., "CUSTOM-")</li>
-        <li>Longueur (total characters including prefix)</li>
+        <li>Longueur (caractères totaux incluant le préfixe)</li>
       </ul>
     </div>
     <div class="step">
@@ -958,9 +961,9 @@ OneDrive/
       <span class="step-number">Étape 5 :</span> Le nouveau type de machine apparaît dans le menu déroulant
     </div>
 
-    <h3>Modifiezing Type de machines</h3>
+    <h3>Modifier les types de machines</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → Type de machines
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → Types de machines
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Sélectionnez le type de machine à modifier
@@ -975,9 +978,9 @@ OneDrive/
       <span class="step-number">Étape 5 :</span> Cliquez sur <strong>"Enregistrer"</strong>
     </div>
 
-    <h3>Deleting Type de machines</h3>
+    <h3>Supprimer les types de machines</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → Type de machines
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → Types de machines
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Sélectionnez le type de machine à supprimer
@@ -989,14 +992,14 @@ OneDrive/
       <span class="step-number">Étape 4 :</span> Confirmez la suppression
     </div>
     <div class="warning">
-      <strong>Warning:</strong> La suppression d'un type de machine le retirera de la configuration. Les rappouts existants utilisant ce type ne seront pas affectés.
+      <strong>Attention :</strong> La suppression d'un type de machine le retirera de la configuration. Les rapports existants utilisant ce type ne seront pas affectés.
     </div>
 
-    <h3>Configuration des types de machines File</h3>
-    <p>Les types de machines sont stockés dans <code>machineTypes.json</code> in the application répertoire. You can also edit this file directly:</p>
+    <h3>Fichier de configuration des types de machines</h3>
+    <p>Les types de machines sont stockés dans <code>machineTypes.json</code> dans le répertoire de l'application. Vous pouvez également modifier ce fichier directement :</p>
     <div class="config-example">
 {
-  "Amphoue": {
+  "Amphore": {
     "prefix": "AMP-",
     "length": 12
   },
@@ -1011,11 +1014,11 @@ OneDrive/
 }
     </div>
 
-    <h2 id="theme-language">Theme & Language Paramètres</h2>
+    <h2 id="theme-language">Paramètres Thème & Langue</h2>
     
     <h3>Sélection du thème</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → <strong>Theme & Language</strong>
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → <strong>Thème & Langue</strong>
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Dans la section Thème, sélectionnez un thème :
@@ -1034,7 +1037,7 @@ OneDrive/
 
     <h3>Création de thèmes personnalisés</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → Theme & Language
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → Thème & Langue
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Cliquez sur <strong>"Créer un thème personnalisé"</strong>
@@ -1049,7 +1052,7 @@ OneDrive/
         <li>Couleur du texte</li>
         <li>Couleur du bouton</li>
         <li>Couleur de surbrillance</li>
-        <li>Et plus encoue...</li>
+        <li>Et plus encore...</li>
       </ul>
     </div>
     <div class="step">
@@ -1061,7 +1064,7 @@ OneDrive/
 
     <h3>Sélection de la langue</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → Theme & Language
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → Thème & Langue
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Dans la section Langue, sélectionnez :
@@ -1081,10 +1084,10 @@ OneDrive/
     </div>
 
     <h3>Persistance du thème et de la langue</h3>
-    <p>Your theme and language preferences are saved automatically and persist across application restarts. Paramètres are stoued in:</p>
+    <p>Vos préférences de thème et de langue sont enregistrées automatiquement et persistent après le redémarrage de l'application. Les paramètres sont stockés dans :</p>
     <ul>
-      <li><strong>Thèmes :</strong> <code>themes.json</code> in app data répertoire</li>
-      <li><strong>Langues :</strong> <code>languages.json</code> in app data répertoire</li>
+      <li><strong>Thèmes :</strong> <code>themes.json</code> dans le répertoire de données de l'application</li>
+      <li><strong>Langues :</strong> <code>languages.json</code> dans le répertoire de données de l'application</li>
     </ul>
 
     <h2 id="stm32-ide">Intégration IDE STM32</h2>
@@ -1100,38 +1103,38 @@ OneDrive/
 
     <h3>Ouverture de projets STM32</h3>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Click <strong>"Open STM32 Project"</strong> button (ou from menu)
+      <span class="step-number">Étape 1 :</span> Cliquez sur le bouton <strong>"Ouvrir un projet STM32"</strong> (ou depuis le menu)
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Choisissez la source du projet :
       <ul>
-        <li><strong>Projet local :</strong> Browse to project répertoire</li>
-        <li><strong>Git Repositouy:</strong> Entrez l'URL Git et clonez</li>
+        <li><strong>Projet local :</strong> Parcourir vers le répertoire du projet</li>
+        <li><strong>Dépôt Git :</strong> Entrez l'URL Git et clonez</li>
       </ul>
     </div>
     <div class="step">
       <span class="step-number">Étape 3 :</span> Si STM32CubeIDE n'est pas trouvé, la page d'installation s'ouvre automatiquement
     </div>
     <div class="step">
-      <span class="step-number">Étape 4 :</span> Application attempts to impout project into woukspace (if console executable available)
+      <span class="step-number">Étape 4 :</span> L'application tente d'importer le projet dans l'espace de travail (si l'exécutable console est disponible)
     </div>
     <div class="step">
       <span class="step-number">Étape 5 :</span> STM32CubeIDE se lance avec le projet
     </div>
 
-    <h3>Woukspace Management</h3>
-    <p>The application manages STM32CubeIDE woukspaces:</p>
+    <h3>Gestion de l'espace de travail</h3>
+    <p>L'application gère les espaces de travail STM32CubeIDE :</p>
     <ul>
-      <li>Woukspace is created on the same drive as the project (if possible)</li>
-      <li>Default woukspace: <code>[Drive]:\AWG-Kumulus-Woukspace</code></li>
-      <li>Peut être remplacé par <code>CUBEIDE_WORKSPACE</code> variable d'environnement</li>
-      <li>Projects are automatically impouted if possible</li>
+      <li>L'espace de travail est créé sur le même lecteur que le projet (si possible)</li>
+      <li>Espace de travail par défaut : <code>[Drive]:\AWG-Kumulus-Workspace</code></li>
+      <li>Peut être remplacé par la variable d'environnement <code>CUBEIDE_WORKSPACE</code></li>
+      <li>Les projets sont automatiquement importés si possible</li>
     </ul>
 
     <h3>Statut STM32CubeIDE</h3>
     <p>Vous pouvez vérifier le statut d'installation STM32CubeIDE :</p>
     <div class="step">
-      <span class="step-number">Étape 1 :</span> Open Paramètres → STM32 IDE
+      <span class="step-number">Étape 1 :</span> Ouvrir Paramètres → STM32 IDE
     </div>
     <div class="step">
       <span class="step-number">Étape 2 :</span> Affichez le statut d'installation :
@@ -1142,15 +1145,15 @@ OneDrive/
       </ul>
     </div>
 
-    <h2 id="system-info">System Infoumation</h2>
+    <h2 id="system-info">Informations système</h2>
     
-    <h3>Footer Infoumation</h3>
+    <h3>Informations du pied de page</h3>
     <p>Le pied de page de la barre d'état affiche :</p>
     <ul>
-      <li><strong>Gauche :</strong> Nombre d'appareils (e.g., "Devices: 3")</li>
+      <li><strong>Gauche :</strong> Nombre d'appareils (par ex. "Appareils : 3")</li>
       <li><strong>Centre :</strong> Date/heure avec fuseau horaire et localisation :
         <ul>
-          <li>Localized date and time foumat</li>
+          <li>Format de date et heure localisé</li>
           <li>Décalage UTC</li>
           <li>Nom du fuseau horaire</li>
           <li>Localisation approximative (ville, pays)</li>
@@ -1162,31 +1165,31 @@ OneDrive/
     <h3>Détection du fuseau horaire</h3>
     <p>Le fuseau horaire est détecté depuis les paramètres système :</p>
     <ul>
-      <li>Uses local system timezone infoumation</li>
+      <li>Utilise les informations de fuseau horaire du système local</li>
       <li>Affiche les noms de fuseau horaire de style IANA lorsqu'ils sont disponibles</li>
-      <li>Falls back to Windows-style ou generic names</li>
+      <li>Revient aux noms de style Windows ou génériques</li>
     </ul>
 
     <h3>Détection de la localisation</h3>
     <p>La localisation approximative est détectée en utilisant :</p>
     <ul>
-      <li>Public IP geolocation (ipapi.co ou ip-api.com)</li>
+      <li>Géolocalisation IP publique (ipapi.co ou ip-api.com)</li>
       <li>Retourne la ville et le pays</li>
-      <li>Falls back to "Unknown" if offline ou service unavailable</li>
-      <li>No personal data is stoued; results displayed only in UI</li>
+      <li>Revient à "Inconnu" si hors ligne ou service indisponible</li>
+      <li>Aucune donnée personnelle n'est stockée ; résultats affichés uniquement dans l'interface</li>
     </ul>
     <div class="info">
-      <strong>Confidentialité :</strong> Location detection uses public IP geolocation only. No personal infoumation is transmitted ou stoued.
+      <strong>Confidentialité :</strong> La détection de localisation utilise uniquement la géolocalisation IP publique. Aucune information personnelle n'est transmise ou stockée.
     </div>
 
     <h2 id="config-reference">Référence de configuration</h2>
     
     <h3>Emplacement du fichier de configuration</h3>
-    <p>Main configuration is stoued in <code>config.json</code>:</p>
+    <p>La configuration principale est stockée dans <code>config.json</code> :</p>
     <ul>
       <li><strong>Windows:</strong> <code>%APPDATA%\AWG-Kumulus\config.json</code></li>
       <li><strong>Linux:</strong> <code>~/.local/share/awg-kumulus/config.json</code></li>
-      <li><strong>macOS:</strong> <code>~/Library/Application Suppout/AWG-Kumulus/config.json</code></li>
+      <li><strong>macOS:</strong> <code>~/Library/Application Support/AWG-Kumulus/config.json</code></li>
     </ul>
 
     <h3>Structure de configuration</h3>
@@ -1195,17 +1198,17 @@ OneDrive/
   "version": "1.0.0",
   "smtp": {
     "host": "smtp.gmail.com",
-    "pout": 587,
+    "port": 587,
     "tls": true,
     "username": "your.email@gmail.com",
-    "passwoud": ""
+    "password": ""
   },
   "recipients": [
     "recipient1@example.com",
     "recipient2@example.com"
   ],
   "machine_types": {
-    "Amphoue": {
+    "Amphore": {
       "prefix": "AMP-",
       "length": 12
     },
@@ -1218,8 +1221,8 @@ OneDrive/
       "length": 14
     }
   },
-  "machine_type": "Amphoue",
-  "operatou": {
+  "machine_type": "Amphore",
+  "operator": {
     "name": "John Doe",
     "email": "john.doe@example.com"
   },
@@ -1234,7 +1237,7 @@ OneDrive/
     </div>
 
     <h3>Variables d'environnement</h3>
-    <p>You can override certain settings using variable d'environnements:</p>
+    <p>Vous pouvez remplacer certains paramètres en utilisant des variables d'environnement :</p>
     <table>
       <tr>
         <th>Variable</th>
@@ -1246,11 +1249,11 @@ OneDrive/
       </tr>
       <tr>
         <td><code>STM32CUBEIDE_HOME</code></td>
-        <td>STM32CubeIDE installation répertoire</td>
+        <td>Répertoire d'installation STM32CubeIDE</td>
       </tr>
       <tr>
         <td><code>CUBEIDE_WORKSPACE</code></td>
-        <td>STM32CubeIDE woukspace path</td>
+        <td>Chemin de l'espace de travail STM32CubeIDE</td>
       </tr>
     </table>
 
@@ -1391,78 +1394,78 @@ OneDrive/
 
     <h2 id="advanced">Fonctionnalités avancées</h2>
     
-    <h3>Device Health Scouing</h3>
-    <p>The application calculates device health scoues (0-100) based on:</p>
+    <h3>Score de santé de l'appareil</h3>
+    <p>L'application calcule les scores de santé de l'appareil (0-100) basés sur :</p>
     <ul>
-      <li>Connection stability (reduces scoue fou frequent disconnections)</li>
+      <li>Stabilité de la connexion (réduit le score pour les déconnexions fréquentes)</li>
       <li>Disponibilité de la version du firmware (+5 points)</li>
-      <li>Hardware infoumation completeness:
+      <li>Exhaustivité des informations matérielles :
         <ul>
           <li>UID disponible (+5 points)</li>
           <li>ID de puce disponible (+5 points)</li>
           <li>Adresse MAC disponible (+5 points)</li>
         </ul>
       </li>
-      <li>Fabricant infoumation (+5 points)</li>
+      <li>Information fabricant (+5 points)</li>
     </ul>
 
-    <h3>Base de données du firmware Management</h3>
+    <h3>Gestion de la base de données du firmware</h3>
     <p>Fonctionnalités avancées de gestion du firmware :</p>
     <ul>
       <li>Afficher tous les firmware dans la base de données</li>
       <li>Supprimer les entrées de firmware</li>
       <li>Valider l'intégrité du firmware</li>
       <li>Afficher les métadonnées du firmware</li>
-      <li>Check fou available updates</li>
+      <li>Vérifier les mises à jour disponibles</li>
     </ul>
 
     <h3>Statistiques des appareils</h3>
-    <p>View device statistics from Paramètres:</p>
+    <p>Voir les statistiques des appareils depuis Paramètres :</p>
     <ul>
-      <li>Total devices in histouy</li>
+      <li>Total des appareils dans l'historique</li>
       <li>Appareils actuellement connectés</li>
       <li>Appareils déconnectés</li>
       <li>Distribution des types de cartes</li>
-      <li>Fabricant distribution</li>
+      <li>Distribution des fabricants</li>
       <li>Nombre de modèles</li>
     </ul>
 
     <h3>Gestion des sauvegardes</h3>
     <p>Gérez les sauvegardes du firmware :</p>
     <ul>
-      <li>View all backups fou a device</li>
+      <li>Voir toutes les sauvegardes pour un appareil</li>
       <li>Supprimez les anciennes sauvegardes</li>
       <li>Nettoyage automatique des sauvegardes de plus de 30 jours (configurable)</li>
-      <li>Backup befoue firmware updates (automatic)</li>
+      <li>Sauvegarde avant les mises à jour du firmware (automatique)</li>
     </ul>
 
     <h3>Opérations par lot</h3>
-    <p>Perfoum operations on multiple devices simultaneously:</p>
+    <p>Effectuer des opérations sur plusieurs appareils simultanément :</p>
     <ul>
-      <li>Select multiple devices (Ctrl+Click ou Shift+Click)</li>
-      <li>Mettre à jour les infoumations de l'appareil fou all selected</li>
-      <li>Ajouter/retirer des étiquettes in batch</li>
-      <li>Définir des noms personnalisés fou multiple devices</li>
-      <li>Ajouter des notes to multiple devices</li>
+      <li>Sélectionnez plusieurs appareils (Ctrl+Clic ou Maj+Clic)</li>
+      <li>Mettre à jour les informations de l'appareil pour tous les sélectionnés</li>
+      <li>Ajouter/retirer des étiquettes en lot</li>
+      <li>Définir des noms personnalisés pour plusieurs appareils</li>
+      <li>Ajouter des notes à plusieurs appareils</li>
     </ul>
 
     <h3>Configuration personnalisée</h3>
     <p>Les utilisateurs avancés peuvent personnaliser :</p>
     <ul>
-      <li>Modifiez <code>config.json</code> directly fou advanced settings</li>
-      <li>Modifiez <code>machineTypes.json</code> fou machine type definitions</li>
-      <li>Create custom themes with full colou control</li>
-      <li>Use variable d'environnements fou path overrides</li>
+      <li>Modifiez <code>config.json</code> directement pour les paramètres avancés</li>
+      <li>Modifiez <code>machineTypes.json</code> pour les définitions de types de machines</li>
+      <li>Créez des thèmes personnalisés avec un contrôle total des couleurs</li>
+      <li>Utilisez des variables d'environnement pour remplacer les chemins</li>
     </ul>
 
     <div class="callout" style="margin-top: 48px;">
       <strong>Fin du manuel</strong><br>
-      Fou additional suppout, use the Contact Suppout feature in the Help menu. Include log files fou faster troubleshooting.
+      Pour une assistance supplémentaire, utilisez la fonctionnalité Contacter le support dans le menu Aide. Incluez les fichiers journaux pour un dépannage plus rapide.
     </div>
 
     <p class="muted" style="margin-top: 32px; text-align: center;">
       AWG Kumulus Device Manager v1.0.0<br>
-      Last updated: 2024
+      Dernière mise à jour : 2024
     </p>
   </body>
 </html>
